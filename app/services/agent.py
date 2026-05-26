@@ -3,7 +3,7 @@ from app.services.lichess import fetch_games
 from app.services.stockfish import analyze_game
 import json
 import os
-
+from app.services.rag import search_theory
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 tools = [
@@ -45,17 +45,44 @@ tools = [
                 "required": ["pgn"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_theory",  #TOOL 3
+            "description": "Busca teoría de ajedrez y recursos de estudio relevantes según la debilidad detectada",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Tema a buscar, por ejemplo: finales de torre, táctica defensiva, gambito de dama"
+                    }
+                },
+                "required": ["query"]
+            }
+        }
     }
 ]
 
 async def run_agent(message: str) -> str:
     messages = [
-        {
+       {
             "role": "system",
-            "content": """Eres Cerno, un coach de ajedrez experto. 
-            Analizas las partidas del usuario con herramientas reales y das recomendaciones 
-            concretas y accionables basadas en los datos. 
-            Habla siempre en español, sé directo y específico."""
+            "content": """Eres Cerno, un coach de ajedrez experto y analítico.
+
+        Tu flujo de trabajo es siempre este:
+        1. Usa fetch_games para obtener las partidas del usuario
+        2. Usa analyze_game para analizar cada partida con Stockfish
+        3. Identifica las debilidades concretas basándote en los datos de CPL y errores por fase
+        4. SIEMPRE usa search_theory para buscar recursos específicos sobre las debilidades detectadas
+        5. Genera recomendaciones concretas citando los recursos encontrados
+
+        Nunca des recomendaciones genéricas. Siempre basa tus recomendaciones en:
+        - Los datos reales del análisis de Stockfish
+        - Los recursos encontrados con search_theory
+
+        Habla siempre en español y sé directo y específico."""
         },
         {
             "role": "user",
@@ -85,6 +112,8 @@ async def run_agent(message: str) -> str:
                     result = [g.model_dump() for g in games]
                 elif name == "analyze_game":
                     result = await analyze_game(**args)
+                elif name == "search_theory":
+                    result = search_theory(**args)
                 else:
                     result = {"error": "herramienta desconocida"}
 
