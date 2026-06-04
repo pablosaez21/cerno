@@ -1,4 +1,9 @@
 PHASES = ("opening", "middlegame", "endgame")
+CLASSIFICATION_COUNTERS = {
+    "inaccuracy": "inaccuracies",
+    "mistake": "mistakes",
+    "blunder": "blunders",
+}
 
 
 def aggregate_game_analyses(analyses: list[dict]) -> dict:
@@ -16,8 +21,9 @@ def aggregate_game_analyses(analyses: list[dict]) -> dict:
             phase_stats[phase]["total_cpl"] += cpl
             phase_stats[phase]["moves"] += 1
 
-            if classification in ("inaccuracy", "mistake", "blunder"):
-                phase_stats[phase][f"{classification}s"] += 1
+            counter = CLASSIFICATION_COUNTERS.get(classification)
+            if counter:
+                phase_stats[phase][counter] += 1
 
         critical_moments.extend(analysis.get("critical_moments", []))
 
