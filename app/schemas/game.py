@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class Player(BaseModel):
@@ -21,3 +21,8 @@ class GamesResponse(BaseModel):
     username: str
     total: int
     games: list[Game]
+
+
+class AnalyzeGameRequest(BaseModel):
+    pgn: str = Field(min_length=1)
+    depth: int = Field(default=12, ge=1, le=25)

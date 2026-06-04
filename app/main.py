@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
-from app.routers import games, agent
+from app.routers import games, agent, theory
 
 app = FastAPI(
     title="Cerno",
@@ -12,6 +12,7 @@ app = FastAPI(
 
 app.include_router(games.router)
 app.include_router(agent.router)
+app.include_router(theory.router)
 
 @app.get("/health")
 async def health():

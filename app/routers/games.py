@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
 from app.services.lichess import fetch_games
-from app.schemas.game import GamesResponse
+from app.schemas.game import AnalyzeGameRequest, GamesResponse
 from app.services.stockfish import analyze_game
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -16,6 +16,22 @@ async def get_games(username: str, limit: int = 10):
 
 
 @router.post("/analyze")
-async def analyze(pgn: str):
-    result = await analyze_game(pgn)
-    return result
+async def analyze(
+    request: AnalyzeGameRequest | None = Body(default=None),
+    pgn: str | None = None,
+    depth: int = 12,
+):
+    pgn_text = request.pgn if request else pgn
+    analysis_depth = request.depth if request else depth
+
+    if not pgn_text:
+        raise HTTPException(status_code=400, detail="PGN is required.")
+
+    try:
+        return await analyze_game(pgn_text, analysis_depth)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

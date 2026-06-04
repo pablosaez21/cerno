@@ -60,7 +60,11 @@ def chunk_study_pgn(
 
     chunks = []
     for index, game_text in enumerate(g for g in games if g.strip()):
-        chapter = _extract_tag_value(game_text, "Chapter") or f"Chapter {index + 1}"
+        chapter = (
+            _extract_tag_value(game_text, "ChapterName")
+            or _extract_tag_value(game_text, "Chapter")
+            or "unknown"
+        )
         chunks.append({
             "id": f"{study_id}_{index}",
             "text": game_text,
