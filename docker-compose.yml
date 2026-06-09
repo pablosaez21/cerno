@@ -1,0 +1,47 @@
+services:
+  api:
+    build:
+      context: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://cerno:cerno@postgres:5432/cerno
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      STOCKFISH_PATH: /usr/games/stockfish
+      CHROMA_PATH: /app/data/chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cerno
+      POSTGRES_USER: cerno
+      POSTGRES_PASSWORD: cerno
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cerno -d cerno"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

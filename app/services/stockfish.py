@@ -1,15 +1,16 @@
 import asyncio
 import io
-import os
 from pathlib import Path
 
 import chess
 import chess.engine
 import chess.pgn
 
+from app.core.config import settings
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_STOCKFISH_PATH = PROJECT_ROOT / "engines" / "stockfish.exe"
-STOCKFISH_PATH = Path(os.getenv("STOCKFISH_PATH", str(DEFAULT_STOCKFISH_PATH)))
+STOCKFISH_PATH = Path(settings.stockfish_path or str(DEFAULT_STOCKFISH_PATH))
 
 PHASES = ("opening", "middlegame", "endgame")
 MATE_SCORE = 10000

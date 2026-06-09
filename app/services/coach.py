@@ -1,9 +1,9 @@
 import json
-import os
 
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.repositories.analyses import save_critical_moves, save_game_analysis
 from app.db.repositories.recommendations import save_training_recommendation
 from app.db.repositories.users import get_or_create_user
@@ -12,9 +12,6 @@ from app.services.lichess import fetch_games
 from app.services.rag import search_theory
 from app.services.stockfish import analyze_game
 from app.services.weakness import aggregate_game_analyses
-
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
 
 async def analyze_user(
     username: str,
@@ -207,7 +204,7 @@ async def generate_training_plan(
     weakness_profile: dict,
     theory_recommendations: list[dict],
 ) -> dict:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = settings.openai_api_key
     if not api_key:
         return build_fallback_training_plan(weakness_profile)
 
@@ -220,7 +217,7 @@ async def generate_training_plan(
 
     try:
         response = await client.chat.completions.create(
-            model=OPENAI_MODEL,
+            model=settings.openai_model,
             messages=[
                 {
                     "role": "system",

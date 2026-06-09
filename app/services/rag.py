@@ -2,10 +2,12 @@ import chromadb
 from chromadb.utils import embedding_functions
 import httpx
 
+from app.core.config import settings
+
 LICHESS_STUDY_BASE_URL = "https://lichess.org/study"
 LICHESS_TIMEOUT_SECONDS = 15.0
 
-client = chromadb.PersistentClient(path="data/chromadb")
+client = chromadb.PersistentClient(path=settings.chroma_path)
 
 embedding_fn = embedding_functions.DefaultEmbeddingFunction()
 
