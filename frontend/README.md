@@ -31,6 +31,20 @@ The frontend expects the API URL in:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
+## Docker
+
+From the repository root, build and run the full stack:
+
+```bash
+docker compose up --build
+```
+
+The frontend container serves the production Next.js build on:
+
+```text
+http://localhost:3000
+```
+
 ## Checks
 
 ```bash

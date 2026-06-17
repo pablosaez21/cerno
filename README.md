@@ -1,6 +1,6 @@
 # Cerno
 
-Cerno is an AI-assisted chess coach backend. It retrieves recent Lichess games, analyzes them with Stockfish, identifies recurring weaknesses, retrieves relevant chess theory from a curated ChromaDB knowledge base, and generates a practical training plan. Analyses and user profiles can be persisted in PostgreSQL.
+Cerno is an AI-assisted chess coach for Lichess players. It retrieves recent games, analyzes them with Stockfish, identifies recurring weaknesses, retrieves relevant chess theory from a curated ChromaDB knowledge base, and generates a practical training plan. Analyses and user profiles can be persisted in PostgreSQL and reviewed from the Next.js frontend.
 
 ## Stack
 
@@ -12,6 +12,10 @@ Cerno is an AI-assisted chess coach backend. It retrieves recent Lichess games, 
 - PostgreSQL
 - SQLAlchemy 2.0 and Alembic
 - Docker Compose
+- Next.js
+- TypeScript
+- Tailwind CSS
+- lucide-react
 - pytest
 
 ## Architecture
@@ -60,7 +64,7 @@ ChromaDB and PostgreSQL have separate responsibilities:
 6. OpenAI generates a training plan, with a local fallback if no API key is configured.
 7. When `save=true`, the analysis is persisted in PostgreSQL.
 
-## Run With Docker
+## Running Locally With Docker
 
 Create a local environment file:
 
@@ -74,7 +78,7 @@ On PowerShell:
 Copy-Item .env.example .env
 ```
 
-Build and start the API and PostgreSQL:
+Build and start the full stack:
 
 ```bash
 docker compose up --build
@@ -86,10 +90,12 @@ If the images are already built:
 docker compose up -d
 ```
 
-Swagger UI is available at:
+Application URLs:
 
 ```text
-http://localhost:8000/docs
+Frontend: http://localhost:3000
+Backend API docs: http://localhost:8000/docs
+Healthcheck: http://localhost:8000/health
 ```
 
 Stop the containers without deleting persisted data:
@@ -110,6 +116,55 @@ uvicorn app.main:app --reload
 ```
 
 The Windows development environment uses `engines/stockfish.exe`. The Docker image installs and uses the Linux Stockfish package.
+
+## Running Frontend Separately
+
+Run the backend with Docker, then start the frontend development server:
+
+```bash
+docker compose up -d api postgres
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend expects:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Frontend Stack
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- lucide-react
+
+## Demo Flow
+
+1. Open `http://localhost:3000`.
+2. Enter a Lichess username.
+3. Analyze recent games.
+4. Review detected weaknesses, critical moments, recommended theory, and the training plan.
+5. Open the player profile to inspect saved analysis history.
+6. Optionally paste a PGN manually for direct Stockfish analysis.
+
+## Screenshots
+
+> Add screenshots of the home page, analysis result, and player profile here.
+
+Suggested files:
+
+- `docs/screenshots/home.png`
+- `docs/screenshots/analysis-result.png`
+- `docs/screenshots/player-profile.png`
 
 ## Main Endpoints
 
@@ -196,6 +251,7 @@ The tests mock external boundaries and do not require:
 | `STOCKFISH_PATH` | Stockfish executable path | Windows project binary locally |
 | `FRONTEND_ORIGIN` | Primary future frontend origin | `http://localhost:3000` |
 | `BACKEND_CORS_ORIGINS` | Comma-separated allowed CORS origins | Local port 3000 origins |
+| `NEXT_PUBLIC_API_BASE_URL` | API URL baked into the Next.js frontend | `http://localhost:8000` |
 
 ## What This Project Demonstrates
 
@@ -207,12 +263,14 @@ The tests mock external boundaries and do not require:
 - Vector database usage
 - Relational persistence and migrations
 - Dockerized development
+- Full-stack Docker Compose setup
+- Next.js frontend
+- TypeScript UI implementation
 - Test isolation through mocks
 - Applied AI architecture with traceable sources
 
 ## Current Limitations
 
-- The frontend is not implemented yet.
 - Railway and production deployment are pending.
 - Stockfish analysis is a useful coaching approximation, not an elite professional preparation tool.
 - The initial RAG knowledge base is intentionally small and curated.
@@ -220,7 +278,6 @@ The tests mock external boundaries and do not require:
 
 ## Roadmap
 
-- Build the frontend experience.
 - Deploy the application to Railway.
 - Add richer visual weakness profiles and game timelines.
 - Expand and evaluate the curated RAG sources.
