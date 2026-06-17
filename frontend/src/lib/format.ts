@@ -17,9 +17,11 @@ export function formatDate(value: string) {
 
 export function classificationTone(classification: string) {
   const value = classification.toLowerCase();
-  if (value === "blunder") return "bg-red-50 text-[#9d3834] border-red-200";
-  if (value === "mistake") return "bg-amber-50 text-[#8b561f] border-amber-200";
+  if (value === "blunder")
+    return "bg-[var(--error-soft)] text-[var(--error)] border-[var(--error)]";
+  if (value === "mistake")
+    return "bg-[var(--warning-soft)] text-[var(--warning)] border-[var(--warning)]";
   if (value === "inaccuracy")
-    return "bg-sky-50 text-[#306578] border-sky-200";
-  return "bg-emerald-50 text-[#24624d] border-emerald-200";
+    return "bg-[var(--primary-soft)] text-[var(--info)] border-[var(--border)]";
+  return "bg-[var(--success-soft)] text-[var(--success)] border-[var(--border)]";
 }

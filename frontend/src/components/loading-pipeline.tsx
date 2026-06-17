@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, LoaderCircle } from "lucide-react";
+import { Check } from "lucide-react";
 
 export function LoadingPipeline({ steps }: { steps: string[] }) {
   const [activeStep, setActiveStep] = useState(0);
@@ -15,13 +15,15 @@ export function LoadingPipeline({ steps }: { steps: string[] }) {
 
   return (
     <div
-      className="rounded-[6px] border border-[#bdc9c2] bg-[#17211d] p-5 text-white"
+      className="card p-5"
       role="status"
       aria-live="polite"
     >
       <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm font-semibold">Building your analysis</p>
-        <span className="font-mono text-xs text-[#b6c8bf]">
+        <p className="text-sm font-semibold text-[var(--text)]">
+          Building your analysis
+        </p>
+        <span className="font-mono text-xs text-[var(--text-muted)]">
           {activeStep + 1}/{steps.length}
         </span>
       </div>
@@ -33,22 +35,24 @@ export function LoadingPipeline({ steps }: { steps: string[] }) {
             <li
               key={step}
               className={`flex items-center gap-3 text-sm ${
-                complete || active ? "text-white" : "text-[#81938a]"
+                complete || active
+                  ? "text-[var(--text)]"
+                  : "text-[var(--text-muted)]"
               }`}
             >
               <span
                 className={`grid size-6 shrink-0 place-items-center rounded-full border ${
                   complete
-                    ? "border-[#75b397] bg-[#75b397] text-[#17211d]"
+                    ? "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]"
                     : active
-                      ? "border-white"
-                      : "border-[#52635b]"
+                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] text-[var(--text-muted)]"
                 }`}
               >
                 {complete ? (
                   <Check size={13} strokeWidth={2.5} />
                 ) : active ? (
-                  <LoaderCircle className="animate-spin" size={13} />
+                  <span className="size-2 rounded-full bg-current" />
                 ) : (
                   <span className="size-1 rounded-full bg-current" />
                 )}

@@ -1,55 +1,40 @@
-import { Activity, Braces } from "lucide-react";
 import type { PgnAnalysis } from "@/lib/types";
 import { classificationTone, titleCase } from "@/lib/format";
 import { PhaseStatsCards } from "@/components/phase-stats";
 
 export function PgnAnalysisResult({ result }: { result: PgnAnalysis }) {
   return (
-    <section className="result-enter mx-auto max-w-6xl px-5 pb-20 sm:px-8">
-      <div className="mb-7 border-b border-[#d8dfda] pb-7">
-        <p className="text-xs font-semibold uppercase text-[#1f624b]">
-          Engine report
+    <section className="result-enter shell space-y-4">
+      <article className="card p-5 sm:p-6">
+        <p className="eyebrow">PGN analysis</p>
+        <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">
+          Stockfish report
+        </h2>
+        <p className="mt-3 text-sm text-[var(--text-muted)]">
+          Total moves:{" "}
+          <span className="font-mono text-[var(--text)]">
+            {result.total_moves}
+          </span>
         </p>
-        <h2 className="display-type mt-2 text-3xl sm:text-4xl">PGN analysis</h2>
-        <p className="mt-2 text-sm text-[#64706a]">
-          Stockfish reviewed {result.total_moves} half-moves across the game.
-        </p>
-      </div>
+      </article>
 
       <PhaseStatsCards stats={result.summary} />
 
-      {result.phase_weaknesses.length ? (
-        <div className="mt-5 flex flex-wrap gap-2">
-          {result.phase_weaknesses.map((weakness) => (
-            <span
-              key={weakness}
-              className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-[#8b561f]"
-            >
-              {weakness}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="section-rule mt-12 pt-10">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#1f624b]">
-          <Activity size={15} />
-          Critical moments
-        </div>
-        <div className="mt-5 space-y-3">
-          {result.critical_moments.length ? (
-            result.critical_moments.slice(0, 12).map((moment, index) => (
+      <section className="card p-5 sm:p-6">
+        <p className="eyebrow">Critical moments</p>
+        {result.critical_moments.length ? (
+          <div className="mt-4 space-y-3">
+            {result.critical_moments.slice(0, 12).map((moment, index) => (
               <details
                 key={`${moment.move_number}-${moment.move_uci}-${index}`}
-                className="group rounded-[6px] border border-[#d8dfda] bg-white"
+                className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)]"
               >
-                <summary className="grid cursor-pointer list-none gap-3 p-4 sm:grid-cols-[100px_1fr_auto] sm:items-center">
-                  <span className="font-mono font-semibold">
+                <summary className="grid cursor-pointer list-none gap-2 p-4 sm:grid-cols-[110px_1fr_auto] sm:items-center">
+                  <span className="font-mono text-sm font-semibold">
                     {moment.move_number}. {moment.move_san}
                   </span>
-                  <span className="text-sm text-[#64706a]">
-                    {titleCase(moment.phase)} · {moment.cpl} CPL ·{" "}
-                    {moment.evaluation_before} → {moment.evaluation_after}
+                  <span className="text-sm text-[var(--text-muted)]">
+                    {titleCase(moment.phase)} - {moment.cpl} CPL
                   </span>
                   <span
                     className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${classificationTone(moment.classification)}`}
@@ -57,35 +42,32 @@ export function PgnAnalysisResult({ result }: { result: PgnAnalysis }) {
                     {titleCase(moment.classification)}
                   </span>
                 </summary>
-                <div className="border-t border-[#d8dfda] px-4 py-4">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[#64706a]">
-                    <Braces size={14} />
-                    Position data
-                  </div>
+                <div className="border-t border-[var(--border)] p-4">
                   <dl className="grid gap-3 text-xs">
-                    <div>
-                      <dt className="mb-1 font-semibold">FEN before</dt>
-                      <dd className="overflow-x-auto rounded-[5px] bg-[#f3f5f2] p-3 font-mono text-[#526159]">
-                        {moment.fen_before}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="mb-1 font-semibold">FEN after</dt>
-                      <dd className="overflow-x-auto rounded-[5px] bg-[#f3f5f2] p-3 font-mono text-[#526159]">
-                        {moment.fen_after}
-                      </dd>
-                    </div>
+                    <FenLine label="FEN before" value={moment.fen_before} />
+                    <FenLine label="FEN after" value={moment.fen_after} />
                   </dl>
                 </div>
               </details>
-            ))
-          ) : (
-            <p className="rounded-[6px] border border-dashed border-[#bdc9c2] bg-white p-6 text-sm text-[#64706a]">
-              Stockfish found no inaccuracies, mistakes, or blunders.
-            </p>
-          )}
-        </div>
-      </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-[8px] border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
+            No inaccuracies, mistakes, or blunders detected.
+          </p>
+        )}
+      </section>
     </section>
+  );
+}
+
+function FenLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="mb-1 font-semibold text-[var(--text)]">{label}</dt>
+      <dd className="overflow-x-auto rounded-[7px] bg-[var(--surface-soft)] p-3 font-mono text-[var(--text-muted)]">
+        {value}
+      </dd>
+    </div>
   );
 }

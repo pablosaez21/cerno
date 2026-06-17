@@ -5,30 +5,31 @@ const phases = ["opening", "middlegame", "endgame"];
 
 export function PhaseStatsCards({
   stats,
+  showInaccuracies = true,
 }: {
   stats: Record<string, PhaseStat>;
+  showInaccuracies?: boolean;
 }) {
   return (
     <div className="grid gap-3 md:grid-cols-3">
       {phases.map((phase) => {
         const item = stats[phase] ?? {};
         return (
-          <article
-            key={phase}
-            className="rounded-[6px] border border-[#d8dfda] bg-white p-4"
-          >
+          <article key={phase} className="card p-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold">{titleCase(phase)}</h3>
-              <span className="font-mono text-[11px] text-[#7b8982]">
-                {formatNumber(item.moves, "—")} moves
+              <span className="font-mono text-[11px] text-[var(--text-muted)]">
+                {formatNumber(item.moves)} moves
               </span>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-x-3 gap-y-4">
               <Metric label="Avg. CPL" value={formatNumber(item.avg_cpl)} />
-              <Metric
-                label="Inaccuracies"
-                value={formatNumber(item.inaccuracies, "0")}
-              />
+              {showInaccuracies ? (
+                <Metric
+                  label="Inaccuracies"
+                  value={formatNumber(item.inaccuracies, "0")}
+                />
+              ) : null}
               <Metric
                 label="Mistakes"
                 value={formatNumber(item.mistakes, "0")}
@@ -48,7 +49,9 @@ export function PhaseStatsCards({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase text-[#7b8982]">{label}</p>
+      <p className="text-[11px] font-medium uppercase text-[var(--text-muted)]">
+        {label}
+      </p>
       <p className="mt-1 font-mono text-lg font-semibold">{value}</p>
     </div>
   );

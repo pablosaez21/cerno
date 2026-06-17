@@ -2,14 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  CalendarDays,
-  CircleDot,
-  History,
-  LoaderCircle,
-  Target,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getPlayerAnalyses, getWeaknessProfile } from "@/lib/api";
 import type { AnalysisHistory, WeaknessProfile } from "@/lib/types";
 import { formatDate, titleCase } from "@/lib/format";
@@ -42,10 +35,7 @@ export function PlayerProfile({ username }: { username: string }) {
   useEffect(() => {
     let active = true;
 
-    Promise.all([
-      getWeaknessProfile(username),
-      getPlayerAnalyses(username),
-    ])
+    Promise.all([getWeaknessProfile(username), getPlayerAnalyses(username)])
       .then(([profileResult, historyResult]) => {
         if (!active) return;
         setProfile(profileResult);
@@ -66,13 +56,9 @@ export function PlayerProfile({ username }: { username: string }) {
 
   if (loading) {
     return (
-      <main className="grid min-h-[70vh] place-items-center px-5">
-        <div className="text-center" role="status">
-          <LoaderCircle
-            className="mx-auto animate-spin text-[#1f624b]"
-            size={28}
-          />
-          <p className="mt-4 text-sm font-semibold">Loading player profile</p>
+      <main className="shell py-16">
+        <div className="card p-6 text-sm text-[var(--text-muted)]" role="status">
+          Loading player profile...
         </div>
       </main>
     );
@@ -80,13 +66,11 @@ export function PlayerProfile({ username }: { username: string }) {
 
   if (error) {
     return (
-      <main className="mx-auto max-w-xl px-5 py-20">
+      <main className="shell py-16">
         <ErrorState message={error} onRetry={() => void load()} />
-        <Link
-          href="/"
-          className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#1f624b]"
-        >
-          <ArrowLeft size={16} /> Back to analysis
+        <Link href="/" className="secondary-button mt-4 w-fit">
+          <ArrowLeft size={16} />
+          New analysis
         </Link>
       </main>
     );
@@ -97,146 +81,114 @@ export function PlayerProfile({ username }: { username: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
-      <Link
-        href="/"
-        className="inline-flex min-h-10 items-center gap-2 text-sm font-semibold text-[#526159] hover:text-[#17211d]"
-      >
-        <ArrowLeft size={16} /> New analysis
+    <main className="shell py-10 sm:py-12">
+      <Link href="/" className="secondary-button w-fit">
+        <ArrowLeft size={16} />
+        New analysis
       </Link>
 
-      <header className="mt-7 grid gap-6 border-b border-[#d8dfda] pb-9 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div>
-          <p className="text-xs font-semibold uppercase text-[#1f624b]">
-            Player profile
-          </p>
-          <h1 className="display-type mt-3 break-words text-4xl sm:text-6xl">
-            {profile.username}
-          </h1>
-          <p className="mt-3 text-sm text-[#64706a]">
-            A cumulative view of saved Cerno analyses.
-          </p>
-        </div>
-        <div className="rounded-[6px] border border-[#d8dfda] bg-white px-5 py-4">
-          <p className="text-xs font-semibold uppercase text-[#7b8982]">
-            Games analyzed
-          </p>
-          <p className="mt-1 font-mono text-3xl font-semibold">
-            {profile.games_analyzed}
-          </p>
-        </div>
+      <header className="mt-8 border-b border-[var(--border)] pb-6">
+        <p className="eyebrow">Player profile</p>
+        <h1 className="mt-2 break-words text-3xl font-semibold tracking-[-0.01em] sm:text-4xl">
+          {profile.username}
+        </h1>
       </header>
 
-      <section className="mt-10 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-[6px] bg-[#17211d] p-6 text-white sm:p-8">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#8fc0a8]">
-            <Target size={15} /> Current priority
-          </div>
-          <h2 className="display-type mt-5 text-3xl sm:text-4xl">
+      <section className="mt-6 grid gap-4 sm:grid-cols-[220px_1fr]">
+        <article className="card p-5">
+          <p className="eyebrow">Games analyzed</p>
+          <p className="mt-3 font-mono text-3xl font-semibold">
+            {profile.games_analyzed}
+          </p>
+        </article>
+
+        <article className="card p-5">
+          <p className="eyebrow">Current priority</p>
+          <h2 className="mt-3 text-xl font-semibold">
             {profile.main_weakness}
           </h2>
           {profile.recommended_focus.length ? (
-            <ul className="mt-6 space-y-3 text-sm leading-6 text-[#c9d4ce]">
-              {profile.recommended_focus.map((focus) => (
-                <li key={focus} className="flex gap-3">
-                  <CircleDot className="mt-1 shrink-0" size={14} />
-                  {focus}
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4">
+              <p className="text-sm font-medium">Focus</p>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-[var(--text-muted)]">
+                {profile.recommended_focus.map((focus) => (
+                  <li key={focus}>- {focus}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </article>
-
-        <article className="rounded-[6px] border border-[#d8dfda] bg-white p-6">
-          <p className="text-xs font-semibold uppercase text-[#1f624b]">
-            Recent recommendations
-          </p>
-          {profile.recommended_training.length ? (
-            <div className="mt-5 divide-y divide-[#d8dfda]">
-              {profile.recommended_training.map((item, index) => (
-                <div key={`${item.title}-${index}`} className="py-3 first:pt-0">
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="mt-1 text-xs text-[#64706a]">
-                    Priority: {titleCase(item.priority)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-[#64706a]">
-              New recommendations will appear after saved analyses.
-            </p>
-          )}
-        </article>
       </section>
 
-      <section className="section-rule mt-12 pt-10">
-        <p className="text-xs font-semibold uppercase text-[#1f624b]">
-          Performance map
-        </p>
-        <h2 className="display-type mt-2 text-2xl sm:text-3xl">
-          Phase statistics
-        </h2>
-        <div className="mt-5">
-          <PhaseStatsCards stats={profile.phase_stats} />
-        </div>
-      </section>
-
-      <section className="section-rule mt-12 pt-10">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase text-[#1f624b]">
-              Saved work
-            </p>
-            <h2 className="display-type mt-2 text-2xl sm:text-3xl">
-              Analysis history
-            </h2>
+      <section className="mt-4 card p-5">
+        <p className="eyebrow">Recent recommendations</p>
+        {profile.recommended_training.length ? (
+          <div className="mt-4 divide-y divide-[var(--border)]">
+            {profile.recommended_training.map((item, index) => (
+              <article
+                key={`${item.title}-${index}`}
+                className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Priority: {titleCase(item.priority)}
+                </p>
+              </article>
+            ))}
           </div>
-          <span className="font-mono text-xs text-[#7b8982]">
+        ) : (
+          <p className="mt-3 text-sm text-[var(--text-muted)]">
+            No recommendations saved yet.
+          </p>
+        )}
+      </section>
+
+      <section className="mt-6">
+        <PhaseStatsCards stats={profile.phase_stats} showInaccuracies={false} />
+      </section>
+
+      <section className="mt-4 card p-5">
+        <div className="flex items-end justify-between gap-4">
+          <p className="eyebrow">Analysis history</p>
+          <span className="font-mono text-xs text-[var(--text-muted)]">
             {history.total} records
           </span>
         </div>
 
         {history.analyses.length ? (
-          <div className="mt-5 divide-y divide-[#d8dfda] rounded-[6px] border border-[#d8dfda] bg-white">
+          <div className="mt-4 divide-y divide-[var(--border)]">
             {history.analyses.map((analysis) => (
               <article
                 key={analysis.id}
-                className="grid gap-4 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
+                className="grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[1fr_auto]"
               >
-                <div className="flex min-w-0 gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-[6px] bg-[#edf1ee] text-[#526159]">
-                    <History size={17} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {analysis.opening_name || "Lichess game"}{" "}
-                      {analysis.opponent ? `vs ${analysis.opponent}` : ""}
-                    </p>
-                    <p className="mt-1 text-xs text-[#64706a]">
-                      {analysis.color_played
-                        ? titleCase(analysis.color_played)
-                        : "Unknown color"}{" "}
-                      · {analysis.result || "Result unavailable"} ·{" "}
-                      {analysis.total_moves ?? "—"} moves
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    {analysis.opening_name || "Game"}{" "}
+                    {analysis.opponent ? `vs ${analysis.opponent}` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
+                    {analysis.color_played
+                      ? titleCase(analysis.color_played)
+                      : "Unknown color"}{" "}
+                    - {analysis.result || "Result unavailable"} -{" "}
+                    {analysis.total_moves ?? "N/A"} moves
+                  </p>
                 </div>
                 <time
-                  className="flex items-center gap-2 text-xs text-[#7b8982]"
+                  className="text-xs text-[var(--text-muted)]"
                   dateTime={analysis.created_at}
                 >
-                  <CalendarDays size={14} />
                   {formatDate(analysis.created_at)}
                 </time>
               </article>
             ))}
           </div>
         ) : (
-          <div className="mt-5">
+          <div className="mt-4">
             <EmptyState
               title="No saved analyses yet"
-              description="Run an analysis with the save option enabled to start building this player profile."
+              description="Run an analysis with save enabled to start building this profile."
             />
           </div>
         )}
