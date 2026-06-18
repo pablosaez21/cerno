@@ -127,12 +127,9 @@ export function PlayerProfile({ username }: { username: string }) {
             {profile.recommended_training.map((item, index) => (
               <article
                 key={`${item.title}-${index}`}
-                className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                className="py-3 first:pt-0 last:pb-0"
               >
                 <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-[var(--text-muted)]">
-                  Priority: {titleCase(item.priority)}
-                </p>
               </article>
             ))}
           </div>

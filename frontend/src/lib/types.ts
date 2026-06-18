@@ -21,6 +21,7 @@ export type CoachAnalysis = {
     detected_patterns: string[];
     recommended_focus: string[];
   };
+  coach_advice: string;
   critical_moments: {
     game_id: string;
     move_number: number;

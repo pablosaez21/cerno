@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
 from app.schemas.game import Game, Player
+from app.services.coach import remove_source_references
 
 
 def test_analyze_user_returns_structured_coaching_response(client):
@@ -88,7 +89,20 @@ def test_analyze_user_returns_structured_coaching_response(client):
     assert payload["username"] == "test-user"
     assert payload["games_analyzed"] == 1
     assert payload["diagnosis"]["main_weakness"] == "middlegame"
+    assert payload["coach_advice"]
     assert payload["critical_moments"][0]["classification"] == "blunder"
     assert payload["theory_recommendations"][0]["study_id"] == "study-1"
     assert payload["training_plan"] == training_plan
     assert payload["saved"] is False
+
+
+def test_remove_source_references_from_training_plan_steps():
+    steps = [
+        "Focus on middlegame tactics using study efGLGZOM.",
+        "Practice calculation before forcing moves.",
+    ]
+
+    cleaned = remove_source_references(steps)
+
+    assert "study efGLGZOM" not in cleaned[0]
+    assert cleaned[1] == "Practice calculation before forcing moves."

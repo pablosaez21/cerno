@@ -1,5 +1,5 @@
 import type { PgnAnalysis } from "@/lib/types";
-import { classificationTone, titleCase } from "@/lib/format";
+import { classificationTone, formatPawnValue, titleCase } from "@/lib/format";
 import { PhaseStatsCards } from "@/components/phase-stats";
 
 export function PgnAnalysisResult({ result }: { result: PgnAnalysis }) {
@@ -34,7 +34,10 @@ export function PgnAnalysisResult({ result }: { result: PgnAnalysis }) {
                     {moment.move_number}. {moment.move_san}
                   </span>
                   <span className="text-sm text-[var(--text-muted)]">
-                    {titleCase(moment.phase)} - {moment.cpl} CPL
+                    {titleCase(moment.phase)} - Pawn loss:{" "}
+                    <span className="font-mono text-[var(--text)]">
+                      {formatPawnValue(moment.cpl)}
+                    </span>
                   </span>
                   <span
                     className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${classificationTone(moment.classification)}`}

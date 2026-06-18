@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { CoachAnalysis } from "@/lib/types";
-import { classificationTone, titleCase } from "@/lib/format";
+import { classificationTone, formatPawnValue, titleCase } from "@/lib/format";
 import { PhaseStatsCards } from "@/components/phase-stats";
 
 export function CoachResults({ result }: { result: CoachAnalysis }) {
@@ -27,14 +27,21 @@ export function CoachResults({ result }: { result: CoachAnalysis }) {
         </Link>
       </div>
 
-      <article className="card p-5 sm:p-6">
-        <p className="eyebrow">Main weakness</p>
-        <h3 className="mt-3 text-2xl font-semibold tracking-[-0.01em] text-[var(--text)]">
-          {result.diagnosis.main_weakness}
-        </h3>
-        <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--text-muted)]">
-          {result.diagnosis.summary}
+      <article className="soft-card p-5 sm:p-6">
+        <p className="eyebrow">Coach advice</p>
+        <p className="mt-3 max-w-4xl text-sm leading-7 text-[var(--text)]">
+          {result.coach_advice}
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--text-muted)]">
+            Main focus: {result.diagnosis.main_weakness}
+          </span>
+          {result.diagnosis.secondary_weakness ? (
+            <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--text-muted)]">
+              Secondary: {result.diagnosis.secondary_weakness}
+            </span>
+          ) : null}
+        </div>
       </article>
 
       <PhaseStatsCards
@@ -55,7 +62,10 @@ export function CoachResults({ result }: { result: CoachAnalysis }) {
                   {moment.move_number}. {moment.move}
                 </p>
                 <p className="text-sm text-[var(--text-muted)]">
-                  {titleCase(moment.phase)} - {moment.cpl} CPL
+                  {titleCase(moment.phase)} - Pawn loss:{" "}
+                  <span className="font-mono text-[var(--text)]">
+                    {formatPawnValue(moment.cpl)}
+                  </span>
                 </p>
                 <span
                   className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${classificationTone(moment.classification)}`}
@@ -68,6 +78,20 @@ export function CoachResults({ result }: { result: CoachAnalysis }) {
         ) : (
           <InlineEmpty text="No critical moments detected." />
         )}
+      </section>
+
+      <section className="soft-card p-5 sm:p-6">
+        <SectionTitle title="Training plan" />
+        <ol className="mt-4 space-y-3">
+          {result.training_plan.week_plan.map((step, index) => (
+            <li key={step} className="flex gap-3 text-sm leading-6">
+              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[var(--surface)] font-mono text-xs font-semibold text-[var(--primary)]">
+                {index + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <section className="card p-5 sm:p-6">
@@ -109,23 +133,6 @@ export function CoachResults({ result }: { result: CoachAnalysis }) {
         ) : (
           <InlineEmpty text="No matching theory found." />
         )}
-      </section>
-
-      <section className="soft-card p-5 sm:p-6">
-        <SectionTitle title="Training plan" />
-        <p className="mt-3 text-sm font-medium text-[var(--primary)]">
-          Priority: {result.training_plan.priority}
-        </p>
-        <ol className="mt-4 space-y-3">
-          {result.training_plan.week_plan.map((step, index) => (
-            <li key={step} className="flex gap-3 text-sm leading-6">
-              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[var(--surface)] font-mono text-xs font-semibold text-[var(--primary)]">
-                {index + 1}
-              </span>
-              <span>{step}</span>
-            </li>
-          ))}
-        </ol>
       </section>
     </section>
   );

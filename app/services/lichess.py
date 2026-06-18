@@ -1,6 +1,16 @@
 import httpx
 from app.schemas.game import Game, Player
 
+
+def parse_player(raw_player: dict, fallback_name: str) -> Player:
+    user = raw_player.get("user") or {}
+    return Player(
+        username=user.get("name", fallback_name),
+        rating=raw_player.get("rating"),
+        rating_diff=raw_player.get("ratingDiff")
+    )
+
+
 async def fetch_games(username: str, limit: int = 10) -> list[Game]:
     url = f"https://lichess.org/api/games/user/{username}"
     headers = {"Accept": "application/x-ndjson"}
@@ -19,16 +29,8 @@ async def fetch_games(username: str, limit: int = 10) -> list[Game]:
         import json
         raw = json.loads(line)
 
-        white = Player(
-            username=raw["players"]["white"]["user"]["name"],
-            rating=raw["players"]["white"].get("rating"),
-            rating_diff=raw["players"]["white"].get("ratingDiff")
-        )
-        black = Player(
-            username=raw["players"]["black"]["user"]["name"],
-            rating=raw["players"]["black"].get("rating"),
-            rating_diff=raw["players"]["black"].get("ratingDiff")
-        )
+        white = parse_player(raw["players"]["white"], "Anonymous")
+        black = parse_player(raw["players"]["black"], "Anonymous")
 
         games.append(Game(
             id=raw["id"],

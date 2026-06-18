@@ -61,7 +61,7 @@ ChromaDB and PostgreSQL have separate responsibilities:
 3. Stockfish evaluates the games and identifies critical moments.
 4. The weakness service aggregates errors by game phase.
 5. Cerno searches ChromaDB for relevant theory.
-6. OpenAI generates a training plan, with a local fallback if no API key is configured.
+6. OpenAI generates a short coach advice paragraph and a training plan, with a local fallback if no API key is configured.
 7. When `save=true`, the analysis is persisted in PostgreSQL.
 
 ## Running Locally With Docker
@@ -152,9 +152,55 @@ http://localhost:3000
 1. Open `http://localhost:3000`.
 2. Enter a Lichess username.
 3. Analyze recent games.
-4. Review detected weaknesses, critical moments, recommended theory, and the training plan.
+4. Review the coach advice, phase accuracy, critical moments, training plan, and recommended theory.
 5. Open the player profile to inspect saved analysis history.
 6. Optionally paste a PGN manually for direct Stockfish analysis.
+
+## Coach Output
+
+The Lichess analysis screen is ordered for a non-technical user:
+
+1. `Coach advice`: a short paragraph that interprets the games in plain language, mentioning the player's main habits, critical mistakes, relative strengths, and next focus.
+2. `Phase accuracy`: opening, middlegame, and endgame loss metrics shown in pawn units.
+3. `Critical moments`: the most important mistakes or blunders, with their estimated pawn loss.
+4. `Training plan`: five practical actions for the next week.
+5. `Recommended theory`: relevant study material retrieved from ChromaDB.
+
+The training plan intentionally avoids raw study IDs such as `efGLGZOM`. Theory links and study metadata belong in the `Recommended theory` section, while the plan should stay readable and action-oriented.
+
+## Understanding The Analysis Metrics
+
+Cerno compares each played move with the move preferred by Stockfish. The app does not treat the score as points that start at 1000 or decrease during the game. Instead, it measures the estimated value lost by a move.
+
+Stockfish evaluates positions in pawn units, similar to the engine evaluation bar shown in chess analysis boards. For example, if the best move keeps the position at `+1.20` but the played move leaves it at `+0.70`, the move lost about `0.50` pawns of value.
+
+Internally, chess engines often use centipawns:
+
+```text
+1 pawn = 100 centipawns
+50 centipawns = 0.50 pawns
+320 centipawns = 3.20 pawns
+```
+
+The frontend shows this in friendlier language:
+
+| UI label | Meaning | How to read it |
+| --- | --- | --- |
+| `Avg. loss` | Average value lost per move in that phase | Lower is better. `~0.20` is much cleaner than `~1.20`. |
+| `Pawn loss` | Value lost by one critical move | `Pawn loss: ~3.2` means the move worsened the position by roughly 3.2 pawns compared with Stockfish's best move. |
+| `Inaccuracy` | Small but relevant loss | Usually a move that gives up some quality but does not ruin the game. |
+| `Mistake` | Serious loss | A move that changes the evaluation significantly. |
+| `Blunder` | Very large loss | A move that can decide the game or throw away a major advantage. |
+
+Example:
+
+```text
+Opening Avg. loss: ~0.24
+Middlegame Avg. loss: ~0.83
+Endgame Avg. loss: ~0.41
+```
+
+This means the opening was comparatively accurate, the middlegame was the weakest phase, and the endgame was better than the middlegame but still had room for improvement.
 
 ## Screenshots
 
@@ -183,7 +229,7 @@ Suggested files:
 
 ```json
 {
-  "username": "DrNykterstein",
+  "username": "Mikhail_Tal",
   "limit": 1,
   "depth": 8,
   "save": true

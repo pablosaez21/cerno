@@ -53,11 +53,19 @@ async def analyze_user(
     weakness_profile = aggregate_game_analyses(analyses)
     theory_results = collect_theory_results(weakness_profile["theory_queries"])
     theory_recommendations = build_theory_recommendations(theory_results)
-    training_plan = await generate_training_plan(
+    critical_moments = collect_critical_moments(analyses)
+    generated_training = await generate_training_plan(
         username=username,
         weakness_profile=weakness_profile,
         theory_recommendations=theory_recommendations,
+        critical_moments=critical_moments,
     )
+    training_plan = normalize_training_plan(generated_training, weakness_profile)
+    coach_advice = (
+        generated_training.get("coach_advice")
+        if isinstance(generated_training, dict)
+        else None
+    ) or build_fallback_coach_advice(weakness_profile, critical_moments)
     saved = False
     if save:
         if db is None:
@@ -84,7 +92,8 @@ async def analyze_user(
             "detected_patterns": weakness_profile["detected_patterns"],
             "recommended_focus": weakness_profile["recommended_focus"],
         },
-        "critical_moments": collect_critical_moments(analyses),
+        "coach_advice": coach_advice,
+        "critical_moments": critical_moments,
         "theory_recommendations": theory_recommendations,
         "training_plan": training_plan,
         "skipped_games": skipped_games,
@@ -203,6 +212,7 @@ async def generate_training_plan(
     username: str,
     weakness_profile: dict,
     theory_recommendations: list[dict],
+    critical_moments: list[dict],
 ) -> dict:
     api_key = settings.openai_api_key
     if not api_key:
@@ -213,6 +223,7 @@ async def generate_training_plan(
         username,
         weakness_profile,
         theory_recommendations,
+        critical_moments,
     )
 
     try:
@@ -223,8 +234,11 @@ async def generate_training_plan(
                     "role": "system",
                     "content": (
                         "You are Cerno, a concise chess coach. "
-                        "Return only valid JSON with keys priority and week_plan. "
-                        "week_plan must be a list of 5 short strings."
+                        "Return only valid JSON with keys coach_advice, priority and week_plan. "
+                        "coach_advice must be one natural paragraph with a warm, specific tone. "
+                        "week_plan must be a list of 5 short strings. "
+                        "Do not mention study IDs, database IDs, source IDs, raw RAG references, "
+                        "or the recommended theory section in the training plan."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -245,13 +259,56 @@ def build_training_plan_prompt(
     username: str,
     weakness_profile: dict,
     theory_recommendations: list[dict],
+    critical_moments: list[dict],
 ) -> str:
     return json.dumps({
         "username": username,
         "weakness_profile": weakness_profile,
-        "theory_sources": theory_recommendations,
-        "task": "Create a practical one-week chess training plan.",
+        "critical_moments": critical_moments[:8],
+        "theory_themes": summarize_theory_themes(theory_recommendations),
+        "task": (
+            "Create a practical one-week chess training plan and a short coach_advice paragraph. "
+            "The coach_advice should explain the player's style from the evidence: main phase weakness, "
+            "blunders, mistakes, tactical habits, and any relative strengths. "
+            "Use friendly motivational language, but keep it specific and avoid repeating the same grandmaster jokes. "
+            "Do not tell the user to open a study by ID; recommended theory is shown elsewhere."
+        ),
     }, ensure_ascii=False)
+
+
+def summarize_theory_themes(theory_recommendations: list[dict]) -> list[str]:
+    themes = []
+    for item in theory_recommendations:
+        chapter = item.get("chapter")
+        category = item.get("category")
+        reason = item.get("reason")
+        label = chapter or category or reason
+        if label and label not in themes:
+            themes.append(label)
+    return themes[:5]
+
+
+def normalize_training_plan(generated: dict, weakness_profile: dict) -> dict:
+    if _is_valid_training_plan(generated):
+        return {
+            "priority": generated["priority"],
+            "week_plan": remove_source_references(generated["week_plan"]),
+        }
+    return build_fallback_training_plan(weakness_profile)
+
+
+def remove_source_references(steps: list[str]) -> list[str]:
+    cleaned = []
+    for step in steps:
+        step = str(step)
+        blocked_fragments = ["study ", "source ", "lichess.org/study"]
+        if any(fragment in step.lower() for fragment in blocked_fragments):
+            step = (
+                "Choose one recurring mistake from the critical moments and write "
+                "the correct plan in your own words."
+            )
+        cleaned.append(step)
+    return cleaned
 
 
 def build_fallback_training_plan(weakness_profile: dict) -> dict:
@@ -262,7 +319,7 @@ def build_fallback_training_plan(weakness_profile: dict) -> dict:
     phase_plan = {
         "opening": [
             "Day 1: review basic opening principles and compare them with your critical moments.",
-            "Day 2: study one model line from the recommended sources.",
+            "Day 2: choose one recurring opening mistake and write the correct plan in your own words.",
             "Day 3: play 3 rapid games focusing only on development, center control, and king safety.",
             "Day 4: review the opening phase of those games and mark repeated mistakes.",
             "Day 5: repeat the best line from memory and write down the plans in your own words.",
@@ -270,14 +327,14 @@ def build_fallback_training_plan(weakness_profile: dict) -> dict:
         "middlegame": [
             "Day 1: solve 20 tactical puzzles with no time pressure.",
             "Day 2: review your biggest critical moments and identify the missed candidate moves.",
-            "Day 3: study king safety and piece coordination from the recommended sources.",
+            "Day 3: practice king safety and piece coordination positions.",
             "Day 4: play 3 rapid games focusing on calculation before forcing moves.",
-            "Day 5: review every mistake above 100 CPL and group them by pattern.",
+            "Day 5: review every serious mistake and group them by pattern.",
         ],
         "endgame": [
             "Day 1: review basic king activity and pawn ending rules.",
             "Day 2: practice simple conversion positions against an engine.",
-            "Day 3: study one rook or pawn endgame theme from the recommended sources.",
+            "Day 3: practice one rook or pawn endgame theme until the plan feels automatic.",
             "Day 4: play training positions starting from simplified material.",
             "Day 5: review endgame critical moments and write the correct plan.",
         ],
@@ -287,6 +344,61 @@ def build_fallback_training_plan(weakness_profile: dict) -> dict:
         "priority": priority,
         "week_plan": phase_plan.get(main, phase_plan["opening"]),
     }
+
+
+def build_fallback_coach_advice(
+    weakness_profile: dict,
+    critical_moments: list[dict],
+) -> str:
+    main = weakness_profile.get("main_weakness", "middlegame")
+    secondary = weakness_profile.get("secondary_weakness")
+    patterns = weakness_profile.get("detected_patterns", [])
+    phase_stats = weakness_profile.get("phase_stats", {})
+    best_phase = detect_best_phase(phase_stats)
+    blunders = sum(
+        1 for moment in critical_moments
+        if moment.get("classification") == "blunder"
+    )
+
+    weakness_text = f"your biggest losses are coming in the {main}"
+    if secondary:
+        weakness_text += f", with some extra pressure in the {secondary}"
+
+    pattern_text = (
+        f" The recurring pattern looks like {', '.join(patterns[:2])}."
+        if patterns
+        else ""
+    )
+    blunder_text = (
+        f" I found {blunders} blunder{'s' if blunders != 1 else ''}, so the main goal is to slow down before forcing moves."
+        if blunders
+        else " The good news is that there were no huge tactical collapses in the critical moments."
+    )
+    strength_text = (
+        f" Your {best_phase} looks comparatively more stable, so there is something solid to build on."
+        if best_phase and best_phase != main
+        else " There is a clear base to build from if you make the review process more disciplined."
+    )
+
+    return (
+        f"I have reviewed the games and {weakness_text}."
+        f"{pattern_text}{blunder_text}{strength_text} "
+        "For the next week, keep the training simple: clean up the first recurring mistake, "
+        "solve tactics slowly, and treat every critical moment as a position to understand rather than a move to memorize."
+    )
+
+
+def detect_best_phase(phase_stats: dict) -> str | None:
+    candidates = [
+        (phase, stats.get("avg_cpl", 0))
+        for phase, stats in phase_stats.items()
+        if stats.get("moves", 0)
+    ]
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: item[1])
+    return candidates[0][0]
 
 
 def _is_valid_training_plan(plan: dict) -> bool:

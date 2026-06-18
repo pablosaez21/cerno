@@ -54,7 +54,7 @@ export function AnalyzeLichessForm({
           className="control text-base"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          placeholder="DrNykterstein"
+          placeholder="Mikhail_Tal"
           autoComplete="off"
           required
         />

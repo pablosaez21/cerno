@@ -45,6 +45,7 @@ class CoachAnalyzeUserResponse(BaseModel):
     games_requested: int
     games_analyzed: int
     diagnosis: CoachDiagnosis
+    coach_advice: str
     critical_moments: list[CoachCriticalMoment]
     theory_recommendations: list[TheoryRecommendation]
     training_plan: TrainingPlan

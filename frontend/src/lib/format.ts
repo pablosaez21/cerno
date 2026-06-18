@@ -4,8 +4,17 @@ export function titleCase(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function formatNumber(value: unknown, fallback = "—") {
+export function formatNumber(value: unknown, fallback = "-") {
   return typeof value === "number" ? value.toFixed(value % 1 ? 1 : 0) : fallback;
+}
+
+export function formatPawnValue(value: unknown, fallback = "-") {
+  if (typeof value !== "number") return fallback;
+
+  const pawns = value / 100;
+  const decimals = Math.abs(pawns) >= 1 ? 1 : 2;
+
+  return `~${pawns.toFixed(decimals)}`;
 }
 
 export function formatDate(value: string) {
