@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     backend_cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000"
     )
+    max_games_per_analysis: int = 3
+    max_stockfish_depth: int = 10
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -30,6 +32,12 @@ class Settings(BaseSettings):
         if self.frontend_origin and self.frontend_origin not in origins:
             origins.append(self.frontend_origin)
         return origins
+
+    def clamp_games_limit(self, limit: int) -> int:
+        return max(1, min(limit, self.max_games_per_analysis))
+
+    def clamp_stockfish_depth(self, depth: int) -> int:
+        return max(1, min(depth, self.max_stockfish_depth))
 
 
 @lru_cache

@@ -18,6 +18,10 @@ Cerno is an AI-assisted chess coach for Lichess players. It retrieves recent gam
 - lucide-react
 - pytest
 
+## Live Demo
+
+Coming soon.
+
 ## Architecture
 
 ```mermaid
@@ -102,6 +106,31 @@ Stop the containers without deleting persisted data:
 
 ```bash
 docker compose down
+```
+
+## Deployment
+
+The intended deployment setup is:
+
+- Frontend: Railway service
+- Backend API: Railway service
+- PostgreSQL: Railway PostgreSQL
+- ChromaDB: Railway persistent volume mounted on the API service
+
+See [docs/deployment.md](docs/deployment.md) for the full deployment guide.
+
+## Production Limits
+
+The backend applies simple production limits even if a client sends larger values:
+
+- `MAX_GAMES_PER_ANALYSIS`: maximum Lichess games analyzed per coach request.
+- `MAX_STOCKFISH_DEPTH`: maximum Stockfish depth used for analysis.
+
+Recommended production values:
+
+```env
+MAX_GAMES_PER_ANALYSIS=3
+MAX_STOCKFISH_DEPTH=10
 ```
 
 ## Run Locally
@@ -295,6 +324,8 @@ The tests mock external boundaries and do not require:
 | `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL | Local `cerno` database |
 | `CHROMA_PATH` | ChromaDB persistence directory | `data/chromadb` |
 | `STOCKFISH_PATH` | Stockfish executable path | Windows project binary locally |
+| `MAX_GAMES_PER_ANALYSIS` | Maximum Lichess games analyzed per request | `3` |
+| `MAX_STOCKFISH_DEPTH` | Maximum Stockfish depth accepted by the backend | `10` |
 | `FRONTEND_ORIGIN` | Primary future frontend origin | `http://localhost:3000` |
 | `BACKEND_CORS_ORIGINS` | Comma-separated allowed CORS origins | Local port 3000 origins |
 | `NEXT_PUBLIC_API_BASE_URL` | API URL baked into the Next.js frontend | `http://localhost:8000` |

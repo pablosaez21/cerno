@@ -20,6 +20,9 @@ async def analyze_user(
     save: bool = False,
     db: Session | None = None,
 ) -> dict:
+    limit = settings.clamp_games_limit(limit)
+    depth = settings.clamp_stockfish_depth(depth)
+
     games = await fetch_games(username, limit)
     if not games:
         raise ValueError(f"No games found for Lichess user '{username}'.")

@@ -17,6 +17,7 @@ MATE_SCORE = 10000
 
 
 async def analyze_game(pgn: str, depth: int = 12) -> dict:
+    depth = settings.clamp_stockfish_depth(depth)
     return await asyncio.to_thread(_analyze_game_sync, pgn, depth)
 
 

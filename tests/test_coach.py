@@ -106,3 +106,55 @@ def test_remove_source_references_from_training_plan_steps():
 
     assert "study efGLGZOM" not in cleaned[0]
     assert cleaned[1] == "Practice calculation before forcing moves."
+
+
+def test_analyze_user_clamps_production_limits(client):
+    game = Game(
+        id="game-1",
+        speed="rapid",
+        rated=True,
+        winner="white",
+        status="mate",
+        white=Player(username="test-user", rating=1500),
+        black=Player(username="opponent", rating=1490),
+        moves="e4 e5 Nf3",
+        pgn='[Event "Test"]\n\n1. e4 e5 2. Nf3 *',
+    )
+    analysis = {
+        "total_moves": 3,
+        "summary": {},
+        "moves": [{"phase": "opening", "cpl": 20, "classification": "good"}],
+        "critical_moments": [],
+        "phase_weaknesses": [],
+    }
+    fetch_games = AsyncMock(return_value=[game])
+    analyze_game = AsyncMock(return_value=analysis)
+
+    with (
+        patch("app.services.coach.fetch_games", new=fetch_games),
+        patch("app.services.coach.analyze_game", new=analyze_game),
+        patch("app.services.coach.search_theory", return_value=[]),
+        patch(
+            "app.services.coach.generate_training_plan",
+            new=AsyncMock(
+                return_value={
+                    "priority": "opening improvement",
+                    "week_plan": ["Review opening principles."],
+                }
+            ),
+        ),
+    ):
+        response = client.post(
+            "/coach/analyze-user",
+            json={
+                "username": "test-user",
+                "limit": 10,
+                "depth": 15,
+                "save": False,
+            },
+        )
+
+    assert response.status_code == 200
+    fetch_games.assert_awaited_once_with("test-user", 3)
+    analyze_game.assert_awaited_once_with(game.pgn, 10)
+    assert response.json()["games_requested"] == 3

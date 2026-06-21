@@ -1,4 +1,6 @@
 import httpx
+
+from app.core.config import settings
 from app.schemas.game import Game, Player
 
 
@@ -12,6 +14,8 @@ def parse_player(raw_player: dict, fallback_name: str) -> Player:
 
 
 async def fetch_games(username: str, limit: int = 10) -> list[Game]:
+    limit = settings.clamp_games_limit(limit)
+
     url = f"https://lichess.org/api/games/user/{username}"
     headers = {"Accept": "application/x-ndjson"}
     params = {"max": limit, "pgnInJson": True}
