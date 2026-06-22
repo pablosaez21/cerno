@@ -20,7 +20,11 @@ Cerno is an AI-assisted chess coach for Lichess players. It retrieves recent gam
 
 ## Live Demo
 
-Coming soon.
+- Frontend: https://angelic-liberation-production-e882.up.railway.app
+- Backend API docs: https://cerno-production.up.railway.app/docs
+- Healthcheck: https://cerno-production.up.railway.app/health
+
+The public deployment runs on Railway with separate frontend, backend, PostgreSQL, and persistent ChromaDB storage.
 
 ## Architecture
 
@@ -110,7 +114,7 @@ docker compose down
 
 ## Deployment
 
-The intended deployment setup is:
+The production deployment setup is:
 
 - Frontend: Railway service
 - Backend API: Railway service
@@ -233,7 +237,7 @@ This means the opening was comparatively accurate, the middlegame was the weakes
 
 ## Screenshots
 
-> Add screenshots of the home page, analysis result, and player profile here.
+Screenshots are optional for local development, but recommended before sharing the repository publicly.
 
 Suggested files:
 
@@ -319,14 +323,14 @@ The tests mock external boundaries and do not require:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | Optional OpenAI API key | Empty |
+| `OPENAI_API_KEY` | Optional for `/coach/analyze-user` because it has a fallback. Required for `/agent/chat`. | Empty |
 | `OPENAI_MODEL` | Model used for training-plan generation | `gpt-4o-mini` |
 | `DATABASE_URL` | PostgreSQL connection URL. Railway can provide `${{Postgres.DATABASE_URL}}`; `postgresql://` is normalized for SQLAlchemy. | Local `cerno` database |
 | `CHROMA_PATH` | ChromaDB persistence directory | `data/chromadb` |
 | `STOCKFISH_PATH` | Stockfish executable path | Windows project binary locally |
 | `MAX_GAMES_PER_ANALYSIS` | Maximum Lichess games analyzed per request | `3` |
 | `MAX_STOCKFISH_DEPTH` | Maximum Stockfish depth accepted by the backend | `10` |
-| `FRONTEND_ORIGIN` | Primary future frontend origin | `http://localhost:3000` |
+| `FRONTEND_ORIGIN` | Primary frontend origin | `http://localhost:3000` |
 | `BACKEND_CORS_ORIGINS` | Comma-separated allowed CORS origins | Local port 3000 origins |
 | `NEXT_PUBLIC_API_BASE_URL` | API URL baked into the Next.js frontend | `http://localhost:8000` |
 
@@ -348,14 +352,12 @@ The tests mock external boundaries and do not require:
 
 ## Current Limitations
 
-- Railway and production deployment are pending.
 - Stockfish analysis is a useful coaching approximation, not an elite professional preparation tool.
-- The initial RAG knowledge base is intentionally small and curated.
+- The initial RAG knowledge base is intentionally small and curated; a new production volume may need manual study indexing before theory recommendations become rich.
 - The conversational agent is less structured than the main coach endpoint.
 
 ## Roadmap
 
-- Deploy the application to Railway.
 - Add richer visual weakness profiles and game timelines.
 - Expand and evaluate the curated RAG sources.
 - Improve chess-specific evaluation and training recommendations.

@@ -13,7 +13,10 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 
 @router.post("/chat")
 async def chat(request: AgentRequest):
-    response = await run_agent(request.message)
+    try:
+        response = await run_agent(request.message)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"response": response}
 
 

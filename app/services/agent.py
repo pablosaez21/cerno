@@ -1,10 +1,17 @@
-from openai import AsyncOpenAI
-from app.services.lichess import fetch_games
-from app.services.stockfish import analyze_game
 import json
-import os
+
+from openai import AsyncOpenAI
+
+from app.core.config import settings
+from app.services.lichess import fetch_games
 from app.services.rag import search_theory
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from app.services.stockfish import analyze_game
+
+
+def _get_openai_client() -> AsyncOpenAI:
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for /agent/chat.")
+    return AsyncOpenAI(api_key=settings.openai_api_key)
 
 tools = [
     {
@@ -66,6 +73,7 @@ tools = [
 ]
 
 async def run_agent(message: str) -> str:
+    client = _get_openai_client()
     messages = [
        {
             "role": "system",
@@ -92,7 +100,7 @@ async def run_agent(message: str) -> str:
 
     while True:
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=settings.openai_model,
             messages=messages,
             tools=tools,
             tool_choice="auto"

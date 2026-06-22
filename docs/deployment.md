@@ -1,13 +1,22 @@
 # Cerno Railway Deployment Guide
 
-This guide prepares the full-stack Cerno MVP for a Railway-only deployment.
+This guide documents the Railway-only deployment used by the full-stack Cerno MVP.
 
-Target Railway project:
+Current production deployment:
 
-- Service 1: `api`
-- Service 2: `frontend`
+- Backend service: `cerno`
+- Backend URL: https://cerno-production.up.railway.app
+- Frontend service: `angelic-liberation`
+- Frontend URL: https://angelic-liberation-production-e882.up.railway.app
+- PostgreSQL: Railway PostgreSQL
+- Volume: ChromaDB mounted on the backend service at `/data`
+
+Recommended target shape for a fresh deployment:
+
+- Service 1: backend API
+- Service 2: frontend
 - Service 3: PostgreSQL
-- Volume: ChromaDB mounted on the `api` service
+- Volume: ChromaDB mounted on the backend API service
 
 Do not commit real secrets. Configure production values in Railway Variables.
 
@@ -54,7 +63,7 @@ Expected production Stockfish path:
 STOCKFISH_PATH=/usr/games/stockfish
 ```
 
-Configure API variables:
+Configure backend variables:
 
 ```env
 OPENAI_API_KEY=...
@@ -64,10 +73,10 @@ CHROMA_PATH=/data/chromadb
 STOCKFISH_PATH=/usr/games/stockfish
 MAX_GAMES_PER_ANALYSIS=3
 MAX_STOCKFISH_DEPTH=10
-BACKEND_CORS_ORIGINS=http://localhost:3000
+BACKEND_CORS_ORIGINS=https://FRONTEND_RAILWAY_URL
 ```
 
-Railway manages `PORT`; do not hardcode it in Railway Variables unless Railway requires it for debugging.
+Railway normally manages `PORT`. In the current production deployment, `PORT=8000` is configured because the Railway public domain was targeting backend port `8000`. If creating a fresh Railway service, start without a manual `PORT` and only set it if Railway routes to the wrong internal port.
 
 Railway PostgreSQL may expose a URL starting with `postgresql://`. Cerno normalizes that internally to the SQLAlchemy `postgresql+psycopg://` driver URL used by the app and Alembic migrations.
 
@@ -174,7 +183,7 @@ Check saved analysis
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | No | OpenAI API key. Leave empty to use the fallback plan. Never commit a real key. |
+| `OPENAI_API_KEY` | No | OpenAI API key. `/coach/analyze-user` has a fallback when empty; `/agent/chat` returns a controlled 503 without it. Never commit a real key. |
 | `OPENAI_MODEL` | No | Model used for coach advice and training-plan generation. Default: `gpt-4o-mini`. |
 | `DATABASE_URL` | Yes | Railway PostgreSQL connection URL. Use `${{Postgres.DATABASE_URL}}`, not localhost. |
 | `CHROMA_PATH` | Yes | ChromaDB persistence path. Production recommendation: `/data/chromadb`. |
@@ -182,7 +191,7 @@ Check saved analysis
 | `MAX_GAMES_PER_ANALYSIS` | No | Maximum Lichess games analyzed per request. Production recommendation: `3`. |
 | `MAX_STOCKFISH_DEPTH` | No | Maximum Stockfish depth accepted by the backend. Production recommendation: `10`. |
 | `BACKEND_CORS_ORIGINS` | Yes | Comma-separated allowed frontend origins. Add the Railway frontend URL after frontend deploy. |
-| `PORT` | Provided by Railway | Runtime port. The API Dockerfile falls back to `8000` locally. |
+| `PORT` | Usually provided by Railway | Runtime port. The API Dockerfile falls back to `8000` locally; current production uses `PORT=8000` because the public domain targets that port. |
 
 ## Frontend Variables
 
