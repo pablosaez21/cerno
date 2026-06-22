@@ -43,10 +43,7 @@ export function AnalyzeLichessForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label
-          htmlFor="username"
-          className="mb-2 block text-sm font-medium text-[var(--text)]"
-        >
+        <label htmlFor="username" className="sr-only">
           Lichess username
         </label>
         <input
@@ -54,7 +51,7 @@ export function AnalyzeLichessForm({
           className="control text-base"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          placeholder="Mikhail_Tal"
+          placeholder="your_username"
           autoComplete="off"
           required
         />
