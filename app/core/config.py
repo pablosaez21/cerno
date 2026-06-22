@@ -33,6 +33,12 @@ class Settings(BaseSettings):
             origins.append(self.frontend_origin)
         return origins
 
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        if self.database_url.startswith("postgresql://"):
+            return self.database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        return self.database_url
+
     def clamp_games_limit(self, limit: int) -> int:
         return max(1, min(limit, self.max_games_per_analysis))
 

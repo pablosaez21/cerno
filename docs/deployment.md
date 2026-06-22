@@ -27,6 +27,8 @@ Do not commit real secrets. Configure production values in Railway Variables.
 4. After Railway creates the database, copy the generated `DATABASE_URL`.
 5. Use that `DATABASE_URL` in the `api` service variables.
 
+Do not use `localhost` for PostgreSQL in Railway. The API container and the PostgreSQL service are separate services; the backend must use Railway's generated database URL.
+
 ## 3. Create The API Service
 
 Create a service from the same GitHub repository.
@@ -57,7 +59,7 @@ Configure API variables:
 ```env
 OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-4o-mini
-DATABASE_URL=...
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 CHROMA_PATH=/data/chromadb
 STOCKFISH_PATH=/usr/games/stockfish
 MAX_GAMES_PER_ANALYSIS=3
@@ -66,6 +68,8 @@ BACKEND_CORS_ORIGINS=http://localhost:3000
 ```
 
 Railway manages `PORT`; do not hardcode it in Railway Variables unless Railway requires it for debugging.
+
+Railway PostgreSQL may expose a URL starting with `postgresql://`. Cerno normalizes that internally to the SQLAlchemy `postgresql+psycopg://` driver URL used by the app and Alembic migrations.
 
 Deploy the `api` service, then validate:
 
@@ -172,7 +176,7 @@ Check saved analysis
 | --- | --- | --- |
 | `OPENAI_API_KEY` | No | OpenAI API key. Leave empty to use the fallback plan. Never commit a real key. |
 | `OPENAI_MODEL` | No | Model used for coach advice and training-plan generation. Default: `gpt-4o-mini`. |
-| `DATABASE_URL` | Yes | Railway PostgreSQL connection URL. |
+| `DATABASE_URL` | Yes | Railway PostgreSQL connection URL. Use `${{Postgres.DATABASE_URL}}`, not localhost. |
 | `CHROMA_PATH` | Yes | ChromaDB persistence path. Production recommendation: `/data/chromadb`. |
 | `STOCKFISH_PATH` | Yes | Linux Stockfish executable path: `/usr/games/stockfish`. |
 | `MAX_GAMES_PER_ANALYSIS` | No | Maximum Lichess games analyzed per request. Production recommendation: `3`. |

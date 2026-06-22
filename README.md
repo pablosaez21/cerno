@@ -321,7 +321,7 @@ The tests mock external boundaries and do not require:
 | --- | --- | --- |
 | `OPENAI_API_KEY` | Optional OpenAI API key | Empty |
 | `OPENAI_MODEL` | Model used for training-plan generation | `gpt-4o-mini` |
-| `DATABASE_URL` | SQLAlchemy PostgreSQL connection URL | Local `cerno` database |
+| `DATABASE_URL` | PostgreSQL connection URL. Railway can provide `${{Postgres.DATABASE_URL}}`; `postgresql://` is normalized for SQLAlchemy. | Local `cerno` database |
 | `CHROMA_PATH` | ChromaDB persistence directory | `data/chromadb` |
 | `STOCKFISH_PATH` | Stockfish executable path | Windows project binary locally |
 | `MAX_GAMES_PER_ANALYSIS` | Maximum Lichess games analyzed per request | `3` |
