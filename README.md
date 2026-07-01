@@ -2,6 +2,16 @@
 
 Cerno is an AI-assisted chess coach for Lichess players. It retrieves recent games, analyzes them with Stockfish, identifies recurring weaknesses, retrieves relevant chess theory from a curated ChromaDB knowledge base, and generates a practical training plan. Analyses and user profiles can be persisted in PostgreSQL and reviewed from the Next.js frontend.
 
+## Highlights
+
+- Full-stack AI application deployed on Railway.
+- FastAPI backend with Next.js + TypeScript frontend.
+- Stockfish-powered chess analysis with critical move detection.
+- RAG knowledge base with 14 curated Lichess studies and 358 indexed chunks.
+- PostgreSQL persistence for users, analyses, critical moves and weakness profiles.
+- Docker Compose setup for local development.
+- Unit tests with mocked external boundaries: OpenAI, Lichess, Stockfish, ChromaDB and PostgreSQL.
+  
 ## Stack
 
 - Python and FastAPI
