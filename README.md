@@ -237,13 +237,17 @@ This means the opening was comparatively accurate, the middlegame was the weakes
 
 ## Screenshots
 
-Screenshots are optional for local development, but recommended before sharing the repository publicly.
+### Home
+![Cerno home](docs/screenshots/home.png)
 
-Suggested files:
+### Analysis result
+![Cerno analysis](docs/screenshots/analisis.png)
 
-- `docs/screenshots/home.png`
-- `docs/screenshots/analysis-result.png`
-- `docs/screenshots/player-profile.png`
+### Critical moments
+![Critical moments](docs/screenshots/critical%20moments.png)
+
+### Training plan
+![Training plan](docs/screenshots/training%20plan.png)
 
 ## Main Endpoints
 
