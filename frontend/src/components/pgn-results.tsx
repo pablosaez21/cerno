@@ -1,76 +1,60 @@
 import type { PgnAnalysis } from "@/lib/types";
-import { classificationTone, formatPawnValue, titleCase } from "@/lib/format";
+import { phaseLabel } from "@/lib/format";
 import { PhaseStatsCards } from "@/components/phase-stats";
+import { GameViewer } from "@/components/game-viewer";
 
-export function PgnAnalysisResult({ result }: { result: PgnAnalysis }) {
+export function PgnAnalysisResult({
+  result,
+  sourcePgn,
+}: {
+  result: PgnAnalysis;
+  sourcePgn: string;
+}) {
   return (
-    <section className="result-enter shell space-y-4">
-      <article className="card p-5 sm:p-6">
-        <p className="eyebrow">PGN analysis</p>
-        <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">
-          Stockfish report
-        </h2>
-        <p className="mt-3 text-sm text-[var(--text-muted)]">
-          Total moves:{" "}
-          <span className="font-mono text-[var(--text)]">
-            {result.total_moves}
-          </span>
-        </p>
-      </article>
+    <section className="result-enter wide-shell space-y-5 border-t border-[var(--line-strong)] pt-7 sm:pt-10">
+      <header className="grid border border-[var(--line-strong)] bg-[var(--surface)] sm:grid-cols-[1fr_auto]">
+        <div className="p-5 sm:p-7">
+          <p className="section-kicker">PGN report / complete</p>
+          <h2 className="display-type mt-5 text-[clamp(3.4rem,8vw,6.6rem)] text-[var(--text-strong)]">
+            Game analysis
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Positions, evaluations, and critical moments reconstructed from the supplied PGN and engine output.
+          </p>
+        </div>
+        <div className="flex min-w-56 items-end justify-between gap-5 border-t border-[var(--line-strong)] bg-[var(--accent-soft)] p-5 sm:border-l sm:border-t-0 sm:p-6">
+          <div>
+            <p className="eyebrow">Analyzed plies</p>
+            <p className="display-type mt-2 text-6xl text-[var(--accent-strong)]">{result.total_moves}</p>
+          </div>
+          <span className="font-mono text-xs font-bold text-[var(--muted)]">PLY</span>
+        </div>
+      </header>
 
+      <GameViewer result={result} sourcePgn={sourcePgn} />
+
+      <div className="pt-3">
+        <p className="eyebrow !text-[var(--accent)]">02 · Phase performance</p>
+        <h3 className="display-type mt-2 text-4xl text-[var(--text-strong)] sm:text-5xl">Engine summary</h3>
+      </div>
       <PhaseStatsCards stats={result.summary} />
 
-      <section className="card p-5 sm:p-6">
-        <p className="eyebrow">Critical moments</p>
-        {result.critical_moments.length ? (
-          <div className="mt-4 space-y-3">
-            {result.critical_moments.slice(0, 12).map((moment, index) => (
-              <details
-                key={`${moment.move_number}-${moment.move_uci}-${index}`}
-                className="rounded-[8px] border border-[var(--border)] bg-[var(--surface)]"
-              >
-                <summary className="grid cursor-pointer list-none gap-2 p-4 sm:grid-cols-[110px_1fr_auto] sm:items-center">
-                  <span className="font-mono text-sm font-semibold">
-                    {moment.move_number}. {moment.move_san}
-                  </span>
-                  <span className="text-sm text-[var(--text-muted)]">
-                    {titleCase(moment.phase)} - Pawn loss:{" "}
-                    <span className="font-mono text-[var(--text)]">
-                      {formatPawnValue(moment.cpl)}
-                    </span>
-                  </span>
-                  <span
-                    className={`w-fit rounded-full border px-2.5 py-1 text-xs font-semibold ${classificationTone(moment.classification)}`}
-                  >
-                    {titleCase(moment.classification)}
-                  </span>
-                </summary>
-                <div className="border-t border-[var(--border)] p-4">
-                  <dl className="grid gap-3 text-xs">
-                    <FenLine label="FEN before" value={moment.fen_before} />
-                    <FenLine label="FEN after" value={moment.fen_after} />
-                  </dl>
-                </div>
-              </details>
-            ))}
+      {result.phase_weaknesses.length ? (
+        <section className="grid border border-[var(--line-strong)] bg-[var(--accent-soft)] sm:grid-cols-[minmax(220px,0.45fr)_1fr]">
+          <div className="p-5 sm:border-r sm:border-[var(--line-strong)] sm:p-6">
+            <p className="eyebrow !text-[var(--accent-strong)]">Priority phases</p>
+            <h3 className="display-type mt-3 text-4xl text-[var(--text-strong)]">Where the losses cluster</h3>
           </div>
-        ) : (
-          <p className="mt-4 rounded-[8px] border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
-            No inaccuracies, mistakes, or blunders detected.
-          </p>
-        )}
-      </section>
+          <ul className="grid divide-y divide-[var(--line-strong)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            {result.phase_weaknesses.map((phase, index) => (
+              <li key={phase} className="flex items-end justify-between gap-4 p-5">
+                <span className="display-type text-3xl text-[var(--text-strong)]">{phaseLabel(phase)}</span>
+                <span className="font-mono text-xs font-bold text-[var(--accent)]">0{index + 1}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </section>
-  );
-}
-
-function FenLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="mb-1 font-semibold text-[var(--text)]">{label}</dt>
-      <dd className="overflow-x-auto rounded-[7px] bg-[var(--surface-soft)] p-3 font-mono text-[var(--text-muted)]">
-        {value}
-      </dd>
-    </div>
   );
 }

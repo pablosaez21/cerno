@@ -309,6 +309,12 @@ Index the curated Lichess studies:
 python scripts/index_studies.py
 ```
 
+Index or refresh the deployed Railway ChromaDB volume through the production API:
+
+```bash
+python scripts/index_studies_remote.py --api-base-url https://cerno-production.up.railway.app
+```
+
 Run the manual semantic retrieval checks:
 
 ```bash

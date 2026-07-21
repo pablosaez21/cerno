@@ -93,6 +93,12 @@ def test_analyze_user_returns_structured_coaching_response(client):
     assert payload["critical_moments"][0]["classification"] == "blunder"
     assert payload["theory_recommendations"][0]["study_id"] == "study-1"
     assert payload["training_plan"] == training_plan
+    assert len(payload["game_analyses"]) == 1
+    assert payload["game_analyses"][0]["player_color"] == "white"
+    assert payload["game_analyses"][0]["opponent"] == "opponent"
+    assert payload["game_analyses"][0]["result"] == "win"
+    assert payload["game_analyses"][0]["pgn"] == game.pgn
+    assert payload["game_analyses"][0]["moves"] == analysis["moves"]
     assert payload["saved"] is False
 
 

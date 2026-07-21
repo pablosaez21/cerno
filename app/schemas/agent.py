@@ -7,6 +7,7 @@ class AgentRequest(BaseModel):
 
 class StudyRequest(BaseModel):
     study_id: str
+    category: str = Field(default="uncategorized", min_length=1, max_length=80)
 
 
 class TheorySearchRequest(BaseModel):

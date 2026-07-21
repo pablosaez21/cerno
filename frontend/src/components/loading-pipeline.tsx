@@ -15,47 +15,36 @@ export function LoadingPipeline({ steps }: { steps: string[] }) {
 
   return (
     <div
-      className="card p-5"
+      className="border border-[var(--line-strong)] bg-[var(--night-deep)] p-5 sm:p-6"
       role="status"
       aria-live="polite"
     >
-      <div className="mb-5 flex items-center justify-between">
-        <p className="text-sm font-semibold text-[var(--text)]">
-          Building your analysis
-        </p>
-        <span className="font-mono text-xs text-[var(--text-muted)]">
-          {activeStep + 1}/{steps.length}
+      <div className="mb-6 flex items-center justify-between gap-4 border-b border-[var(--line)] pb-4">
+        <p className="display-type text-2xl text-[var(--text-strong)] sm:text-3xl">Building the report</p>
+        <span className="border border-[var(--line-strong)] bg-[var(--accent-soft)] px-3 py-2 font-mono text-xs font-bold text-[var(--accent-strong)]">
+          {String(activeStep + 1).padStart(2, "0")}/{String(steps.length).padStart(2, "0")}
         </span>
       </div>
-      <ol className="space-y-3">
+      <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {steps.map((step, index) => {
           const complete = index < activeStep;
           const active = index === activeStep;
           return (
             <li
               key={step}
-              className={`flex items-center gap-3 text-sm ${
+              className={`border p-3 text-xs leading-5 ${
                 complete || active
-                  ? "text-[var(--text)]"
-                  : "text-[var(--text-muted)]"
+                  ? "border-[var(--accent)] text-[var(--text)]"
+                  : "border-[var(--line)] text-[var(--muted)]"
               }`}
             >
-              <span
-                className={`grid size-6 shrink-0 place-items-center rounded-full border ${
-                  complete
-                    ? "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]"
-                    : active
-                      ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary)]"
-                      : "border-[var(--border)] text-[var(--text-muted)]"
-                }`}
-              >
+              <span className="mb-3 flex items-center justify-between font-mono text-[10px]">
+                {String(index + 1).padStart(2, "0")}
                 {complete ? (
-                  <Check size={13} strokeWidth={2.5} />
+                  <Check size={14} className="text-[var(--accent)]" aria-hidden="true" />
                 ) : active ? (
-                  <span className="size-2 rounded-full bg-current" />
-                ) : (
-                  <span className="size-1 rounded-full bg-current" />
-                )}
+                  <span className="size-2 bg-[var(--accent)]" aria-hidden="true" />
+                ) : null}
               </span>
               {step}
             </li>

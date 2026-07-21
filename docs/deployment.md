@@ -163,6 +163,12 @@ Options:
 
 - Use Railway shell if available for the `api` service.
 - Use a temporary Railway command/start command to run the indexing script once.
+- Or call the deployed backend from your local machine:
+
+```bash
+python scripts/index_studies_remote.py --api-base-url https://API_RAILWAY_URL
+```
+
 - If neither is convenient, deploy first and leave RAG empty until a safer manual population flow is added.
 
 Do not run `scripts/index_studies.py` automatically on every startup.

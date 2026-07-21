@@ -40,6 +40,19 @@ class TrainingPlan(BaseModel):
     week_plan: list[str]
 
 
+class CoachGameAnalysis(BaseModel):
+    game_id: str
+    player_color: str
+    opponent: str
+    result: str
+    pgn: str
+    total_moves: int
+    summary: dict
+    critical_moments: list[dict]
+    phase_weaknesses: list[str]
+    moves: list[dict]
+
+
 class CoachAnalyzeUserResponse(BaseModel):
     username: str
     games_requested: int
@@ -49,5 +62,6 @@ class CoachAnalyzeUserResponse(BaseModel):
     critical_moments: list[CoachCriticalMoment]
     theory_recommendations: list[TheoryRecommendation]
     training_plan: TrainingPlan
+    game_analyses: list[CoachGameAnalysis]
     skipped_games: list[dict]
     saved: bool

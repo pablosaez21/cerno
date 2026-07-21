@@ -23,7 +23,7 @@ async def chat(request: AgentRequest):
 @router.post("/index-study")
 async def index_chess_study(request: StudyRequest):
     try:
-        total = await index_study(request.study_id)
+        total = await index_study(request.study_id, category=request.category)
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except chromadb.errors.ChromaError as exc:
@@ -32,7 +32,11 @@ async def index_chess_study(request: StudyRequest):
             detail="No se pudo indexar el estudio en ChromaDB."
         ) from exc
 
-    return {"indexed_chunks": total, "study_id": request.study_id}
+    return {
+        "indexed_chunks": total,
+        "study_id": request.study_id,
+        "category": request.category,
+    }
 
 
 @router.post("/search-theory", response_model=TheorySearchResponse)

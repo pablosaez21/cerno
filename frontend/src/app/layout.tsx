@@ -1,21 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bodyFont = IBM_Plex_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const displayFont = Newsreader({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-mono-face",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Cerno | AI chess coach",
+  title: "Cerno | Chess analysis and training",
   description:
-    "Analyze Lichess games, uncover weaknesses, and build a focused chess training plan.",
+    "Analyze Lichess games or PGN with Stockfish, identify weaknesses, and build a focused training plan.",
 };
 
 export default function RootLayout({
@@ -26,9 +34,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}
     >
-      <body className="min-h-full">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

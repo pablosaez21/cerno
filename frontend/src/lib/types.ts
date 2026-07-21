@@ -42,6 +42,7 @@ export type CoachAnalysis = {
     priority: string;
     week_plan: string[];
   };
+  game_analyses: CoachGameAnalysis[];
   skipped_games: Record<string, unknown>[];
   saved: boolean;
 };
@@ -65,6 +66,14 @@ export type PgnAnalysis = {
   critical_moments: PgnMove[];
   phase_weaknesses: string[];
   moves: PgnMove[];
+};
+
+export type CoachGameAnalysis = PgnAnalysis & {
+  game_id: string;
+  player_color: "white" | "black";
+  opponent: string;
+  result: "win" | "loss" | "draw";
+  pgn: string;
 };
 
 export type WeaknessProfile = {

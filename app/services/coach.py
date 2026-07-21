@@ -99,9 +99,40 @@ async def analyze_user(
         "critical_moments": critical_moments,
         "theory_recommendations": theory_recommendations,
         "training_plan": training_plan,
+        "game_analyses": build_game_analyses(username, analyzed_games),
         "skipped_games": skipped_games,
         "saved": saved,
     }
+
+
+def build_game_analyses(username: str, analyzed_games: list[tuple]) -> list[dict]:
+    reports = []
+    normalized_username = username.casefold()
+
+    for game, analysis in analyzed_games:
+        player_is_white = game.white.username.casefold() == normalized_username
+        player_color = "white" if player_is_white else "black"
+        opponent = game.black.username if player_is_white else game.white.username
+
+        if game.winner is None:
+            result = "draw"
+        else:
+            result = "win" if game.winner == player_color else "loss"
+
+        reports.append({
+            "game_id": game.id,
+            "player_color": player_color,
+            "opponent": opponent,
+            "result": result,
+            "pgn": game.pgn,
+            "total_moves": analysis.get("total_moves", 0),
+            "summary": analysis.get("summary", {}),
+            "critical_moments": analysis.get("critical_moments", []),
+            "phase_weaknesses": analysis.get("phase_weaknesses", []),
+            "moves": analysis.get("moves", []),
+        })
+
+    return reports
 
 
 def persist_coach_result(
