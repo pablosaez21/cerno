@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Body, HTTPException
 from app.core.config import settings
-from app.services.lichess import fetch_games
+from app.services.lichess import (
+    LichessRateLimitError,
+    LichessServiceError,
+    LichessUserNotFoundError,
+    fetch_games,
+)
 from app.schemas.game import AnalyzeGameRequest, GamesResponse
 from app.services.stockfish import analyze_game
 
@@ -9,9 +14,18 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 @router.get("/{username}", response_model=GamesResponse)
 async def get_games(username: str, limit: int = 10):
-    games = await fetch_games(username, settings.clamp_games_limit(limit))
-    if games is None:
-        raise HTTPException(status_code=502, detail="Error fetching games from Lichess")
+    try:
+        games = await fetch_games(username, settings.clamp_games_limit(limit))
+    except LichessUserNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except LichessRateLimitError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from exc
+    except LichessServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     return GamesResponse(username=username, total=len(games), games=games)
 
 
