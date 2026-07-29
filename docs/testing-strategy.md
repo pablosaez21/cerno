@@ -19,9 +19,9 @@ The strategy follows four rules:
 
 The committed pre-Phase-1 baseline contained 21 collected backend cases. Phase
 2A established 33 deterministic backend cases. Phase 2B added real integrations;
-after the Phase 2C Lichess configuration regression there are 40 fast cases and
-18 real integration cases, for 58 backend cases. The backend, frontend, and
-backend-integration jobs are green in GitHub Actions.
+after the Phase 2C Lichess configuration and PGN coaching regressions there are
+41 fast cases and 18 real integration cases, for 59 backend cases. The backend,
+frontend, and backend-integration jobs are green in GitHub Actions.
 
 Phase 2A adds the automated quality foundation without claiming the remaining
 Phase 2 integration and browser coverage:
@@ -537,15 +537,18 @@ lacks rendered layout; this is not a claim of complete accessibility.
 3. Paste a controlled PGN.
 4. Submit.
 5. Observe a successful engine report.
-6. Navigate moves.
-7. Jump to a critical moment.
-8. Verify the board changes.
+6. Require a non-empty full-game coaching explanation.
+7. Require at least one visible recommendation.
+8. Navigate moves.
+9. Jump to a critical moment.
+10. Verify the board changes.
 
 This scenario is implemented with the production Next build, FastAPI, and the
 real configured Stockfish executable at depth 1. The six-ply fixture contains a
 stable queen blunder, allowing navigation and critical-jump assertions without
 depending on exact centipawn values. The board is additionally measured at
-1280x720 and 390x844.
+1280x720 and 390x844. The coaching assertion prevents the scenario from passing
+when the response contains only engine metrics and the board.
 
 ### 11.2 Required Lichess scenario
 
@@ -656,10 +659,10 @@ components are not excluded.
 
 | Measure | Covered | Baseline | Non-regression floor |
 | --- | ---: | ---: | ---: |
-| Statements | 290/303 | 95.70% | 92% |
+| Statements | 291/304 | 95.72% | 92% |
 | Branches | 228/274 | 83.21% | 80% |
-| Functions | 108/113 | 95.57% | 90% |
-| Lines | 274/279 | 98.20% | 95% |
+| Functions | 109/114 | 95.61% | 90% |
+| Lines | 275/280 | 98.21% | 95% |
 
 Critical modules:
 
@@ -816,14 +819,14 @@ fast pytest: 40 passed, 18 deselected
 PostgreSQL: 6 passed
 ChromaDB: 4 passed
 Stockfish: 8 passed
-complete pytest: 58 passed
-complete coverage: 80.24%, required 70.00% reached
+complete pytest: 59 passed
+complete coverage: 80.44%, required 70.00% reached
 workflow validation: valid
 frontend ESLint: passed
 frontend TypeScript: passed
 frontend Vitest: 64 passed
-frontend coverage: 95.70% statements, 83.21% branches,
-                   95.57% functions, 98.20% lines
+frontend coverage: 95.72% statements, 83.21% branches,
+                   95.61% functions, 98.21% lines
 Next.js production build: passed
 Playwright Chromium: 4 passed against Next standalone, FastAPI, and Stockfish
 Python dependency consistency: no broken requirements
@@ -897,8 +900,8 @@ Phase 2B is implemented and verified locally with:
 - real temporary Chroma persistence, retrieval, metadata, upsert, and error
   evidence;
 - real Stockfish execution across stable chess invariants and special moves;
-- 58 passing backend cases and 80.24% combined complete-suite coverage after
-  the Phase 2C Lichess configuration regression;
+- 59 passing backend cases and 80.44% combined complete-suite coverage after
+  the Phase 2C Lichess configuration and PGN coaching regressions;
 - an isolated local Compose service and a GitHub PostgreSQL service container;
 - a required `backend-integration` job with no external credentials.
 
@@ -913,6 +916,8 @@ Phase 2C is implemented and locally verified with:
 - strict MSW isolation and eight automated accessibility checks;
 - dedicated GameViewer position, navigation, ownership, orientation, and
   defensive-state coverage;
+- PGN API/component/browser regressions requiring a real full-game explanation
+  and at least one recommendation while retaining the board;
 - four passing Chromium flows against the production frontend, FastAPI, and
   real Stockfish;
 - desktop and mobile browser inspection at 1280x720 and 390x844 with no

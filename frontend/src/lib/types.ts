@@ -61,7 +61,7 @@ export type PgnMove = {
   fen_after: string;
 };
 
-export type PgnAnalysis = {
+export type PgnEngineAnalysis = {
   total_moves: number;
   summary: Record<string, PhaseStat>;
   critical_moments: PgnMove[];
@@ -69,7 +69,15 @@ export type PgnAnalysis = {
   moves: PgnMove[];
 };
 
-export type CoachGameAnalysis = PgnAnalysis & {
+export type PgnAnalysis = PgnEngineAnalysis & {
+  coaching: {
+    scope: "full_game";
+    explanation: string;
+    recommendations: string[];
+  };
+};
+
+export type CoachGameAnalysis = PgnEngineAnalysis & {
   game_id: string;
   player_color: "white" | "black";
   opponent: string;

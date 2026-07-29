@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { GameViewer } from "@/components/game-viewer";
-import type { CoachGameAnalysis, PgnAnalysis } from "@/lib/types";
+import type { CoachGameAnalysis, PgnEngineAnalysis } from "@/lib/types";
 import { titleCase } from "@/lib/format";
 
 export function LichessGameReview({ games }: { games: CoachGameAnalysis[] }) {
@@ -11,7 +11,7 @@ export function LichessGameReview({ games }: { games: CoachGameAnalysis[] }) {
 
   if (!selected) return null;
 
-  const boardAnalysis: PgnAnalysis = {
+  const boardAnalysis: PgnEngineAnalysis = {
     total_moves: selected.total_moves,
     summary: selected.summary,
     critical_moments: selected.critical_moments,

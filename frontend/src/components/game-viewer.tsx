@@ -9,7 +9,7 @@ import {
   FlipHorizontal2,
 } from "lucide-react";
 import { Chessboard, type ChessboardOptions } from "react-chessboard";
-import type { PgnAnalysis, PgnMove } from "@/lib/types";
+import type { PgnEngineAnalysis, PgnMove } from "@/lib/types";
 import {
   buildPositions,
   findCriticalPly,
@@ -32,7 +32,7 @@ export function GameViewer({
   initialOrientation,
   boardId = "cerno-analysis-board",
 }: {
-  result: PgnAnalysis;
+  result: PgnEngineAnalysis;
   sourcePgn: string;
   initialOrientation?: Orientation;
   boardId?: string;

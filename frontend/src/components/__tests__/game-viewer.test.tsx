@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { GameViewer } from "@/components/game-viewer";
-import type { PgnAnalysis } from "@/lib/types";
+import type { PgnEngineAnalysis } from "@/lib/types";
 import {
   pgnAnalysisFixture,
   pgnMovesFixture,
@@ -130,7 +130,7 @@ describe("GameViewer orientation and defensive states", () => {
   });
 
   it("does not crash on invalid PGN and invalid FEN", () => {
-    const invalidResult: PgnAnalysis = {
+    const invalidResult: PgnEngineAnalysis = {
       ...pgnAnalysisFixture,
       moves: pgnMovesFixture.map((move) => ({
         ...move,
@@ -150,7 +150,7 @@ describe("GameViewer orientation and defensive states", () => {
   });
 
   it("disables an out-of-range critical moment", () => {
-    const result: PgnAnalysis = {
+    const result: PgnEngineAnalysis = {
       ...pgnAnalysisFixture,
       critical_moments: [
         { ...pgnMovesFixture[0], move_number: 99, fen_after: "invalid" },
@@ -164,7 +164,7 @@ describe("GameViewer orientation and defensive states", () => {
   });
 
   it("renders an empty analysis defensively", () => {
-    const emptyResult: PgnAnalysis = {
+    const emptyResult: PgnEngineAnalysis = {
       total_moves: 0,
       summary: {},
       critical_moments: [],

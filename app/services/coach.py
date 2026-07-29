@@ -27,6 +27,72 @@ class AnalyzedPlayerGame:
     player_color: str
 
 
+def build_full_game_coaching(analysis: dict) -> dict:
+    """Build neutral coaching when a PGN does not identify the user's side."""
+    summary = analysis.get("summary", {})
+    critical_moments = analysis.get("critical_moments", [])
+    phase_weaknesses = analysis.get("phase_weaknesses", [])
+    focus_phase = (
+        phase_weaknesses[0] if phase_weaknesses else _highest_loss_phase(summary)
+    )
+    blunders = sum(
+        1 for moment in critical_moments if moment.get("classification") == "blunder"
+    )
+    mistakes = sum(
+        1 for moment in critical_moments if moment.get("classification") == "mistake"
+    )
+
+    if critical_moments:
+        explanation = (
+            "Across both sides, the largest evaluation losses in this game "
+            f"cluster in the {focus_phase}. Stockfish identified "
+            f"{len(critical_moments)} critical "
+            f"{'move' if len(critical_moments) == 1 else 'moves'}, including "
+            f"{blunders} {'blunder' if blunders == 1 else 'blunders'} and "
+            f"{mistakes} {'mistake' if mistakes == 1 else 'mistakes'}. "
+            "Because the PGN does not identify which side belongs to you, this "
+            "coaching reviews the whole game without assigning either side's "
+            "errors to the player."
+        )
+        recommendations = [
+            f"Replay the critical {focus_phase} positions from both sides and "
+            "write down at least two candidate moves before checking the engine.",
+            "Start with the highest-loss move, compare the played continuation "
+            "with a safer alternative, and record the tactical idea that was missed.",
+        ]
+    else:
+        explanation = (
+            "Stockfish did not identify a major evaluation loss in this game. "
+            "Because the PGN does not identify which side belongs to you, this "
+            "coaching reviews both sides rather than attributing decisions to "
+            "the player."
+        )
+        recommendations = [
+            f"Replay the {focus_phase} from both sides and note where either "
+            "side could have improved piece activity or reduced counterplay."
+        ]
+
+    return {
+        "scope": "full_game",
+        "explanation": explanation,
+        "recommendations": recommendations,
+    }
+
+
+def _highest_loss_phase(summary: dict) -> str:
+    if not summary:
+        return "opening"
+
+    return max(
+        summary,
+        key=lambda phase: (
+            summary.get(phase, {}).get("avg_cpl", 0),
+            summary.get(phase, {}).get("blunders", 0),
+            summary.get(phase, {}).get("mistakes", 0),
+        ),
+    )
+
+
 async def analyze_user(
     username: str,
     limit: int = 3,

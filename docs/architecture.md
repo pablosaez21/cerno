@@ -72,6 +72,12 @@ no response contract or chessboard library.
 
 The OpenAPI schema currently exposes ten paths. Frontend types are not generated from that schema, so contract drift is possible.
 
+`POST /games/analyze` returns full-game engine data plus neutral,
+engine-grounded coaching. Its `coaching.scope` is `full_game` because pasted PGN
+input has no trusted player-color selector. This contract remains separate from
+the player-specific diagnosis returned by `POST /coach/analyze-user`; the
+frontend therefore never attributes an arbitrary PGN side's errors to the user.
+
 ### 3.3 Stockfish analysis
 
 [`app/services/stockfish.py`](../app/services/stockfish.py) parses PGN with `python-chess`, launches Stockfish, and records every ply:

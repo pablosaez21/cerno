@@ -22,6 +22,12 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Game analysis" }),
   ).toBeVisible();
+  const coaching = page.getByRole("region", { name: "Coach reading" });
+  await expect(coaching).toContainText("Across both sides");
+  const recommendations = coaching.getByRole("list", {
+    name: "PGN coaching recommendations",
+  });
+  await expect(recommendations.getByRole("listitem")).toHaveCount(2);
   const viewer = page.getByRole("region", { name: "Game viewer" });
   await expect(viewer).toBeVisible();
   await expect(viewer.getByText("5 / 6", { exact: true })).toBeVisible();

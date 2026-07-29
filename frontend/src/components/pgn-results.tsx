@@ -31,6 +31,45 @@ export function PgnAnalysisResult({
         </div>
       </header>
 
+      <section
+        aria-labelledby="pgn-coaching-title"
+        className="grid border border-[var(--line-strong)] bg-[var(--surface)] lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]"
+      >
+        <article className="p-5 sm:p-7 lg:border-r lg:border-[var(--line-strong)]">
+          <p className="eyebrow !text-[var(--accent)]">01 · Full-game coaching</p>
+          <h3
+            id="pgn-coaching-title"
+            className="display-type mt-3 text-4xl text-[var(--text-strong)] sm:text-5xl"
+          >
+            Coach reading
+          </h3>
+          <p className="mt-5 max-w-4xl text-lg font-medium leading-8 text-[var(--text-strong)]">
+            {result.coaching.explanation}
+          </p>
+        </article>
+        <aside className="border-t border-[var(--line-strong)] bg-[var(--night-deep)] p-5 sm:p-7 lg:border-t-0">
+          <p className="eyebrow !text-[var(--accent-strong)]">
+            Recommendations
+          </p>
+          <ul
+            aria-label="PGN coaching recommendations"
+            className="mt-5 space-y-4"
+          >
+            {result.coaching.recommendations.map((recommendation, index) => (
+              <li
+                key={`${recommendation}-${index}`}
+                className="grid grid-cols-[32px_1fr] gap-3 text-sm leading-6 text-[var(--muted-strong)]"
+              >
+                <span className="font-mono text-xs font-bold text-[var(--accent)]">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span>{recommendation}</span>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </section>
+
       <GameViewer result={result} sourcePgn={sourcePgn} />
 
       <div className="pt-3">

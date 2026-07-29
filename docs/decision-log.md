@@ -595,8 +595,8 @@ Playwright; mocking the entire backend in browser tests.
 path. They are compatible with Next 16, React 19, Node 24, and the existing
 board dependencies.
 
-**Impact:** Sixty-four Vitest cases establish a measured 95.70% statement,
-83.21% branch, 95.57% function, and 98.20% line baseline. Non-regression floors
+**Impact:** Sixty-four Vitest cases establish a measured 95.72% statement,
+83.21% branch, 95.61% function, and 98.21% line baseline. Non-regression floors
 of 92%, 80%, 90%, and 95% apply respectively. The API client and GameViewer
 remain included.
 
@@ -631,6 +631,37 @@ REST contract are unchanged.
 
 **Evidence:** `npm run test:e2e:only` reports four passing cases and the wrapper
 leaves no owned temporary directory or listening process.
+
+### DEC-033 — Pasted PGN coaching is explicitly full-game
+
+**Status:** Accepted and implemented as a Phase 2C regression fix
+
+**Problem:** `POST /games/analyze` returned only Stockfish moves and metrics, so
+the PGN frontend could render a board but no explanation or recommendation. A
+pasted PGN also does not establish which color belongs to the user.
+
+**Decision:** Extend the existing PGN response additively with
+`coaching.scope = "full_game"`, a non-empty engine-grounded explanation, and at
+least one review recommendation. Build it from the already-computed Stockfish
+analysis without a second engine run, RAG, OpenAI, persistence, or guessed
+player color. Keep Lichess diagnosis player-specific and unchanged.
+
+**Alternatives:** Send PGN through the Lichess username flow; guess White as the
+user; require a new player-color UI selector; call the experimental agent; show
+generic frontend-only copy.
+
+**Rationale:** The additive contract repairs the missing output while preserving
+the repository invariant that full-game viewer data and player-specific
+diagnosis are separate. A future explicit player selector can add a
+player-specific projection without changing this neutral default.
+
+**Impact:** The PGN report now renders a coach reading and recommendations
+before the existing board. Endpoint, component, API, accessibility, and browser
+regressions require coaching content while retaining complete move navigation.
+
+**Evidence:** The real depth-1 PGN response contains six plies, a
+`full_game` explanation, and two recommendations. The four Chromium scenarios
+remain green, including the controlled Lichess success/error flows.
 
 ## 3. Verified discrepancies
 

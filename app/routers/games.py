@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, HTTPException
 
 from app.core.config import settings
 from app.schemas.game import AnalyzeGameRequest, GamesResponse
+from app.services.coach import build_full_game_coaching
 from app.services.lichess import (
     LichessRateLimitError,
     LichessServiceError,
@@ -44,7 +45,11 @@ async def analyze(
 
     try:
         analysis_depth = settings.clamp_stockfish_depth(analysis_depth)
-        return await analyze_game(pgn_text, analysis_depth)
+        analysis = await analyze_game(pgn_text, analysis_depth)
+        return {
+            **analysis,
+            "coaching": build_full_game_coaching(analysis),
+        }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:

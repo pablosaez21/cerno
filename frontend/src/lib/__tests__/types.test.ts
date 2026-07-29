@@ -33,6 +33,10 @@ describe("frontend response contracts", () => {
     expectTypeOf<PgnMove["mover_color"]>().toEqualTypeOf<"white" | "black">();
     expectTypeOf<PhaseStat["moves"]>().toEqualTypeOf<number | undefined>();
     expectTypeOf<PgnAnalysis["moves"]>().toEqualTypeOf<PgnMove[]>();
+    expectTypeOf<PgnAnalysis["coaching"]["scope"]>().toEqualTypeOf<"full_game">();
+    expectTypeOf<PgnAnalysis["coaching"]["recommendations"]>().toEqualTypeOf<
+      string[]
+    >();
     expectTypeOf<CoachAnalysis["game_analyses"][number]["player_color"]>()
       .toEqualTypeOf<"white" | "black">();
   });

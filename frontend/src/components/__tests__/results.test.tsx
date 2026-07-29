@@ -61,6 +61,10 @@ describe("analysis result contracts", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Game analysis" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Coach reading" })).toBeVisible();
+    expect(
+      screen.getByRole("list", { name: "PGN coaching recommendations" }),
+    ).toHaveTextContent(pgnAnalysisFixture.coaching.recommendations[0]);
     expect(screen.getByRole("button", { name: "Go to start" })).toBeEnabled();
     expect((await runAxe(container)).violations).toEqual([]);
   });

@@ -58,6 +58,8 @@ describe("API requests and valid responses", () => {
     expect(body).toEqual({ pgn: "1. e4 e5 *", depth: 8 });
     expect(result.moves).toHaveLength(6);
     expect(result.moves[0].mover_color).toBe("white");
+    expect(result.coaching.explanation).toContain("Across both sides");
+    expect(result.coaching.recommendations).not.toHaveLength(0);
   });
 
   it("serializes the complete Lichess request", async () => {

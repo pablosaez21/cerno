@@ -12,6 +12,25 @@ Both analysis endpoints now provide enough position-level data for the same boar
 - `evaluation_before`, `evaluation_after`, and `cpl`;
 - `phase` and `classification`.
 
+The same response now includes additive full-game coaching:
+
+```json
+{
+  "coaching": {
+    "scope": "full_game",
+    "explanation": "Engine-grounded explanation of the game",
+    "recommendations": ["At least one concrete review action"]
+  }
+}
+```
+
+The `full_game` scope is deliberate. A pasted PGN does not identify which color
+belongs to the current user, so this explanation covers both sides and never
+labels either side's error as the user's. Player-specific diagnosis remains
+exclusive to `/coach/analyze-user`, where the requested Lichess username
+establishes ownership before aggregation. The coaching is derived from the same
+Stockfish result returned to the viewer and does not run the engine twice.
+
 `POST /coach/analyze-user` now includes `game_analyses`. This is derived from the
 Stockfish results that the coach service already computes, so it does not trigger
 any additional engine work. Every entry includes the original PGN, player color,
@@ -61,8 +80,10 @@ Phase 2C protects the implemented viewer behavior at two layers:
 - A coaching-result test proves that the game viewer keeps global moments while
   the separate coaching section contains only personal moments.
 - Playwright proves that the production frontend can navigate a six-ply report
-  returned by the real FastAPI/Stockfish path. It also checks the board at
-  1280x720 and 390x844 so the complete square remains bounded by the viewport.
+  returned by the real FastAPI/Stockfish path. The PGN case now also requires a
+  non-empty coaching explanation and two visible recommendations, preventing a
+  board-and-metrics-only report from passing. It checks the board at 1280x720
+  and 390x844 so the complete square remains bounded by the viewport.
 
 The unit test replaces only `react-chessboard` rendering with a small semantic
 element; `chess.js` position reconstruction and all Cerno viewer logic remain

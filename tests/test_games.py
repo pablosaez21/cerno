@@ -26,3 +26,42 @@ def test_analyze_pgn_clamps_stockfish_depth(client):
 
     assert response.status_code == 200
     analyze_game.assert_awaited_once_with('[Event "Test"]\n\n1. e4 *', 10)
+
+
+def test_analyze_pgn_returns_full_game_coaching_and_recommendations(client):
+    analysis = {
+        "total_moves": 2,
+        "summary": {
+            "opening": {
+                "avg_cpl": 220,
+                "inaccuracies": 0,
+                "mistakes": 1,
+                "blunders": 1,
+            }
+        },
+        "critical_moments": [
+            {
+                "classification": "blunder",
+                "phase": "opening",
+                "cpl": 450,
+            }
+        ],
+        "phase_weaknesses": ["opening"],
+        "moves": [],
+    }
+
+    with patch(
+        "app.routers.games.analyze_game",
+        new=AsyncMock(return_value=analysis),
+    ):
+        response = client.post(
+            "/games/analyze",
+            json={"pgn": '[Event "Test"]\n\n1. e4 *', "depth": 1},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["coaching"]["scope"] == "full_game"
+    assert "Across both sides" in payload["coaching"]["explanation"]
+    assert payload["coaching"]["recommendations"]
+    assert payload["total_moves"] == 2

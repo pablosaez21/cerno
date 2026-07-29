@@ -70,6 +70,14 @@ export const pgnAnalysisFixture: PgnAnalysis = {
   critical_moments: [pgnMovesFixture[4], pgnMovesFixture[5]],
   phase_weaknesses: ["opening"],
   moves: pgnMovesFixture,
+  coaching: {
+    scope: "full_game",
+    explanation:
+      "Across both sides, the largest evaluation losses in this game cluster in the opening.",
+    recommendations: [
+      "Replay the critical opening positions from both sides before checking the engine.",
+    ],
+  },
 };
 
 function coachGame(playerColor: "white" | "black"): CoachGameAnalysis {

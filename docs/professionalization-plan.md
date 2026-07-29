@@ -283,8 +283,8 @@ is pending the first green run of the expanded `frontend` job and new
 - Eight `vitest-axe` checks cover both forms, errors/results, profile, coaching,
   and board controls. Color contrast remains a real-browser/manual check because
   jsdom has no layout engine.
-- Frontend coverage is 95.70% statements, 83.21% branches, 95.57% functions,
-  and 98.20% lines. The measured non-regression floors are 92%, 80%, 90%, and
+- Frontend coverage is 95.72% statements, 83.21% branches, 95.61% functions,
+  and 98.21% lines. The measured non-regression floors are 92%, 80%, 90%, and
   95% respectively.
 - Four Chromium scenarios pass against the production Next build, FastAPI, and
   real Stockfish: PGN success, Lichess success, Lichess 404, and invalid PGN.
@@ -292,7 +292,9 @@ is pending the first green run of the expanded `frontend` job and new
   the development server or the unsupported `next start`/standalone
   combination.
 - The PGN browser case verifies board navigation, a critical-moment jump, and
-  complete board bounds at 1280x720 and 390x844.
+  complete board bounds at 1280x720 and 390x844. It also requires a non-empty
+  full-game coach reading and visible recommendations, so engine metrics and a
+  board alone cannot satisfy the scenario.
 - An additional visual inspection of the built home page at those same
   viewports found no horizontal overflow or browser console warnings/errors.
 - Lichess is simulated only at its outbound HTTP adapter. The browser, REST

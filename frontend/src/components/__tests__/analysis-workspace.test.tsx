@@ -71,6 +71,15 @@ describe("AnalysisWorkspace PGN flow", () => {
       await screen.findByRole("heading", { name: "Game analysis" }),
     ).toBeVisible();
     expect(screen.getByText("6", { selector: "p" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Coach reading" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(pgnAnalysisFixture.coaching.explanation),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("list", { name: "PGN coaching recommendations" }),
+    ).toHaveTextContent(pgnAnalysisFixture.coaching.recommendations[0]);
     expect(screen.getByRole("region", { name: "Game viewer" })).toBeVisible();
   });
 
