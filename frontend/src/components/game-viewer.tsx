@@ -8,9 +8,16 @@ import {
   ChevronRight,
   FlipHorizontal2,
 } from "lucide-react";
-import { Chess } from "chess.js";
 import { Chessboard, type ChessboardOptions } from "react-chessboard";
 import type { PgnAnalysis, PgnMove } from "@/lib/types";
+import {
+  buildPositions,
+  findCriticalPly,
+  getPlayedSquares,
+  groupMoves,
+  readPgnMetadata,
+  type Orientation,
+} from "@/lib/game-viewer";
 import {
   classificationLabel,
   classificationTone,
@@ -18,14 +25,6 @@ import {
   formatPawnValue,
   phaseLabel,
 } from "@/lib/format";
-
-type Orientation = "white" | "black";
-
-type MoveRow = {
-  moveNumber: number;
-  white?: { move: PgnMove; ply: number };
-  black?: { move: PgnMove; ply: number };
-};
 
 export function GameViewer({
   result,
@@ -119,6 +118,7 @@ export function GameViewer({
       aria-label="Game viewer"
       tabIndex={0}
       onKeyDown={handleKeyboard}
+      data-current-ply={currentPly}
     >
       <header className="grid border-b border-[var(--line-strong)] md:grid-cols-[1fr_auto]">
         <div className="p-4 sm:p-5">
@@ -153,6 +153,8 @@ export function GameViewer({
             className="mx-auto w-full max-w-[680px]"
             style={{ width: "min(100%, calc(100dvh - 240px), 680px)" }}
             aria-label={`Board viewed from ${orientation}'s side`}
+            data-board-position={position}
+            data-board-orientation={orientation}
           >
             <Chessboard options={boardOptions} />
           </div>
@@ -166,7 +168,11 @@ export function GameViewer({
                 <ChevronLeft size={19} />
               </ViewerButton>
             </div>
-            <div className="flex min-w-0 items-center justify-center border-x border-[var(--line-strong)] px-3 text-center font-mono text-xs font-bold text-[var(--muted-strong)]">
+            <div
+              className="flex min-w-0 items-center justify-center border-x border-[var(--line-strong)] px-3 text-center font-mono text-xs font-bold text-[var(--muted-strong)]"
+              role="status"
+              aria-live="polite"
+            >
               {currentPly === 0 ? "START POSITION" : `${currentPly} / ${result.moves.length}`}
             </div>
             <div className="flex">
@@ -194,18 +200,24 @@ export function GameViewer({
               </span>
             </div>
             <div className="max-h-[420px] overflow-y-auto" aria-label="Game moves">
-              {moveRows.map((row) => (
-                <div
-                  key={row.moveNumber}
-                  className="grid grid-cols-[48px_1fr_1fr] border-b border-[var(--line)] last:border-b-0"
-                >
-                  <span className="grid min-h-11 place-items-center border-r border-[var(--line)] bg-[var(--night-deep)] font-mono text-xs font-bold text-[var(--muted)]">
-                    {row.moveNumber}.
-                  </span>
-                  <MoveButton entry={row.white} currentPly={currentPly} onSelect={selectPly} />
-                  <MoveButton entry={row.black} currentPly={currentPly} onSelect={selectPly} />
-                </div>
-              ))}
+              {moveRows.length ? (
+                moveRows.map((row) => (
+                  <div
+                    key={row.moveNumber}
+                    className="grid grid-cols-[48px_1fr_1fr] border-b border-[var(--line)] last:border-b-0"
+                  >
+                    <span className="grid min-h-11 place-items-center border-r border-[var(--line)] bg-[var(--night-deep)] font-mono text-xs font-bold text-[var(--muted)]">
+                      {row.moveNumber}.
+                    </span>
+                    <MoveButton entry={row.white} currentPly={currentPly} onSelect={selectPly} />
+                    <MoveButton entry={row.black} currentPly={currentPly} onSelect={selectPly} />
+                  </div>
+                ))
+              ) : (
+                <p className="p-5 text-sm text-[var(--muted)]">
+                  No moves are available for this game.
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -372,88 +384,4 @@ function MoveButton({
       ) : null}
     </button>
   );
-}
-
-function buildPositions(moves: PgnMove[], sourcePgn: string) {
-  const reconstructed = reconstructPositions(sourcePgn);
-  const initial = validFen(moves[0]?.fen_before)
-    ? moves[0].fen_before
-    : reconstructed[0] ?? "start";
-
-  return [
-    initial,
-    ...moves.map((move, index) =>
-      validFen(move.fen_after) ? move.fen_after : reconstructed[index + 1] ?? initial,
-    ),
-  ];
-}
-
-function reconstructPositions(pgn: string) {
-  if (!pgn.trim()) return [];
-  try {
-    const game = new Chess();
-    game.loadPgn(pgn);
-    const history = game.history({ verbose: true });
-    if (!history.length) return [];
-    return [history[0].before, ...history.map((move) => move.after)];
-  } catch {
-    return [];
-  }
-}
-
-function readPgnMetadata(pgn: string) {
-  try {
-    const game = new Chess();
-    game.loadPgn(pgn);
-    const headers = game.getHeaders();
-    const orientation = headers.Orientation?.toLowerCase() === "black" ? "black" : "white";
-    return {
-      event: headers.Event,
-      white: headers.White,
-      black: headers.Black,
-      orientation: orientation as Orientation,
-    };
-  } catch {
-    return { orientation: "white" as Orientation };
-  }
-}
-
-function validFen(fen: string | undefined) {
-  if (!fen) return false;
-  try {
-    new Chess(fen);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function groupMoves(moves: PgnMove[]) {
-  const rows = new Map<number, MoveRow>();
-  moves.forEach((move, index) => {
-    const row = rows.get(move.move_number) ?? { moveNumber: move.move_number };
-    const color = move.mover_color;
-    row[color] = { move, ply: index + 1 };
-    rows.set(move.move_number, row);
-  });
-  return Array.from(rows.values());
-}
-
-function findCriticalPly(moves: PgnMove[], critical: PgnMove | undefined) {
-  if (!critical) return null;
-  const index = moves.findIndex(
-    (move) =>
-      move.move_uci === critical.move_uci &&
-      move.move_number === critical.move_number &&
-      move.fen_after === critical.fen_after,
-  );
-  return index >= 0 ? index + 1 : null;
-}
-
-function getPlayedSquares(move: PgnMove | undefined) {
-  if (!move || !/^[a-h][1-8][a-h][1-8]/.test(move.move_uci)) return null;
-  return {
-    from: move.move_uci.slice(0, 2),
-    to: move.move_uci.slice(2, 4),
-  };
 }

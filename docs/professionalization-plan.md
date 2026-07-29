@@ -168,9 +168,9 @@ Phase 1 must not be marked complete without evidence for every item above.
 
 ## 6. Phase 2 — Automated quality foundation
 
-**Overall status:** In progress. Phase 2A is complete and hosted-verified. Phase
-2B is complete locally but awaits its first hosted integration run. Phase 2C has
-not started.
+**Overall status:** In progress. Phases 2A and 2B are complete and
+hosted-verified. Phase 2C is implemented and verified locally; its new
+`frontend-e2e` job and expanded `frontend` job await their first hosted run.
 
 ### Objective
 
@@ -214,8 +214,7 @@ testing, or any RAG, prompt, agent, MCP, authentication, or observability work.
 
 ### Phase 2B — Real backend integrations
 
-**Status:** Implemented and verified locally as of 2026-07-29. Hosted completion
-remains pending until the new `backend-integration` job is green after push.
+**Status:** Complete locally and hosted as of 2026-07-29.
 
 #### Scope
 
@@ -251,16 +250,21 @@ The initial integration run exposed nullable timestamp drift between the ORM and
 `0001`. Migration `0002_timestamp_columns_not_null` repairs existing nulls before
 applying the intended non-null contract. No other model drift remains.
 
-#### Pending completion evidence
+#### Hosted completion evidence
 
-- First green hosted execution of `backend-integration`.
-- Verification of the Ubuntu-packaged Stockfish path and runtime in that hosted
-  log.
-
-These pending hosted facts prevent Phase 2B from being marked fully complete,
-but do not block the locally verified implementation.
+- GitHub Actions run
+  [`30460515439`](https://github.com/pablosaez21/cerno/actions/runs/30460515439)
+  completed successfully for commit `e2050f1`.
+- `Backend real integrations`, `Backend quality`, and
+  `Frontend static quality` all completed successfully.
+- The hosted integration job installed the Ubuntu Stockfish package and used
+  the PostgreSQL 16 service container without credentials or live APIs.
 
 #### Phase 2C — Frontend and browser confidence
+
+**Status:** Implemented and verified locally as of 2026-07-29. Hosted completion
+is pending the first green run of the expanded `frontend` job and new
+`frontend-e2e` job.
 
 1. frontend component and accessibility tests;
 2. controlled API mocking at the frontend boundary;
@@ -268,6 +272,49 @@ but do not block the locally verified implementation.
 4. responsive board-viewer browser evidence;
 5. backend/frontend API contract protection;
 6. property and mutation testing where evidence justifies them.
+
+#### Local acceptance evidence
+
+- Vitest 4.1.10 runs 64 deterministic cases across pure utilities, API
+  serialization/error handling, forms, async states, results, player profile,
+  and the game viewer.
+- MSW 2.15 rejects unhandled frontend HTTP requests and supplies controlled
+  success, empty, delayed, 400, 404, 429, and 500 responses.
+- Eight `vitest-axe` checks cover both forms, errors/results, profile, coaching,
+  and board controls. Color contrast remains a real-browser/manual check because
+  jsdom has no layout engine.
+- Frontend coverage is 95.70% statements, 83.21% branches, 95.57% functions,
+  and 98.20% lines. The measured non-regression floors are 92%, 80%, 90%, and
+  95% respectively.
+- Four Chromium scenarios pass against the production Next build, FastAPI, and
+  real Stockfish: PGN success, Lichess success, Lichess 404, and invalid PGN.
+- The browser server uses Next's generated `standalone` entry point rather than
+  the development server or the unsupported `next start`/standalone
+  combination.
+- The PGN browser case verifies board navigation, a critical-moment jump, and
+  complete board bounds at 1280x720 and 390x844.
+- An additional visual inspection of the built home page at those same
+  viewports found no horizontal overflow or browser console warnings/errors.
+- Lichess is simulated only at its outbound HTTP adapter. The browser, REST
+  route, coach, player projection, fallback generation, and Stockfish remain
+  real.
+- Playwright leaves no server or temporary Chroma process/data behind and
+  retains HTML, trace, screenshot, and failure-video evidence.
+
+#### Pending hosted completion evidence
+
+- First green hosted execution of the expanded `frontend` job.
+- First green hosted execution of `frontend-e2e`, including Ubuntu Chromium and
+  packaged Stockfish.
+- Artifact upload evidence for `frontend-coverage` and
+  `frontend-e2e-artifacts`.
+
+Phase 2C is not described as fully hosted-complete until those jobs pass.
+OpenAPI-generated client types and mutation testing remain later incremental
+work; they were not introduced by this subphase. The five high-severity
+findings reported by `npm audit` on 2026-07-29 also require a separate,
+regression-tested dependency update; Phase 2C does not conceal them or apply a
+forced framework upgrade.
 
 ### Acceptance criteria
 

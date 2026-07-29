@@ -47,9 +47,17 @@ The frontend is implemented in [`frontend/src`](../frontend/src):
 - [`api.ts`](../frontend/src/lib/api.ts) calls the REST API.
 - [`types.ts`](../frontend/src/lib/types.ts) manually mirrors backend response contracts.
 
-The frontend uses TypeScript strict mode and currently has lint, explicit
-`tsc --noEmit`, and production-build validation, but no automated component or
-browser tests.
+The frontend uses TypeScript strict mode. Vitest and React Testing Library cover
+deterministic helpers, the API client, forms, result states, the player profile,
+and the game viewer. MSW rejects unexpected frontend HTTP traffic. Playwright
+runs the production build against the real FastAPI application and Stockfish;
+only the outbound Lichess endpoint is replaced by a controlled local NDJSON
+server.
+
+The viewer's deterministic PGN/FEN, move-grouping, and critical-ply functions
+live in [`frontend/src/lib/game-viewer.ts`](../frontend/src/lib/game-viewer.ts).
+The React component retains rendering and interaction state. This split changes
+no response contract or chessboard library.
 
 ### 3.2 REST API
 
@@ -168,6 +176,22 @@ stores its data in tmpfs, and uses a distinct Compose project. Integration
 fixtures reject non-local targets, any database name other than `cerno_test`,
 and the URL configured for the application.
 
+Frontend E2E uses a third isolated boundary without Docker:
+
+```text
+Next production build :3100
+  -> FastAPI :8100
+     -> real Stockfish at depth 1
+     -> temporary empty Chroma directory
+     -> local Lichess fixture server :4300
+```
+
+The fixture server replaces only Lichess HTTP. `LICHESS_API_BASE_URL` defaults
+to `https://lichess.org` in every product environment. The browser-test runner
+creates and removes its temporary Chroma directory even when Playwright fails.
+No E2E path uses Railway, a developer database, the developer Chroma index, or
+external credentials.
+
 ### 3.10 Automated quality boundary
 
 Phase 2A adds deterministic constraints around the current architecture:
@@ -191,9 +215,24 @@ real Stockfish -> depth 1 -> full move/FEN/ownership invariants
 
 The fast backend job remains isolated for early feedback. A
 `backend-integration` job provides PostgreSQL, installs Stockfish, and runs the
-complete suite without secrets or live APIs. The real integrations are green
-locally; the new hosted job awaits its first push. Browser, frontend behavioral,
-and API-contract testing remain Phase 2C.
+complete suite without secrets or live APIs. All three Phase 2A/2B jobs are
+green locally and in GitHub Actions.
+
+Phase 2C adds a frontend behavioral boundary:
+
+```text
+Vitest + jsdom -> pure helpers and React behavior
+MSW             -> strict frontend HTTP isolation
+vitest-axe      -> basic DOM accessibility checks
+Playwright      -> browser + production frontend + FastAPI + Stockfish
+```
+
+The `frontend` job now runs 64 Vitest cases with line and branch coverage before
+the Next production build. The separate `frontend-e2e` job installs Chromium
+and Stockfish, serves the generated Next `standalone` application, runs four
+browser scenarios, and uploads the HTML report, traces, screenshots, and
+retained failure videos. Local evidence is green; the new hosted job awaits its
+first push.
 
 ## 4. Phase 1 correctness status
 

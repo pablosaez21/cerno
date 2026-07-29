@@ -5,9 +5,18 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:e2e": "node e2e/support/build-e2e.mjs",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run src/lib",
+    "test:components": "vitest run src/components",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "npm run build:e2e && npm run test:e2e:only",
+    "test:e2e:only": "node e2e/support/run-playwright.mjs",
+    "test:all": "npm run test:coverage && npm run test:e2e"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
@@ -18,13 +27,24 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "6.0.4",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "jsdom": "30.0.1",
+    "msw": "2.15.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.10",
+    "vitest-axe": "0.1.0"
   }
 }

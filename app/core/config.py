@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     stockfish_path: str | None = None
     chroma_path: str = "data/chromadb"
+    lichess_api_base_url: str = "https://lichess.org"
     frontend_origin: str = "http://localhost:3000"
     backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     max_games_per_analysis: int = 3

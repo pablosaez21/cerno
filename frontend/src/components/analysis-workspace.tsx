@@ -135,15 +135,28 @@ export function AnalysisWorkspace() {
                 <ModeButton
                   active={mode === "lichess"}
                   onClick={() => setMode("lichess")}
+                  id="analysis-tab-lichess"
+                  controls="analysis-panel-lichess"
                 >
                   01 · Lichess player
                 </ModeButton>
-                <ModeButton active={mode === "pgn"} onClick={() => setMode("pgn")}>
+                <ModeButton
+                  active={mode === "pgn"}
+                  onClick={() => setMode("pgn")}
+                  id="analysis-tab-pgn"
+                  controls="analysis-panel-pgn"
+                >
                   02 · Paste PGN
                 </ModeButton>
               </div>
 
-              <div className="p-4 sm:p-6 lg:p-8">
+              <div
+                id={`analysis-panel-${mode}`}
+                role="tabpanel"
+                aria-labelledby={`analysis-tab-${mode}`}
+                aria-busy={loading}
+                className="p-4 sm:p-6 lg:p-8"
+              >
                 {mode === "lichess" ? (
                   <AnalyzeLichessForm
                     onSubmit={submitLichess}
@@ -203,16 +216,22 @@ function ModeButton({
   active,
   children,
   onClick,
+  id,
+  controls,
 }: {
   active: boolean;
   children: React.ReactNode;
   onClick: () => void;
+  id: string;
+  controls: string;
 }) {
   return (
     <button
+      id={id}
       type="button"
       role="tab"
       aria-selected={active}
+      aria-controls={controls}
       onClick={onClick}
       className="analysis-tab"
     >

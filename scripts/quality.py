@@ -174,7 +174,44 @@ def frontend() -> None:
     frontend_root = PROJECT_ROOT / "frontend"
     run("Frontend lint", [npm, "run", "lint"], frontend_root)
     run("Frontend TypeScript", [npm, "run", "typecheck"], frontend_root)
+    run(
+        "Frontend tests with coverage",
+        [npm, "run", "test:coverage"],
+        frontend_root,
+    )
     run("Frontend production build", [npm, "run", "build"], frontend_root)
+
+
+def frontend_tests() -> None:
+    npm = npm_executable()
+    run(
+        "Frontend unit and component tests",
+        [npm, "test"],
+        PROJECT_ROOT / "frontend",
+    )
+
+
+def frontend_coverage() -> None:
+    npm = npm_executable()
+    run(
+        "Frontend tests with coverage",
+        [npm, "run", "test:coverage"],
+        PROJECT_ROOT / "frontend",
+    )
+
+
+def frontend_e2e() -> None:
+    npm = npm_executable()
+    run(
+        "Frontend browser end-to-end tests",
+        [npm, "run", "test:e2e"],
+        PROJECT_ROOT / "frontend",
+    )
+
+
+def frontend_full() -> None:
+    frontend()
+    frontend_e2e()
 
 
 def backend() -> None:
@@ -199,6 +236,7 @@ def full_quality() -> None:
         coverage_all()
         workflow()
         frontend()
+        frontend_e2e()
     finally:
         integration_down()
 
@@ -220,6 +258,10 @@ COMMANDS = {
     "workflow": workflow,
     "backend": backend,
     "frontend": frontend,
+    "frontend-tests": frontend_tests,
+    "frontend-coverage": frontend_coverage,
+    "frontend-e2e": frontend_e2e,
+    "frontend-full": frontend_full,
     "all": all_quality,
     "full": full_quality,
 }

@@ -574,6 +574,64 @@ and missing binary errors.
 **Evidence:** `python scripts/quality.py stockfish` reports eight passing cases
 with the ignored Windows executable.
 
+### DEC-031 — Frontend confidence uses behavior-first layered tests
+
+**Status:** Accepted and implemented locally in Phase 2C
+
+**Problem:** The frontend had only lint, TypeScript, and build validation.
+Failures in request serialization, async states, PGN/FEN reconstruction,
+orientation, accessibility semantics, or board navigation could reach users.
+
+**Decision:** Use Vitest with React Testing Library for deterministic and
+component behavior, MSW with unexpected requests rejected, `vitest-axe` for
+basic DOM accessibility checks, and Playwright for browser flows. Keep unit
+tests independent from CSS classes and massive snapshots. Include every module
+under `src/components` and `src/lib` in coverage, excluding only tests/fixtures.
+
+**Alternatives:** Jest in parallel with Vitest; snapshot-heavy testing; only
+Playwright; mocking the entire backend in browser tests.
+
+**Rationale:** The layers localize failures while retaining one real full-stack
+path. They are compatible with Next 16, React 19, Node 24, and the existing
+board dependencies.
+
+**Impact:** Sixty-four Vitest cases establish a measured 95.70% statement,
+83.21% branch, 95.57% function, and 98.20% line baseline. Non-regression floors
+of 92%, 80%, 90%, and 95% apply respectively. The API client and GameViewer
+remain included.
+
+**Evidence:** Separate unit/component/coverage commands, strict MSW setup, eight
+axe checks, and local passing coverage.
+
+### DEC-032 — Browser E2E replaces only the external Lichess boundary
+
+**Status:** Accepted and implemented locally in Phase 2C
+
+**Problem:** Live Lichess is rate-limited and variable, while mocking the
+frontend API would not prove compatibility among the browser, FastAPI, coach,
+player projection, and engine.
+
+**Decision:** Add `LICHESS_API_BASE_URL`, defaulting to
+`https://lichess.org`, at the existing Lichess adapter. Playwright starts a local
+NDJSON fixture server for that URL, a production Next build, and FastAPI with a
+real depth-1 Stockfish. OpenAI uses the existing local fallback, saving is
+disabled, and Chroma uses a temporary empty directory removed by the runner.
+
+**Alternatives:** Contact live Lichess in every pull request; mock
+`/coach/analyze-user` in the browser; use the developer database/index; require
+Docker for all browser tests.
+
+**Rationale:** This is the narrowest deterministic seam that keeps the internal
+application and public contracts real on both Windows and Ubuntu.
+
+**Impact:** Four Chromium cases cover PGN success, Lichess success and player
+orientation, controlled Lichess 404, and invalid PGN recovery. Failure artifacts
+include HTML, trace, screenshot, and retained video. The production default and
+REST contract are unchanged.
+
+**Evidence:** `npm run test:e2e:only` reports four passing cases and the wrapper
+leaves no owned temporary directory or listening process.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
@@ -674,13 +732,13 @@ Measure Stockfish and multi-game latency before deciding whether REST/MCP need a
 
 ### OQ-009 — CI environment
 
-**Status:** Phase 2A resolved; Phase 2B hosted integration pending
+**Status:** Phase 2A/2B resolved; Phase 2C hosted verification pending
 
-The deterministic Python 3.13 and Node 24 jobs are green in GitHub Actions.
-Phase 2B defines and locally validates the PostgreSQL 16 service, temporary
-Chroma storage, Ubuntu Stockfish installation, and complete-suite runtime. Their
-hosted behavior remains pending until the first `backend-integration` run.
-Browser dependencies and runtime budgets remain open for Phase 2C.
+The deterministic Python 3.13, Node 24, and backend-integration jobs are green
+in GitHub Actions run `30460515439`. Phase 2C locally validates Chromium,
+production Next, the isolated Lichess boundary, temporary Chroma, and real
+Stockfish. The expanded frontend job, new browser job, and artifact uploads
+remain pending until the first push.
 
 ### OQ-010 — Retrieval thresholds and advanced techniques
 

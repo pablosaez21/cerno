@@ -65,6 +65,34 @@ def test_fetch_games_identifies_cerno_and_parses_ndjson():
     )
 
 
+def test_fetch_games_uses_configured_adapter_base_url(monkeypatch):
+    raw_game = {
+        "id": "fixture-game",
+        "speed": "rapid",
+        "rated": False,
+        "status": "draw",
+        "players": {
+            "white": {"user": {"name": "PSM 12"}},
+            "black": {"user": {"name": "Opponent"}},
+        },
+        "moves": "e4 e5",
+        "pgn": '[Event "Fixture"]\n\n1. e4 e5 *',
+    }
+    request = httpx.Request("GET", "http://127.0.0.1:4300")
+    response = httpx.Response(200, text=json.dumps(raw_game), request=request)
+    context, get = mock_async_client(response)
+    monkeypatch.setattr(
+        "app.services.lichess.settings.lichess_api_base_url",
+        "http://127.0.0.1:4300/",
+    )
+
+    with patch("app.services.lichess.httpx.AsyncClient", return_value=context):
+        games = asyncio.run(fetch_games("PSM 12", 1))
+
+    assert games[0].id == "fixture-game"
+    assert get.await_args.args[0] == "http://127.0.0.1:4300/api/games/user/PSM%2012"
+
+
 @pytest.mark.parametrize(
     ("status_code", "exception_type", "message"),
     [

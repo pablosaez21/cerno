@@ -9,7 +9,12 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "quality.yml"
-EXPECTED_JOBS = {"backend", "frontend", "backend-integration"}
+EXPECTED_JOBS = {
+    "backend",
+    "frontend",
+    "backend-integration",
+    "frontend-e2e",
+}
 
 
 def require_mapping(value: object, label: str) -> dict[str, Any]:
@@ -54,7 +59,12 @@ def validate_workflow() -> None:
             raise ValueError(f"Backend job does not run '{command}'.")
 
     frontend_commands = run_commands["frontend"]
-    for command in ("npm run lint", "npm run typecheck", "npm run build"):
+    for command in (
+        "npm run lint",
+        "npm run typecheck",
+        "npm run test:coverage",
+        "npm run build",
+    ):
         if command not in frontend_commands:
             raise ValueError(f"Frontend job does not run '{command}'.")
 
@@ -78,6 +88,19 @@ def validate_workflow() -> None:
             raise ValueError(f"Backend integration job does not run '{command}'.")
     if "continue-on-error" in integration_job:
         raise ValueError("Backend integration failures must not be ignored.")
+
+    e2e_job = require_mapping(jobs["frontend-e2e"], "Job 'frontend-e2e'")
+    e2e_commands = run_commands["frontend-e2e"]
+    for command in (
+        "apt-get install --yes stockfish",
+        "playwright install --with-deps chromium",
+        "npm run build:e2e",
+        "npm run test:e2e:only",
+    ):
+        if command not in e2e_commands:
+            raise ValueError(f"Frontend E2E job does not run '{command}'.")
+    if "continue-on-error" in e2e_job:
+        raise ValueError("Frontend E2E failures must not be ignored.")
 
 
 def main() -> None:

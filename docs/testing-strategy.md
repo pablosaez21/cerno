@@ -1,7 +1,7 @@
 # Cerno testing strategy
 
-**Status:** Approved target strategy with Phase 2A complete and Phase 2B implemented locally
-**Implementation phase:** Phase 2B awaits its first hosted integration run
+**Status:** Phase 2A/2B complete; Phase 2C implemented and locally verified
+**Implementation phase:** Phase 2C awaits its first hosted frontend/E2E run
 **Last reviewed:** 2026-07-29
 
 ## 1. Quality objective
@@ -18,9 +18,10 @@ The strategy follows four rules:
 ## 2. Current state
 
 The committed pre-Phase-1 baseline contained 21 collected backend cases. Phase
-2A established 33 deterministic backend cases and its backend/frontend jobs are
-green in GitHub Actions. Phase 2B now has 39 fast cases and 18 real integration
-cases, for 57 passing backend cases locally.
+2A established 33 deterministic backend cases. Phase 2B added real integrations;
+after the Phase 2C Lichess configuration regression there are 40 fast cases and
+18 real integration cases, for 58 backend cases. The backend, frontend, and
+backend-integration jobs are green in GitHub Actions.
 
 Phase 2A adds the automated quality foundation without claiming the remaining
 Phase 2 integration and browser coverage:
@@ -55,19 +56,26 @@ Current strengths:
 - a unit-level Stockfish output-contract test for mover ownership;
 - no requirement for paid API calls.
 
+Phase 2C adds 64 Vitest unit/component cases, strict MSW request isolation,
+basic automated accessibility checks, measured frontend coverage, and four
+Chromium scenarios against the production Next build, FastAPI, and real
+Stockfish. The Lichess browser flow replaces only the outbound HTTP provider.
+
 Identified limitations:
 
-- the new `backend-integration` hosted job cannot be verified until this branch
-  is pushed;
-- the global gate remains 70% until the integration job has a stable hosted
-  baseline;
-- no frontend test framework;
-- no automated E2E;
-- route tests still mock external boundaries, but PostgreSQL, ChromaDB, and
-  Stockfish now each have a separate real integration path;
+- the expanded `frontend` and new `frontend-e2e` jobs need their first hosted
+  run;
+- `npm audit` on 2026-07-29 reports five high-severity findings: the pinned
+  Next 16.2.9 dependency chain (`next`, its `postcss`, and `sharp`) plus
+  `brace-expansion` and `js-yaml` in development tooling. The framework update
+  suggested by npm is intentionally not folded into Phase 2C and requires a
+  separate dependency-remediation change with full regression evidence;
+- frontend response types remain manual rather than OpenAPI-generated;
+- E2E protects the live PGN and coach payloads behaviorally, but a complete
+  OpenAPI snapshot/generated-client drift gate remains incremental work;
 - OpenAI orchestration is largely replaced rather than exercised;
 - no mutation testing;
-- no contract drift protection.
+- jsdom accessibility checks do not measure rendered color contrast.
 
 ### 2.1 Phase 2A tool decisions
 
@@ -417,17 +425,52 @@ Contract fixtures should include the additive player-move field introduced by Ph
 
 ## 10. Frontend testing
 
-### 10.1 Tooling target
+### 10.1 Implemented tooling
 
-- Vitest;
-- React Testing Library;
-- MSW;
-- `vitest-axe` or equivalent;
-- Playwright for browser flows.
+- Vitest and `@vitest/coverage-v8` 4.1.10;
+- React Testing Library 16.3.2 and DOM Testing Library 10.4.1;
+- user-event 14.6.1 and jest-dom 7.0.0;
+- MSW 2.15.0;
+- `vitest-axe` 0.1.0;
+- jsdom 30.0.1;
+- Playwright 1.62.0 with Chromium only.
 
-Exact versions are selected during implementation and pinned with the existing Next.js version.
+These versions are pinned in `frontend/package-lock.json`. They support Node 24,
+React 19.2, TypeScript 5.9, and the existing `react-chessboard` 5.10 /
+`chess.js` 1.4 pairing. Vitest follows the bundled Next 16 guidance and uses
+Vite's native TypeScript path resolution.
 
-### 10.2 Component coverage
+### 10.2 Structure and commands
+
+```text
+frontend/
+  src/lib/__tests__/              pure helpers, contracts, API
+  src/components/__tests__/       forms, states, viewer, results, profile
+  src/test/                       setup, MSW, fixtures, axe helper
+  e2e/fixtures/                   versioned PGN
+  e2e/support/                    servers, process cleanup, browser errors
+  e2e/*.spec.ts                   PGN, Lichess, and error flows
+  vitest.config.mts
+  playwright.config.ts
+```
+
+Run independently:
+
+```powershell
+cd frontend
+npm run test:unit
+npm run test:components
+npm test
+npm run test:coverage
+npm run test:e2e
+npm run test:all
+```
+
+`npm run test:e2e` builds with the isolated API URL and then runs Playwright.
+`test:e2e:only` is used after an explicit E2E build in CI. The wrapper owns a
+temporary directory and removes it after Playwright exits, including on failure.
+
+### 10.3 Component coverage
 
 #### API client
 
@@ -466,6 +509,25 @@ Exact versions are selected during implementation and pinned with the existing N
 
 Tests should target behavior and accessibility roles, not Tailwind class snapshots.
 
+The implemented suite covers every item above. `GameViewer` logic is extracted
+only into pure helpers; React interaction stays in the component. Unit tests
+mock only `react-chessboard` rendering because jsdom has no layout engine.
+Browser tests render the real board.
+
+### 10.4 MSW and accessibility
+
+MSW listens in `src/test/setup.ts` with `onUnhandledRequest: "error"`. Default
+handlers model the four frontend endpoints, and individual cases override only
+the response they need. Fixtures include White and Black ownership, complete
+global moments, personal moments, empty arrays, delayed responses, and HTTP
+400/404/429/500 variants.
+
+`vitest-axe` checks both forms, result states, errors, the player profile,
+coaching output, and board controls. The suite also asserts labels, named icon
+buttons, live loading/navigation status, tab relationships, and keyboard
+navigation. The color-contrast axe rule is disabled only in jsdom because it
+lacks rendered layout; this is not a claim of complete accessibility.
+
 ## 11. End-to-end testing
 
 ### 11.1 Required PGN scenario
@@ -479,7 +541,11 @@ Tests should target behavior and accessibility roles, not Tailwind class snapsho
 7. Jump to a critical moment.
 8. Verify the board changes.
 
-This scenario may use the real local Stockfish service at low depth.
+This scenario is implemented with the production Next build, FastAPI, and the
+real configured Stockfish executable at depth 1. The six-ply fixture contains a
+stable queen blunder, allowing navigation and critical-jump assertions without
+depending on exact centipawn values. The board is additionally measured at
+1280x720 and 390x844.
 
 ### 11.2 Required Lichess scenario
 
@@ -492,7 +558,27 @@ Use a controlled mock for Lichess at the backend adapter boundary:
 5. review all plies on the board;
 6. verify error and rate-limit UI variants.
 
+The implemented fixture server returns NDJSON for `CernoE2E` and 404 for
+`MissingE2E`. `LICHESS_API_BASE_URL` is the narrow injection seam and still
+defaults to `https://lichess.org` for the product. The test keeps the browser,
+frontend client, FastAPI route, coach, projection, local generation fallback,
+and Stockfish real. It unchecks saving, so PostgreSQL is never contacted.
+
 Live Lichess remains a separate scheduled smoke test.
+
+### 11.3 Isolation and artifacts
+
+Playwright uses ports 3100, 8100, and 4300, one worker, and Chromium only.
+OpenAI is disabled, Chroma uses a new empty temporary directory, and no
+production/development database or index is accessed. `webServer` owns all three
+processes; the outer runner removes temporary data after those processes stop.
+
+On failure Playwright retains:
+
+- HTML report;
+- trace;
+- screenshot;
+- video.
 
 ## 12. Golden regression fixtures
 
@@ -540,11 +626,10 @@ The Phase 2A baseline and Phase 2B complete-suite result are:
 | Combined coverage.py result | 70.06% | 80.21% |
 | Required gate | 70.00% | 70.00% |
 
-The quick suite remains independently healthy at 71.78% combined. The gate is
-not raised automatically: the complete suite has ample local margin, but its
-GitHub service-container and packaged-Stockfish behavior has not yet produced a
-hosted baseline. Reconsider the threshold after stable hosted runs rather than
-coupling ordinary backend feedback to an unverified number.
+The quick suite remains independently healthy at 71.78% combined. The first
+hosted PostgreSQL/Stockfish baseline is green, but the gate is not raised from a
+single hosted sample or as an unrelated consequence of frontend work.
+Reconsider it after multiple stable runs and meaningful new backend coverage.
 
 Critical-module changes from Phase 2A to Phase 2B:
 
@@ -562,6 +647,36 @@ Critical-module changes from Phase 2A to Phase 2B:
 Agent sessions remain at 0% because agent work is outside Phase 2B. RAG download,
 chunk parsing, and production embeddings remain uncovered intentionally because
 their functional redesign belongs to Phase 3. Coverage exclusions remain zero.
+
+### 13.1 Frontend Phase 2C baseline
+
+Vitest measures every TypeScript module under `src/components` and `src/lib`.
+Tests and test fixtures are excluded; `GameViewer`, the API client, and critical
+components are not excluded.
+
+| Measure | Covered | Baseline | Non-regression floor |
+| --- | ---: | ---: | ---: |
+| Statements | 290/303 | 95.70% | 92% |
+| Branches | 228/274 | 83.21% | 80% |
+| Functions | 108/113 | 95.57% | 90% |
+| Lines | 274/279 | 98.20% | 95% |
+
+Critical modules:
+
+| Module | Lines | Branches | Functions |
+| --- | ---: | ---: | ---: |
+| `src/lib/api.ts` | 100% | 100% | 100% |
+| `src/lib/game-viewer.ts` | 100% | 96.55% | 100% |
+| `src/components/game-viewer.tsx` | 100% | 87.71% | 100% |
+| `src/components/analysis-workspace.tsx` | 100% | 87.50% | 100% |
+| `src/components/analysis-forms.tsx` | 100% | 90.00% | 100% |
+| `src/components/player-profile.tsx` | 94.44% | 67.56% | 92.30% |
+
+The weakest meaningful branches are conditional empty/optional presentation in
+`coach-results.tsx` (53.12%) and `player-profile.tsx` (67.56%). The only zero
+line module is the trivial static `site-header.tsx`; it remains visible in the
+report rather than being excluded. Floors were set only after the 64-case
+baseline passed.
 
 ## 14. Mutation testing
 
@@ -605,7 +720,7 @@ Every critical adapter requires at least one real automated integration path.
 
 `.github/workflows/quality.yml` runs on relevant pushes and pull requests with
 read-only repository permissions and cancels superseded runs on the same ref.
-Its three independent jobs are:
+Its four independent jobs are:
 
 ```text
 backend:
@@ -623,21 +738,32 @@ frontend:
   npm ci
   ESLint
   tsc --noEmit
+  Vitest with V8 coverage
   Next.js production build
+  upload frontend coverage
 
 backend-integration:
   Python 3.13
   PostgreSQL 16 service container with cerno_test
   install Stockfish from Ubuntu packages
-  run all 57 backend cases with line and branch coverage
+  run all backend cases with line and branch coverage
   upload the complete coverage.xml
+
+frontend-e2e:
+  Python 3.13 and Node 24
+  install backend/frontend dependencies
+  install Ubuntu Stockfish and Chromium
+  build against the isolated E2E API URL
+  run four Playwright scenarios
+  upload report, traces, screenshots, and retained failure videos
 ```
 
 The integration job has no secrets, paid APIs, live Lichess calls, persistent
 Chroma volume, or `continue-on-error`. YAML structure, the PostgreSQL service,
-Stockfish installation, and required commands are checked locally by
-`scripts/validate_workflow.py`. Phase 2A's backend/frontend jobs are green on
-GitHub; the new integration job requires its first push.
+Stockfish installation, Chromium command, and required commands are checked
+locally by `scripts/validate_workflow.py`. The backend, original frontend, and
+backend-integration jobs are green on GitHub. The expanded frontend commands
+and new browser job require their first push.
 
 ### 16.2 Local commands
 
@@ -661,7 +787,7 @@ ephemeral PostgreSQL service automatically:
 .\venv\Scripts\python.exe scripts\quality.py full
 ```
 
-Available Phase 2B targets:
+Available quality targets:
 
 ```text
 tests             fast tests only
@@ -675,6 +801,10 @@ coverage-all      complete-suite coverage
 integration-up    start isolated local PostgreSQL
 integration-down  stop isolated local PostgreSQL
 full              start integration DB, run every gate, then clean up
+frontend-tests    Vitest without coverage
+frontend-coverage Vitest with V8 coverage and floors
+frontend-e2e      production build plus Playwright
+frontend-full     frontend static, coverage, build, and browser gates
 ```
 
 The latest complete backend evidence is:
@@ -682,27 +812,33 @@ The latest complete backend evidence is:
 ```text
 Ruff: All checks passed; 57 Python files formatted
 mypy: Success, no issues in 36 source files
-fast pytest: 39 passed, 18 deselected
+fast pytest: 40 passed, 18 deselected
 PostgreSQL: 6 passed
 ChromaDB: 4 passed
 Stockfish: 8 passed
-complete pytest: 57 passed
-complete coverage: 80.21%, required 70.00% reached
+complete pytest: 58 passed
+complete coverage: 80.24%, required 70.00% reached
 workflow validation: valid
 frontend ESLint: passed
 frontend TypeScript: passed
+frontend Vitest: 64 passed
+frontend coverage: 95.70% statements, 83.21% branches,
+                   95.57% functions, 98.20% lines
 Next.js production build: passed
+Playwright Chromium: 4 passed against Next standalone, FastAPI, and Stockfish
+Python dependency consistency: no broken requirements
+npm dependency audit: 5 high-severity findings; remediation pending separately
 ```
 
 ### 16.3 Remaining Phase 2 target
 
-Later subphases should add, in parallel where safe:
+The live PGN and coach contracts now have behavior-level browser protection.
+Remaining incremental quality work is:
 
 ```text
-frontend-component-tests
-contract-check
-playwright-pgn
+generated-client or complete OpenAPI snapshot contract-check
 mutation-testing
+optional scheduled live-Lichess smoke
 ```
 
 ### Scheduled/manual workflow
@@ -761,15 +897,35 @@ Phase 2B is implemented and verified locally with:
 - real temporary Chroma persistence, retrieval, metadata, upsert, and error
   evidence;
 - real Stockfish execution across stable chess invariants and special moves;
-- 57 passing backend cases and 80.21% combined complete-suite coverage;
+- 58 passing backend cases and 80.24% combined complete-suite coverage after
+  the Phase 2C Lichess configuration regression;
 - an isolated local Compose service and a GitHub PostgreSQL service container;
 - a required `backend-integration` job with no external credentials.
 
-Hosted completion evidence remains pending until the first push runs the new
-job. Phase 2B must not be described as fully hosted-verified before that run is
-green.
+GitHub Actions run `30460515439` verifies the backend, frontend, and real
+integration jobs for commit `e2050f1`; Phase 2B is complete locally and hosted.
 
-### 18.3 Full Phase 2
+### 18.3 Phase 2C
+
+Phase 2C is implemented and locally verified with:
+
+- 64 passing Vitest cases and enforced measured coverage floors;
+- strict MSW isolation and eight automated accessibility checks;
+- dedicated GameViewer position, navigation, ownership, orientation, and
+  defensive-state coverage;
+- four passing Chromium flows against the production frontend, FastAPI, and
+  real Stockfish;
+- desktop and mobile browser inspection at 1280x720 and 390x844 with no
+  horizontal overflow, no browser warning/error entries, and all expected
+  controls present;
+- a local-only Lichess adapter fixture and automatic process/data cleanup;
+- frontend coverage and Playwright artifact upload configuration.
+
+Hosted completion remains pending until the expanded `frontend` and new
+`frontend-e2e` jobs are green. The broader Phase 2 is therefore not yet marked
+complete.
+
+### 18.4 Full Phase 2
 
 Phase 2 is complete only with:
 

@@ -47,3 +47,23 @@ move against a recommendation, each move would need fields such as:
 
 Until that contract exists, the viewer only draws the played move and reports the
 real evaluation loss. It does not infer a recommendation or fabricate an explanation.
+
+## Automated contract evidence
+
+Phase 2C protects the implemented viewer behavior at two layers:
+
+- Vitest exercises backend-FEN preference, PGN replay, custom initial FEN,
+  malformed FEN/PGN, initial and final positions, all plies, explicit
+  `mover_color`, move grouping, critical-ply bounds, and off-by-one behavior.
+- React Testing Library exercises start/previous/next/end, direct move
+  selection, ArrowLeft/ArrowRight/Home/End, critical jumps, White and Black
+  orientation, manual flip, empty data, and inaccessible critical indices.
+- A coaching-result test proves that the game viewer keeps global moments while
+  the separate coaching section contains only personal moments.
+- Playwright proves that the production frontend can navigate a six-ply report
+  returned by the real FastAPI/Stockfish path. It also checks the board at
+  1280x720 and 390x844 so the complete square remains bounded by the viewport.
+
+The unit test replaces only `react-chessboard` rendering with a small semantic
+element; `chess.js` position reconstruction and all Cerno viewer logic remain
+real. Browser tests use the real `react-chessboard`.

@@ -50,7 +50,8 @@ async def fetch_games(username: str, limit: int = 10) -> list[Game]:
     limit = settings.clamp_games_limit(limit)
 
     encoded_username = quote(username, safe="")
-    url = f"https://lichess.org/api/games/user/{encoded_username}"
+    base_url = settings.lichess_api_base_url.rstrip("/")
+    url = f"{base_url}/api/games/user/{encoded_username}"
     headers = {
         "Accept": "application/x-ndjson",
         "User-Agent": LICHESS_USER_AGENT,

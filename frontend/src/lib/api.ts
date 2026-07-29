@@ -5,19 +5,29 @@ import type {
   WeaknessProfile,
 } from "@/lib/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:8000";
+const DEFAULT_API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL,
+);
 
 type ErrorPayload = {
   detail?: string | { msg?: string }[];
 };
 
+export function normalizeApiBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, "");
+}
+
+export function buildApiUrl(path: string, baseUrl = API_BASE_URL): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${normalizeApiBaseUrl(baseUrl)}${normalizedPath}`;
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(buildApiUrl(path), {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -31,17 +41,62 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as ErrorPayload;
-    const detail = Array.isArray(payload.detail)
-      ? payload.detail.map((item) => item.msg).filter(Boolean).join(". ")
-      : payload.detail;
+    const payload = await readJson(response);
+    const errorPayload = isErrorPayload(payload) ? payload : {};
+    const detail = Array.isArray(errorPayload.detail)
+      ? errorPayload.detail
+          .map((item) => item.msg)
+          .filter(Boolean)
+          .join(". ")
+      : errorPayload.detail;
 
     throw new Error(
       detail || `The analysis service returned an error (${response.status}).`,
     );
   }
 
-  return response.json() as Promise<T>;
+  const payload = await readJson(response);
+  if (payload === undefined) {
+    throw new Error("The analysis service returned an empty response.");
+  }
+  if (payload === INVALID_JSON) {
+    throw new Error("The analysis service returned invalid JSON.");
+  }
+  return payload as T;
+}
+
+const INVALID_JSON = Symbol("invalid-json");
+
+async function readJson(
+  response: Response,
+): Promise<unknown | typeof INVALID_JSON | undefined> {
+  const body = await response.text();
+  if (!body.trim()) return undefined;
+
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return INVALID_JSON;
+  }
+}
+
+function isErrorPayload(value: unknown): value is ErrorPayload {
+  if (!value || typeof value !== "object" || !("detail" in value)) {
+    return false;
+  }
+
+  const detail = (value as { detail?: unknown }).detail;
+  return (
+    typeof detail === "string" ||
+    (Array.isArray(detail) &&
+      detail.every(
+        (item) =>
+          !!item &&
+          typeof item === "object" &&
+          (!("msg" in item) ||
+            typeof (item as { msg?: unknown }).msg === "string"),
+      ))
+  );
 }
 
 export function analyzeLichessUser(input: {
