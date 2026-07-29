@@ -432,8 +432,7 @@ function groupMoves(moves: PgnMove[]) {
   const rows = new Map<number, MoveRow>();
   moves.forEach((move, index) => {
     const row = rows.get(move.move_number) ?? { moveNumber: move.move_number };
-    const fenTurn = move.fen_before?.split(" ")[1];
-    const color = fenTurn === "b" || (fenTurn !== "w" && index % 2 === 1) ? "black" : "white";
+    const color = move.mover_color;
     row[color] = { move, ply: index + 1 };
     rows.set(move.move_number, row);
   });

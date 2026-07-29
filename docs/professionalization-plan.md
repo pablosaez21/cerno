@@ -72,6 +72,8 @@ Create a shared, technically accurate plan before modifying implementation.
 
 ## 5. Phase 1 — Product correctness
 
+**Status:** Complete as of 2026-07-28
+
 ### Objective
 
 Ensure that Cerno's coaching describes the player's play rather than a mixture of both players, and restore coherent best-phase detection.
@@ -139,6 +141,30 @@ Given sufficient evidence in multiple phases:
 - The implementation diff remains limited to the affected flow.
 
 Phase 1 must not be marked complete without evidence for every item above.
+
+### Completion evidence
+
+- Stockfish move output includes explicit `mover_color`.
+- White-user and Black-user regressions prove that opponent-only blunders do not
+  enter personal statistics or critical moments.
+- Mixed-error coverage proves that only the user's critical moment is promoted to
+  the coaching profile while the viewer retains both full-game moments.
+- Aggregation tests verify exact player-only move counts, average CPL, counters,
+  patterns, and theory-query inputs.
+- Persistence wiring is verified to receive the player projection and save only
+  personal critical moments.
+- Unknown player identity is rejected before engine work and produces no
+  player-specific claim.
+- Normalized phase statistics retain `moves`; best-phase tests cover a strong
+  opening, empty phases, all-empty input, and legacy inputs without evidence.
+- The additive `mover_color` response field is reflected in frontend types and the
+  viewer consumes it directly.
+- Backend suite: `33 passed`.
+- Frontend ESLint: passed.
+- Next.js production build and TypeScript validation: passed.
+- Python bytecode compilation for `app` and `tests`: passed.
+- Rebuilt Docker API and frontend images are healthy; a real depth-1 Stockfish
+  smoke returned three plies with ownership `white, black, white`.
 
 ## 6. Phase 2 — Automated quality foundation
 

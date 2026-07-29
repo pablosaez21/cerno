@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
@@ -8,10 +9,23 @@ from app.db.repositories.analyses import save_critical_moves, save_game_analysis
 from app.db.repositories.recommendations import save_training_recommendation
 from app.db.repositories.users import get_or_create_user
 from app.db.repositories.weaknesses import upsert_weakness_profile
+from app.schemas.game import Game
 from app.services.lichess import fetch_games
 from app.services.rag import search_theory
 from app.services.stockfish import analyze_game
-from app.services.weakness import aggregate_game_analyses
+from app.services.weakness import (
+    aggregate_game_analyses,
+    project_analysis_for_player,
+)
+
+
+@dataclass(frozen=True)
+class AnalyzedPlayerGame:
+    game: Game
+    full_analysis: dict
+    player_analysis: dict
+    player_color: str
+
 
 async def analyze_user(
     username: str,
@@ -27,8 +41,8 @@ async def analyze_user(
     if not games:
         raise ValueError(f"No games found for Lichess user '{username}'.")
 
-    analyses = []
-    analyzed_games = []
+    player_analyses = []
+    analyzed_games: list[AnalyzedPlayerGame] = []
     skipped_games = []
 
     for game in games:
@@ -39,24 +53,41 @@ async def analyze_user(
             })
             continue
 
+        player_color = resolve_player_color(game, username)
+        if player_color is None:
+            skipped_games.append({
+                "game_id": game.id,
+                "reason": "The requested user is not identified as a player.",
+            })
+            continue
+
         try:
-            analysis = await analyze_game(game.pgn, depth)
-            analysis["game_id"] = game.id
-            analyses.append(analysis)
-            analyzed_games.append((game, analysis))
+            full_analysis = await analyze_game(game.pgn, depth)
+            full_analysis["game_id"] = game.id
+            player_analysis = project_analysis_for_player(
+                full_analysis,
+                player_color,
+            )
+            player_analyses.append(player_analysis)
+            analyzed_games.append(AnalyzedPlayerGame(
+                game=game,
+                full_analysis=full_analysis,
+                player_analysis=player_analysis,
+                player_color=player_color,
+            ))
         except Exception as exc:
             skipped_games.append({
                 "game_id": game.id,
                 "reason": str(exc)
             })
 
-    if not analyses:
+    if not player_analyses:
         raise ValueError("No games could be analyzed.")
 
-    weakness_profile = aggregate_game_analyses(analyses)
+    weakness_profile = aggregate_game_analyses(player_analyses)
     theory_results = collect_theory_results(weakness_profile["theory_queries"])
     theory_recommendations = build_theory_recommendations(theory_results)
-    critical_moments = collect_critical_moments(analyses)
+    critical_moments = collect_critical_moments(player_analyses)
     generated_training = await generate_training_plan(
         username=username,
         weakness_profile=weakness_profile,
@@ -86,7 +117,7 @@ async def analyze_user(
     return {
         "username": username,
         "games_requested": limit,
-        "games_analyzed": len(analyses),
+        "games_analyzed": len(player_analyses),
         "diagnosis": {
             "main_weakness": weakness_profile["main_weakness"],
             "secondary_weakness": weakness_profile["secondary_weakness"],
@@ -99,20 +130,26 @@ async def analyze_user(
         "critical_moments": critical_moments,
         "theory_recommendations": theory_recommendations,
         "training_plan": training_plan,
-        "game_analyses": build_game_analyses(username, analyzed_games),
+        "game_analyses": build_game_analyses(analyzed_games),
         "skipped_games": skipped_games,
         "saved": saved,
     }
 
 
-def build_game_analyses(username: str, analyzed_games: list[tuple]) -> list[dict]:
+def build_game_analyses(
+    analyzed_games: list[AnalyzedPlayerGame],
+) -> list[dict]:
     reports = []
-    normalized_username = username.casefold()
 
-    for game, analysis in analyzed_games:
-        player_is_white = game.white.username.casefold() == normalized_username
-        player_color = "white" if player_is_white else "black"
-        opponent = game.black.username if player_is_white else game.white.username
+    for analyzed_game in analyzed_games:
+        game = analyzed_game.game
+        analysis = analyzed_game.full_analysis
+        player_color = analyzed_game.player_color
+        opponent = (
+            game.black.username
+            if player_color == "white"
+            else game.white.username
+        )
 
         if game.winner is None:
             result = "draw"
@@ -138,7 +175,7 @@ def build_game_analyses(username: str, analyzed_games: list[tuple]) -> list[dict
 def persist_coach_result(
     db: Session,
     username: str,
-    analyzed_games: list[tuple],
+    analyzed_games: list[AnalyzedPlayerGame],
     weakness_profile: dict,
     theory_recommendations: list[dict],
     training_plan: dict,
@@ -146,12 +183,18 @@ def persist_coach_result(
     try:
         user = get_or_create_user(db, username)
 
-        for game, analysis in analyzed_games:
-            game_analysis = save_game_analysis(db, user, game, analysis, username)
+        for analyzed_game in analyzed_games:
+            game_analysis = save_game_analysis(
+                db,
+                user,
+                analyzed_game.game,
+                analyzed_game.player_analysis,
+                username,
+            )
             save_critical_moves(
                 db,
                 game_analysis,
-                analysis.get("critical_moments", []),
+                analyzed_game.player_analysis.get("critical_moments", []),
             )
 
         saved_weakness = upsert_weakness_profile(db, user, weakness_profile)
@@ -166,6 +209,16 @@ def persist_coach_result(
     except Exception:
         db.rollback()
         raise
+
+
+def resolve_player_color(game: Game, username: str) -> str | None:
+    normalized_username = username.casefold()
+    is_white = game.white.username.casefold() == normalized_username
+    is_black = game.black.username.casefold() == normalized_username
+
+    if is_white == is_black:
+        return None
+    return "white" if is_white else "black"
 
 
 def collect_theory_results(queries: list[str], n_results: int = 2) -> list[dict]:

@@ -51,6 +51,7 @@ export type PgnMove = {
   move_number: number;
   move_uci: string;
   move_san: string;
+  mover_color: "white" | "black";
   phase: string;
   evaluation_before: number;
   evaluation_after: number;

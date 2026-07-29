@@ -17,7 +17,9 @@ The strategy follows four rules:
 
 ## 2. Current state
 
-The current working tree contains 21 collected backend test cases and they pass in the last verified run. This count includes parametrized cases and the untracked `tests/test_lichess.py`; the committed revision alone does not contain the same suite.
+The committed pre-Phase-1 baseline contained 21 collected backend cases. The
+Phase 1 working tree contains 33 collected cases, including parametrized
+regressions, and all pass in the latest verified run.
 
 Current strengths:
 
@@ -25,6 +27,8 @@ Current strengths:
 - API-level assertions with FastAPI `TestClient`;
 - isolated external boundaries;
 - basic config, CORS, health, coach, Lichess, theory, user, and weakness tests;
+- Phase 1 player-projection and best-phase regressions;
+- a unit-level Stockfish output-contract test for mover ownership;
 - no requirement for paid API calls.
 
 Identified limitations:
@@ -80,18 +84,23 @@ Tests should assert stable properties rather than exact engine scores where engi
 
 ### 4.2 Player projection and weakness aggregation
 
-Phase 1 must introduce regression tests before or with the fix:
+Phase 1 introduced regression coverage for:
 
 - White user, only Black blunders;
 - Black user, only White blunders;
 - both players blunder, only the user's error is counted;
 - full viewer analysis retains every ply;
 - personal critical moments contain only the user's plies;
+- persistence receives the player projection rather than the full-game analysis;
 - player-only counters and average CPL match the filtered subset;
 - empty phases do not become strengths;
-- all-clean games do not produce invented weaknesses.
+- player identity absent from a game produces no personal analysis;
+- analysis moves without valid ownership fail closed.
 
-Pure helpers should make player projection independently testable.
+The pure `project_analysis_for_player` helper makes player projection independently
+testable. A Docker smoke additionally verifies real Stockfish output for ply count
+and ownership. Phase 2 may add property-based coverage without changing this
+contract.
 
 ### 4.3 Coach
 

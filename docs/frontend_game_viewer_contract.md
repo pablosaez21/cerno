@@ -7,6 +7,7 @@ Both analysis endpoints now provide enough position-level data for the same boar
 `POST /games/analyze` returns the complete ordered ply list. Each move contains:
 
 - `move_number`, `move_uci`, and `move_san`;
+- `mover_color`, explicitly `white` or `black`;
 - `fen_before` and `fen_after`;
 - `evaluation_before`, `evaluation_after`, and `cpl`;
 - `phase` and `classification`.
@@ -16,9 +17,17 @@ Stockfish results that the coach service already computes, so it does not trigge
 any additional engine work. Every entry includes the original PGN, player color,
 opponent, result, complete move sequence, phase summary, and critical moments.
 
+The nested `game_analyses` entries remain full-game reports: all plies and all
+engine critical moments are available to the viewer. Top-level coach diagnosis and
+critical moments are a separate player-only projection.
+
 The frontend uses backend FEN values first. If a FEN is missing or invalid,
 `chess.js` replays the original PGN and reconstructs that position. Lichess games
-open from the analyzed player's side.
+open from the analyzed player's side. Move-list color placement uses `mover_color`
+directly rather than inferring ownership from list position or FEN.
+
+Normalized `diagnosis.phase_stats` also includes `moves`, the number of analyzed
+player plies contributing to each phase. Existing phase metrics remain unchanged.
 
 ## Fields still unavailable
 

@@ -62,6 +62,7 @@ def _analyze_game_sync(pgn: str, depth: int) -> dict:
                     "move_number": move_number,
                     "move_uci": move.uci(),
                     "move_san": move_san,
+                    "mover_color": "white" if player_turn == chess.WHITE else "black",
                     "phase": phase,
                     "evaluation_before": evaluation_before,
                     "evaluation_after": evaluation_after,

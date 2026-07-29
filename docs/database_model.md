@@ -100,8 +100,12 @@ erDiagram
 ## Design notes
 
 - `user_profiles.lichess_username` is unique because the current product analyzes public Lichess users.
-- `game_analyses` stores the PGN and structured summary, but not every move.
-- `move_analyses` stores only critical moments: inaccuracies, mistakes, and blunders.
+- `game_analyses` stores the PGN, full-game ply count, and player-specific
+  structured phase summary, but not every move.
+- `move_analyses` stores only the analyzed user's critical moments:
+  inaccuracies, mistakes, and blunders. Ownership is implied by
+  `game_analyses.color_played`; no opponent critical move is persisted for that
+  user's analysis.
 - `weakness_profiles.profile_data` keeps the full aggregated profile as JSONB while exposing key fields as columns.
 - `training_recommendations.rag_sources` stores the RAG sources used to generate the plan.
 - `agent_sessions.tools_used` is reserved for tracing conversational tool calls.

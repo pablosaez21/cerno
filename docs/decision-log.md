@@ -293,13 +293,87 @@ Statuses:
 
 **Impact:** MCP does not receive unique business limits that drift from REST.
 
+### DEC-020 — Move ownership is explicit at the engine boundary
+
+**Status:** Accepted and implemented in Phase 1
+
+**Problem:** Deriving ownership only inside the coach would leave the shared
+full-game contract ambiguous and encourage different interfaces to repeat parity
+or FEN inference.
+
+**Decision:** Every Stockfish move and critical-moment record includes
+`mover_color` with the value `white` or `black`. Player projection validates this
+field and fails closed if ownership is missing or invalid.
+
+**Alternatives:** Infer by list parity; inspect FEN separately in every consumer;
+add ownership only to the coach response.
+
+**Rationale:** Ownership is known exactly before the move is pushed and is
+therefore cheapest and most reliable at the engine boundary.
+
+**Impact:** `/games/analyze` and nested coach move records gain an additive field;
+frontend types and move grouping consume it directly.
+
+**Evidence:** Stockfish output-contract test, real Docker Stockfish smoke, frontend
+lint, and production build.
+
+### DEC-021 — Phase evidence is represented by the normalized move count
+
+**Status:** Accepted and implemented in Phase 1
+
+**Problem:** `detect_best_phase` required `moves`, but normalization discarded it.
+Selecting a zero-CPL empty phase would invent a relative strength.
+
+**Decision:** Preserve `moves` in normalized phase statistics. A phase is eligible
+for the current relative comparison when it contains at least one analyzed player
+move; phases with zero or missing move count are excluded. The eligible phase with
+the lowest average CPL is selected.
+
+**Alternatives:** Recount moves in the coach; always choose minimum CPL; introduce
+an arbitrary multi-move confidence threshold.
+
+**Rationale:** Preserving an already-computed count restores the existing contract
+without duplication. A higher confidence threshold requires product evidence and
+is not invented during correctness work.
+
+**Impact:** `diagnosis.phase_stats` gains additive `moves`; no-evidence inputs
+produce no best-phase claim.
+
+**Evidence:** Aggregation contract and best-phase regression tests.
+
+### DEC-022 — Unknown player identity fails closed
+
+**Status:** Accepted and implemented in Phase 1
+
+**Problem:** The previous coach code treated any username not matching White as
+Black, which could make unsupported player-specific claims for malformed or
+unexpected game metadata.
+
+**Decision:** Resolve both participants case-insensitively and accept exactly one
+match. A game with no match or an ambiguous double match is skipped before
+Stockfish analysis. If no valid games remain, the existing controlled
+`No games could be analyzed` error is returned.
+
+**Alternatives:** Assume Black; analyze and mix both players; infer identity from
+the PGN header independently of the structured Lichess record.
+
+**Rationale:** Player-specific coaching must never guess identity.
+
+**Impact:** Malformed Lichess game metadata cannot create a personal profile.
+
+**Evidence:** Endpoint regression proving the engine is not called.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
 
-The brief and latest audit state that 21 backend tests pass. The current working tree supports that statement, but `tests/test_lichess.py` is untracked. The last commit alone does not contain the same suite.
+The documentation-phase audit observed 21 passing backend cases while
+`tests/test_lichess.py` was untracked.
 
-**Resolution:** Documentation says "current working tree." Versioning is required before CI can reproduce the count.
+**Phase 1 verification:** At the start of Phase 1 the worktree was clean,
+`tests/test_lichess.py` was tracked by `HEAD`, and the committed baseline
+reproduced 21 passing cases. The earlier versioning discrepancy is therefore
+resolved. The Phase 1 working tree now collects 33 cases.
 
 ### 3.2 RAG count: documentation versus local volume
 

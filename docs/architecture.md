@@ -74,7 +74,8 @@ The OpenAPI schema currently exposes ten paths. Frontend types are not generated
 - classification;
 - FEN before and after.
 
-All plies are required by the board viewer. The current move result does not expose `mover_color` as a first-class field, although the side to move is known while analysis runs.
+All plies are required by the board viewer. Since Phase 1, every move exposes
+`mover_color` as either `white` or `black`.
 
 ### 3.4 Structured coach flow
 
@@ -82,12 +83,14 @@ All plies are required by the board viewer. The current move result does not exp
 
 1. retrieves recent Lichess games;
 2. analyzes each complete PGN;
-3. aggregates weaknesses;
-4. generates theory queries;
-5. searches ChromaDB;
-6. builds theory recommendations;
-7. generates a training plan with OpenAI or a local fallback;
-8. optionally persists the result.
+3. resolves the requested user's color from the game participants;
+4. derives a player-only projection while retaining the complete analysis;
+5. aggregates weaknesses from the player-only projections;
+6. generates theory queries;
+7. searches ChromaDB;
+8. builds theory recommendations;
+9. generates a training plan with OpenAI or a local fallback;
+10. optionally persists the player-specific result.
 
 This is the primary product flow because it has a bounded, structured response.
 
@@ -148,20 +151,28 @@ Docker Compose runs:
 
 The current `/health` route proves that the API process responds. It does not prove readiness of PostgreSQL, ChromaDB, Stockfish, Lichess, or OpenAI.
 
-## 4. Confirmed correctness limitations
+## 4. Phase 1 correctness status
 
-### 4.1 Player and opponent moves are mixed
+### 4.1 Player and opponent separation
 
-The engine correctly analyzes the full game, but the coach passes that full analysis directly to `aggregate_game_analyses`. The aggregator has no player-color filter. As a result, opponent errors can influence:
+**Status:** Resolved in Phase 1.
 
-- the player's average CPL;
-- error counts;
-- the primary weakness;
-- personal critical moments;
-- theory queries;
-- training recommendations.
+The original bug occurred because the coach passed the full engine analysis directly
+to `aggregate_game_analyses`; player color was only calculated later while building
+the viewer response. Opponent moves could therefore influence every downstream
+coaching result.
 
-### Approved invariant
+The implemented flow now:
+
+1. records `mover_color` at the Stockfish boundary;
+2. derives the requested user's color from the White and Black participants;
+3. rejects a game for personal analysis when that identity is ambiguous or absent;
+4. creates a separate player-only projection;
+5. uses that projection for metrics, personal critical moments, theory queries,
+   generated coaching, and persistence;
+6. returns the original complete analysis in `game_analyses` for the viewer.
+
+### Preserved invariant
 
 Two views of the same game must coexist:
 
@@ -172,13 +183,18 @@ Player profile view -> own plies -> diagnosis, personal moments, RAG, training
 
 The full game must not be truncated to solve the player-profile bug.
 
-### 4.2 Best-phase detection uses an unavailable field
+### 4.2 Best-phase evidence
 
-`detect_best_phase` filters normalized phase statistics using `stats.get("moves", 0)`, but the normalized contract currently omits `moves`. The fallback therefore lacks the evidence it expects and cannot identify a relatively stable phase.
+**Status:** Resolved in Phase 1.
 
-### Approved invariant
+The original normalized phase contract discarded `moves`, although
+`detect_best_phase` required that field. Normalized phase statistics now retain
+their move count. Best-phase comparison includes only phases with at least one
+analyzed player move and selects the lowest average CPL among those phases. Empty
+or legacy inputs without move evidence return no best phase.
 
-A phase can be described as a relative strength only when it contains sufficient move evidence. The Phase 1 implementation must choose the simplest coherent contract and test both evidence and no-evidence cases.
+Phase 1 deliberately does not introduce an arbitrary higher sample-size threshold.
+Statistical confidence thresholds remain a future evidence-based product decision.
 
 ## 5. Target architecture
 

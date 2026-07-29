@@ -1,9 +1,41 @@
+from app.services.stockfish import detect_phase_weaknesses, get_summary
+
+
 PHASES = ("opening", "middlegame", "endgame")
+MOVER_COLORS = ("white", "black")
 CLASSIFICATION_COUNTERS = {
     "inaccuracy": "inaccuracies",
     "mistake": "mistakes",
     "blunder": "blunders",
 }
+
+
+def project_analysis_for_player(analysis: dict, player_color: str) -> dict:
+    if player_color not in MOVER_COLORS:
+        raise ValueError(f"Unsupported player color: {player_color}.")
+
+    moves = analysis.get("moves", [])
+    critical_moments = analysis.get("critical_moments", [])
+    _validate_mover_colors(moves)
+    _validate_mover_colors(critical_moments)
+
+    player_moves = [
+        move for move in moves
+        if move["mover_color"] == player_color
+    ]
+    player_critical_moments = [
+        moment for moment in critical_moments
+        if moment["mover_color"] == player_color
+    ]
+    summary = get_summary(player_moves)
+
+    return {
+        **analysis,
+        "summary": summary,
+        "critical_moments": player_critical_moments,
+        "phase_weaknesses": detect_phase_weaknesses(summary),
+        "moves": player_moves,
+    }
 
 
 def aggregate_game_analyses(analyses: list[dict]) -> dict:
@@ -175,12 +207,18 @@ def _normalize_phase_stats(phase_stats: dict) -> dict:
     for phase, stats in phase_stats.items():
         moves = stats["moves"]
         normalized[phase] = {
+            "moves": moves,
             "avg_cpl": round(stats["total_cpl"] / moves, 1) if moves else 0,
             "inaccuracies": stats["inaccuracies"],
             "mistakes": stats["mistakes"],
             "blunders": stats["blunders"],
         }
     return normalized
+
+
+def _validate_mover_colors(moves: list[dict]) -> None:
+    if any(move.get("mover_color") not in MOVER_COLORS for move in moves):
+        raise ValueError("Every analyzed move must include a valid mover_color.")
 
 
 def _dedupe(items: list[str]) -> list[str]:
