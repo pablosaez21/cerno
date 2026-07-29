@@ -1,21 +1,23 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+
 
 class Player(BaseModel):
     username: str
-    rating: Optional[int] = None
-    rating_diff: Optional[int] = None
+    rating: int | None = None
+    rating_diff: int | None = None
+
 
 class Game(BaseModel):
     id: str
     speed: str
     rated: bool
-    winner: Optional[str] = None
+    winner: str | None = None
     status: str
     white: Player
     black: Player
     moves: str
     pgn: str
+
 
 class GamesResponse(BaseModel):
     username: str

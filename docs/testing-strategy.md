@@ -1,8 +1,8 @@
 # Cerno testing strategy
 
-**Status:** Approved target strategy
-**Implementation phase:** Phase 2, with correctness regressions beginning in Phase 1
-**Last reviewed:** 2026-07-28
+**Status:** Approved target strategy with Phase 2A implemented locally
+**Implementation phase:** Phase 2A complete locally; the first hosted GitHub Actions run is pending
+**Last reviewed:** 2026-07-29
 
 ## 1. Quality objective
 
@@ -18,8 +18,31 @@ The strategy follows four rules:
 ## 2. Current state
 
 The committed pre-Phase-1 baseline contained 21 collected backend cases. The
-Phase 1 working tree contains 33 collected cases, including parametrized
+Phase 2A working tree contains 33 collected cases, including parametrized
 regressions, and all pass in the latest verified run.
+
+Phase 2A adds the automated quality foundation without claiming the remaining
+Phase 2 integration and browser coverage:
+
+- Ruff 0.16.0 is the single Python linter, import sorter, and formatter.
+- mypy 2.3.0 checks every module under `app/` and `scripts/`; no module is
+  excluded and `check_untyped_defs` extends checking into legacy unannotated
+  functions.
+- pytest-cov 7.1.0 and coverage.py 7.15.2 measure line and branch coverage.
+- The pre-change measurement was 73.32% for lines, 52.86% for branches, and
+  69.85% combined. This was recorded before choosing a gate.
+- The measured combined baseline is 70.06%, with 73.44% line coverage and
+  53.37% branch coverage after the static-correctness edits.
+- The initial non-regression gate is 70%, two decimal places below the measured
+  baseline only by normal rounding. It is not a target or a claim of broad
+  coverage.
+- `scripts/quality.py` provides the same cross-platform entry points locally and
+  in CI.
+- `.github/workflows/quality.yml` defines separate backend and frontend jobs for
+  pushes and pull requests.
+- Production dependencies remain in `requirements.txt`; development, build,
+  test, type-stub, lint, and coverage tools are pinned in
+  `requirements-dev.txt`.
 
 Current strengths:
 
@@ -33,9 +56,9 @@ Current strengths:
 
 Identified limitations:
 
-- no official line or branch coverage;
-- no backend lint or type-check quality gate;
-- no CI workflow;
+- the first hosted workflow run cannot be verified until this branch is pushed;
+- the global coverage gate is intentionally low because persistence, RAG, and
+  agent modules have little or no direct coverage;
 - no frontend test framework;
 - no automated E2E;
 - Stockfish behavior is normally mocked in route tests;
@@ -44,6 +67,26 @@ Identified limitations:
 - OpenAI orchestration is largely replaced rather than exercised;
 - no mutation testing;
 - no contract drift protection.
+
+### 2.1 Phase 2A tool decisions
+
+Ruff replaces separate lint, import-sort, and format tools to keep one ruleset
+and one cache. The only global rule exemption is `B008`, required by FastAPI's
+declarative `Depends` and `Body` defaults. `E402` is scoped only to the
+application bootstrap and three command-line scripts that must initialize the
+environment or import path before application imports.
+
+mypy was selected instead of Pyright because this repository's quality workflow
+is Python-native and the current SQLAlchemy 2 `Mapped` declarations type-check
+without the deprecated SQLAlchemy mypy plugin. The configuration is strict where
+the current code can support it, but gradual: it checks untyped function bodies
+without pretending that every public function is already fully annotated.
+Third-party mismatches are isolated with explicit types or narrow casts at SDK
+boundaries rather than hidden through global ignores.
+
+Phase 2A deliberately adds no tests merely to inflate the baseline. Its purpose
+is to make the existing behavior measurable and prevent regression before Phase
+2B adds real adapter and persistence integration coverage.
 
 ## 3. Test layers
 
@@ -415,17 +458,41 @@ Do not compare generative prose word for word unless a deterministic local fallb
 
 ## 13. Coverage policy
 
-Introduce line and branch coverage together.
+Line and branch coverage were introduced together in Phase 2A. The authoritative
+configuration is in `pyproject.toml`, uses `app/` as its source, and has no
+coverage omissions.
 
-Policy:
+The verified 2026-07-29 baseline is:
 
-1. record the baseline;
-2. prevent regression below the baseline;
-3. raise thresholds gradually;
-4. apply higher expectations to pure critical logic;
-5. review uncovered branches rather than chasing a global vanity number.
+| Measure | Covered | Total | Result |
+| --- | ---: | ---: | ---: |
+| Lines | 755 | 1,028 | 73.44% |
+| Branches | 111 | 208 | 53.37% |
+| Combined coverage.py result | — | — | 70.06% |
+| Required gate | — | — | 70.00% |
 
-Coverage exclusions must be explicit and justified.
+The gate is a non-regression floor derived from the measured suite, not an
+aspirational quality score. It leaves only 0.06 percentage points of margin, so
+new uncovered production code must normally add tests or justify a coordinated
+threshold decision. It must be raised as Phase 2B and 2C add meaningful coverage.
+
+Lowest-covered modules at this baseline:
+
+| Module | Coverage |
+| --- | ---: |
+| `app/db/repositories/sessions.py` | 0.00% |
+| `app/db/repositories/analyses.py` | 14.47% |
+| `app/services/rag.py` | 18.07% |
+| `app/services/agent.py` | 23.40% |
+| `app/db/repositories/weaknesses.py` | 25.00% |
+| `app/db/repositories/users.py` | 31.25% |
+| `app/db/repositories/recommendations.py` | 45.45% |
+| `app/routers/games.py` | 55.88% |
+
+These numbers prioritize later work; they do not authorize starting RAG, agent,
+or persistence refactors in Phase 2A. Coverage exclusions must remain explicit,
+local, and justified. Raising a number through trivial assertions or mocking the
+logic under test is not acceptable.
 
 ## 14. Mutation testing
 
@@ -463,16 +530,74 @@ Unacceptable substitutions:
 
 Every critical adapter requires at least one real automated integration path.
 
-## 16. CI proposal
+## 16. CI
 
-### Pull request workflow
+### 16.1 Phase 2A workflow
 
-Run in parallel where safe:
+`.github/workflows/quality.yml` runs on relevant pushes and pull requests with
+read-only repository permissions and cancels superseded runs on the same ref.
+Its two independent jobs are:
 
 ```text
-backend-style-and-types
-backend-unit-and-coverage
-frontend-lint-types-tests-build
+backend:
+  Python 3.13
+  install requirements-dev.txt
+  Ruff lint
+  Ruff format check
+  mypy
+  pytest with line and branch coverage
+  workflow structure validation
+  upload coverage.xml
+
+frontend:
+  Node 24
+  npm ci
+  ESLint
+  tsc --noEmit
+  Next.js production build
+```
+
+The workflow does not require secrets, paid APIs, PostgreSQL, ChromaDB,
+Playwright, or a live Stockfish/Lichess dependency. YAML syntax and required job
+commands are checked locally by `scripts/validate_workflow.py`. The GitHub-hosted
+runner, action resolution, cache behavior, and artifact upload can only be
+confirmed by the first push.
+
+### 16.2 Local commands
+
+Run the complete gate from the repository root:
+
+```powershell
+.\venv\Scripts\python.exe scripts\quality.py all
+```
+
+The script uses the active Python interpreter and resolves `npm` from `PATH`, so
+the equivalent portable command is:
+
+```text
+python scripts/quality.py all
+```
+
+Available narrower targets are `lint`, `format`, `types`, `tests`, `coverage`,
+`workflow`, `backend`, and `frontend`. The latest full run produced:
+
+```text
+Ruff: All checks passed; 48 files already formatted
+mypy: Success, no issues in 36 source files
+pytest: 33 passed
+coverage: 70.06%, required 70.00% reached
+workflow validation: valid
+frontend ESLint: passed
+frontend TypeScript: passed
+Next.js production build: passed
+```
+
+### 16.3 Remaining Phase 2 target
+
+Later subphases should add, in parallel where safe:
+
+```text
+frontend-component-tests
 contract-check
 postgres-integration
 chroma-integration
@@ -509,7 +634,25 @@ A change cannot merge when:
 
 RAG and prompt changes additionally require an evaluation comparison and explanation of regressions.
 
-## 18. Phase 2 completion evidence
+## 18. Phase completion evidence
+
+### 18.1 Phase 2A
+
+Phase 2A is complete locally with:
+
+- pinned development quality dependencies separated from production;
+- one repository configuration for Ruff, mypy, pytest-cov, and coverage.py;
+- all Python source under `app/` and `scripts/` passing mypy without module
+  exclusions;
+- a measured line and branch baseline and an enforced 70% gate;
+- a cross-platform local quality command;
+- separate backend and frontend CI jobs;
+- local validation of every command represented in the workflow.
+
+The hosted GitHub Actions execution remains pending until the branch is pushed.
+This limitation does not imply completion of all Phase 2 work.
+
+### 18.2 Full Phase 2
 
 Phase 2 is complete only with:
 

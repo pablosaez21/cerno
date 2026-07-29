@@ -1,0 +1,46 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "RUF"]
+ignore = [
+    # FastAPI inspects Depends() and Body() defaults to build dependency contracts.
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# These modules intentionally initialize the environment or repository path
+# before importing application modules.
+"app/main.py" = ["E402"]
+"scripts/index_studies.py" = ["E402"]
+"scripts/index_studies_remote.py" = ["E402"]
+"scripts/test_rag_queries.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["app", "scripts"]
+check_untyped_defs = true
+explicit_package_bases = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 70
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"

@@ -43,7 +43,7 @@ def test_fetch_games_identifies_cerno_and_parses_ndjson():
             "black": {"user": {"name": "Opponent"}, "rating": 1790},
         },
         "moves": "e4 e5 Nf3",
-        "pgn": "[Event \"Test\"]\n\n1. e4 e5 2. Nf3 *",
+        "pgn": '[Event "Test"]\n\n1. e4 e5 2. Nf3 *',
     }
     request = httpx.Request("GET", "https://lichess.org")
     response = httpx.Response(200, text=json.dumps(raw_game), request=request)

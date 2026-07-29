@@ -1,17 +1,14 @@
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import games, agent, theory, coach, users
+from app.routers import agent, coach, games, theory, users
 
-app = FastAPI(
-    title="Cerno",
-    description="Chess coaching agent",
-    version="0.1.0"
-)
+app = FastAPI(title="Cerno", description="Chess coaching agent", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +23,7 @@ app.include_router(agent.router)
 app.include_router(theory.router)
 app.include_router(coach.router)
 app.include_router(users.router)
+
 
 @app.get("/health")
 async def health():

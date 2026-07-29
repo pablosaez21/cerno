@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -13,7 +13,7 @@ def test_user_analyses_returns_repository_data(client):
         opening_name="Italian Game",
         total_moves=42,
         analysis_summary={"opening": {"avg_cpl": 25}},
-        created_at=datetime(2026, 6, 9, tzinfo=timezone.utc),
+        created_at=datetime(2026, 6, 9, tzinfo=UTC),
     )
 
     with patch(

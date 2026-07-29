@@ -115,5 +115,5 @@ def get_result(game: Game, username: str) -> str:
 def extract_opening_name(pgn: str) -> str | None:
     for line in pgn.splitlines():
         if line.startswith('[Opening "') and line.endswith('"]'):
-            return line[len('[Opening "'):-2]
+            return line[len('[Opening "') : -2]
     return None

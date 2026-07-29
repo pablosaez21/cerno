@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException
 import chromadb
+from fastapi import APIRouter, HTTPException
 
 from app.schemas.agent import TheorySearchRequest, TheorySearchResponse
 from app.services.rag import search_theory
@@ -13,8 +13,7 @@ async def search_theory_endpoint(request: TheorySearchRequest):
         results = search_theory(request.query, request.n_results)
     except chromadb.errors.ChromaError as exc:
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo buscar teoria en ChromaDB."
+            status_code=500, detail="No se pudo buscar teoria en ChromaDB."
         ) from exc
 
-    return TheorySearchResponse(results=results)
+    return TheorySearchResponse.model_validate({"results": results})

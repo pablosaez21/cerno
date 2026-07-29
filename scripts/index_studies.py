@@ -7,7 +7,6 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from app.services.rag import index_study
 
-
 OPENING_PRINCIPLES = [
     "ygVnJzbX",  # Opening Principles
     "NfMygq6x",  # Introduction to Opening Theory

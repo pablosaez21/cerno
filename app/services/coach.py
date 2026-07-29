@@ -47,18 +47,17 @@ async def analyze_user(
 
     for game in games:
         if not game.pgn:
-            skipped_games.append({
-                "game_id": game.id,
-                "reason": "Game has no PGN."
-            })
+            skipped_games.append({"game_id": game.id, "reason": "Game has no PGN."})
             continue
 
         player_color = resolve_player_color(game, username)
         if player_color is None:
-            skipped_games.append({
-                "game_id": game.id,
-                "reason": "The requested user is not identified as a player.",
-            })
+            skipped_games.append(
+                {
+                    "game_id": game.id,
+                    "reason": "The requested user is not identified as a player.",
+                }
+            )
             continue
 
         try:
@@ -69,17 +68,16 @@ async def analyze_user(
                 player_color,
             )
             player_analyses.append(player_analysis)
-            analyzed_games.append(AnalyzedPlayerGame(
-                game=game,
-                full_analysis=full_analysis,
-                player_analysis=player_analysis,
-                player_color=player_color,
-            ))
+            analyzed_games.append(
+                AnalyzedPlayerGame(
+                    game=game,
+                    full_analysis=full_analysis,
+                    player_analysis=player_analysis,
+                    player_color=player_color,
+                )
+            )
         except Exception as exc:
-            skipped_games.append({
-                "game_id": game.id,
-                "reason": str(exc)
-            })
+            skipped_games.append({"game_id": game.id, "reason": str(exc)})
 
     if not player_analyses:
         raise ValueError("No games could be analyzed.")
@@ -146,9 +144,7 @@ def build_game_analyses(
         analysis = analyzed_game.full_analysis
         player_color = analyzed_game.player_color
         opponent = (
-            game.black.username
-            if player_color == "white"
-            else game.white.username
+            game.black.username if player_color == "white" else game.white.username
         )
 
         if game.winner is None:
@@ -156,18 +152,20 @@ def build_game_analyses(
         else:
             result = "win" if game.winner == player_color else "loss"
 
-        reports.append({
-            "game_id": game.id,
-            "player_color": player_color,
-            "opponent": opponent,
-            "result": result,
-            "pgn": game.pgn,
-            "total_moves": analysis.get("total_moves", 0),
-            "summary": analysis.get("summary", {}),
-            "critical_moments": analysis.get("critical_moments", []),
-            "phase_weaknesses": analysis.get("phase_weaknesses", []),
-            "moves": analysis.get("moves", []),
-        })
+        reports.append(
+            {
+                "game_id": game.id,
+                "player_color": player_color,
+                "opponent": opponent,
+                "result": result,
+                "pgn": game.pgn,
+                "total_moves": analysis.get("total_moves", 0),
+                "summary": analysis.get("summary", {}),
+                "critical_moments": analysis.get("critical_moments", []),
+                "phase_weaknesses": analysis.get("phase_weaknesses", []),
+                "moves": analysis.get("moves", []),
+            }
+        )
 
     return reports
 
@@ -236,12 +234,14 @@ def collect_theory_results(queries: list[str], n_results: int = 2) -> list[dict]
             if source_key in seen_sources:
                 continue
 
-            collected.append({
-                "query": query,
-                "text": result.get("text", ""),
-                "metadata": metadata,
-                "distance": result.get("distance"),
-            })
+            collected.append(
+                {
+                    "query": query,
+                    "text": result.get("text", ""),
+                    "metadata": metadata,
+                    "distance": result.get("distance"),
+                }
+            )
             seen_sources.add(source_key)
 
     return collected[:5]
@@ -253,14 +253,16 @@ def build_theory_recommendations(theory_results: list[dict]) -> list[dict]:
     for result in theory_results:
         metadata = result.get("metadata", {})
         query = result.get("query", "training focus")
-        recommendations.append({
-            "source": metadata.get("source"),
-            "category": metadata.get("category"),
-            "study_id": metadata.get("study_id"),
-            "chapter": metadata.get("chapter"),
-            "reason": f"Relevant for: {query}.",
-            "distance": result.get("distance"),
-        })
+        recommendations.append(
+            {
+                "source": metadata.get("source"),
+                "category": metadata.get("category"),
+                "study_id": metadata.get("study_id"),
+                "chapter": metadata.get("chapter"),
+                "reason": f"Relevant for: {query}.",
+                "distance": result.get("distance"),
+            }
+        )
 
     return recommendations
 
@@ -271,14 +273,16 @@ def collect_critical_moments(analyses: list[dict], limit: int = 10) -> list[dict
     for analysis in analyses:
         game_id = analysis.get("game_id", "")
         for moment in analysis.get("critical_moments", []):
-            moments.append({
-                "game_id": game_id,
-                "move_number": moment.get("move_number", 0),
-                "move": moment.get("move_san") or moment.get("move_uci", ""),
-                "phase": moment.get("phase", "unknown"),
-                "cpl": moment.get("cpl", 0),
-                "classification": moment.get("classification", "unknown"),
-            })
+            moments.append(
+                {
+                    "game_id": game_id,
+                    "move_number": moment.get("move_number", 0),
+                    "move": moment.get("move_san") or moment.get("move_uci", ""),
+                    "phase": moment.get("phase", "unknown"),
+                    "cpl": moment.get("cpl", 0),
+                    "classification": moment.get("classification", "unknown"),
+                }
+            )
 
     moments.sort(key=lambda item: item["cpl"], reverse=True)
     return moments[:limit]
@@ -348,19 +352,22 @@ def build_training_plan_prompt(
     theory_recommendations: list[dict],
     critical_moments: list[dict],
 ) -> str:
-    return json.dumps({
-        "username": username,
-        "weakness_profile": weakness_profile,
-        "critical_moments": critical_moments[:8],
-        "theory_themes": summarize_theory_themes(theory_recommendations),
-        "task": (
-            "Create a practical one-week chess training plan and a short coach_advice paragraph. "
-            "The coach_advice should explain the player's style from the evidence: main phase weakness, "
-            "blunders, mistakes, tactical habits, and any relative strengths. "
-            "Use friendly motivational language, but keep it specific and avoid repeating the same grandmaster jokes. "
-            "Do not tell the user to open a study by ID; recommended theory is shown elsewhere."
-        ),
-    }, ensure_ascii=False)
+    return json.dumps(
+        {
+            "username": username,
+            "weakness_profile": weakness_profile,
+            "critical_moments": critical_moments[:8],
+            "theory_themes": summarize_theory_themes(theory_recommendations),
+            "task": (
+                "Create a practical one-week chess training plan and a short coach_advice paragraph. "
+                "The coach_advice should explain the player's style from the evidence: main phase weakness, "
+                "blunders, mistakes, tactical habits, and any relative strengths. "
+                "Use friendly motivational language, but keep it specific and avoid repeating the same grandmaster jokes. "
+                "Do not tell the user to open a study by ID; recommended theory is shown elsewhere."
+            ),
+        },
+        ensure_ascii=False,
+    )
 
 
 def summarize_theory_themes(theory_recommendations: list[dict]) -> list[str]:
@@ -443,8 +450,7 @@ def build_fallback_coach_advice(
     phase_stats = weakness_profile.get("phase_stats", {})
     best_phase = detect_best_phase(phase_stats)
     blunders = sum(
-        1 for moment in critical_moments
-        if moment.get("classification") == "blunder"
+        1 for moment in critical_moments if moment.get("classification") == "blunder"
     )
 
     weakness_text = f"your biggest losses are coming in the {main}"

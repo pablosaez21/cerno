@@ -40,8 +40,7 @@ async def analyze_lichess_user(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(
-            status_code=500,
-            detail="Could not complete the coach analysis."
+            status_code=500, detail="Could not complete the coach analysis."
         ) from exc
 
     return CoachAnalyzeUserResponse(**result)

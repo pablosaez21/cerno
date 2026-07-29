@@ -9,7 +9,6 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from app.services.rag import search_theory
 
-
 TEST_QUERIES = [
     "basic opening principles",
     "how to punish early queen attacks",

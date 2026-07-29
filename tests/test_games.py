@@ -21,8 +21,8 @@ def test_analyze_pgn_clamps_stockfish_depth(client):
     with patch("app.routers.games.analyze_game", new=analyze_game):
         response = client.post(
             "/games/analyze",
-            json={"pgn": "[Event \"Test\"]\n\n1. e4 *", "depth": 15},
+            json={"pgn": '[Event "Test"]\n\n1. e4 *', "depth": 15},
         )
 
     assert response.status_code == 200
-    analyze_game.assert_awaited_once_with("[Event \"Test\"]\n\n1. e4 *", 10)
+    analyze_game.assert_awaited_once_with('[Event "Test"]\n\n1. e4 *', 10)

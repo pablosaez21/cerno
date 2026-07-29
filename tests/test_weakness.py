@@ -70,9 +70,9 @@ def test_player_projection_drives_exact_aggregate_stats_without_mutating_full_ga
         "mistakes": 1,
         "blunders": 0,
     }
-    assert "opening principles development center king safety" in profile[
-        "theory_queries"
-    ]
+    assert (
+        "opening principles development center king safety" in profile["theory_queries"]
+    )
     assert len(full_analysis["moves"]) == 3
     assert full_analysis["critical_moments"] == [black_blunder, white_mistake]
 

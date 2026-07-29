@@ -233,7 +233,8 @@ def test_profile_excludes_opponent_only_blunder_and_keeps_full_game(
             _move("black", "b8c6", 20, phase="middlegame"),
         ]
     opponent_move = next(
-        move for move in full_moves
+        move
+        for move in full_moves
         if move["mover_color"] == opponent_color and move["cpl"] == 420
     )
     opponent_blunder = {

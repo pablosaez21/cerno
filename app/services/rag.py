@@ -1,6 +1,8 @@
+from typing import Any, cast
+
 import chromadb
-from chromadb.utils import embedding_functions
 import httpx
+from chromadb.utils import embedding_functions
 
 from app.core.config import settings
 
@@ -13,7 +15,9 @@ embedding_fn = embedding_functions.DefaultEmbeddingFunction()
 
 collection = client.get_or_create_collection(
     name="chess_theory",
-    embedding_function=embedding_fn
+    # Chroma accepts its default text embedding function at runtime, but its
+    # published generic protocol is wider than this concrete implementation.
+    embedding_function=cast(Any, embedding_fn),
 )
 
 
@@ -43,13 +47,11 @@ async def fetch_lichess_study(study_id: str) -> str:
 
 
 def chunk_study_pgn(
-    pgn_text: str,
-    study_id: str,
-    category: str = "uncategorized"
+    pgn_text: str, study_id: str, category: str = "uncategorized"
 ) -> list[dict]:
     source = f"{LICHESS_STUDY_BASE_URL}/{study_id}"
     games = []
-    current_game = []
+    current_game: list[str] = []
 
     for line in pgn_text.splitlines():
         if line.startswith("[Event ") and current_game:
@@ -67,17 +69,19 @@ def chunk_study_pgn(
             or _extract_tag_value(game_text, "Chapter")
             or "unknown"
         )
-        chunks.append({
-            "id": f"{study_id}_{index}",
-            "text": game_text,
-            "metadata": {
-                "study_id": study_id,
-                "category": category,
-                "chapter": chapter,
-                "source": source,
-                "type": "lichess_study"
+        chunks.append(
+            {
+                "id": f"{study_id}_{index}",
+                "text": game_text,
+                "metadata": {
+                    "study_id": study_id,
+                    "category": category,
+                    "chapter": chapter,
+                    "source": source,
+                    "type": "lichess_study",
+                },
             }
-        })
+        )
 
     return chunks
 
@@ -86,7 +90,7 @@ def _extract_tag_value(pgn_text: str, tag: str) -> str | None:
     prefix = f'[{tag} "'
     for line in pgn_text.splitlines():
         if line.startswith(prefix) and line.endswith('"]'):
-            return line[len(prefix):-2]
+            return line[len(prefix) : -2]
     return None
 
 
@@ -100,11 +104,7 @@ async def index_study(study_id: str, category: str = "uncategorized") -> int:
     ids = [c["id"] for c in chunks]
     metadatas = [c["metadata"] for c in chunks]
 
-    collection.upsert(
-        documents=documents,
-        ids=ids,
-        metadatas=metadatas
-    )
+    collection.upsert(documents=documents, ids=ids, metadatas=metadatas)
 
     return len(chunks)
 
@@ -113,20 +113,18 @@ def search_theory(query: str, n_results: int = 3) -> list[dict]:
     if collection.count() == 0:
         return []
 
-    results = collection.query(
-        query_texts=[query],
-        n_results=n_results
-    )
+    results = collection.query(query_texts=[query], n_results=n_results)
 
-    documents = results.get("documents", [[]])[0]
-    metadatas = results.get("metadatas", [[]])[0]
-    distances = results.get("distances", [[]])[0]
+    documents = (results.get("documents") or [[]])[0]
+    metadatas = (results.get("metadatas") or [[]])[0]
+    distances = (results.get("distances") or [[]])[0]
 
     return [
-        {
-            "text": document,
-            "metadata": metadata or {},
-            "distance": distance
-        }
-        for document, metadata, distance in zip(documents, metadatas, distances)
+        {"text": document, "metadata": metadata or {}, "distance": distance}
+        for document, metadata, distance in zip(
+            documents,
+            metadatas,
+            distances,
+            strict=False,
+        )
     ]

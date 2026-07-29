@@ -1,6 +1,11 @@
 import json
+from typing import Any, cast
 
 from openai import AsyncOpenAI
+from openai.types.chat import (
+    ChatCompletionMessageFunctionToolCall,
+    ChatCompletionToolParam,
+)
 
 from app.core.config import settings
 from app.services.lichess import fetch_games
@@ -13,69 +18,71 @@ def _get_openai_client() -> AsyncOpenAI:
         raise RuntimeError("OPENAI_API_KEY is required for /agent/chat.")
     return AsyncOpenAI(api_key=settings.openai_api_key)
 
-tools = [
+
+tools: list[ChatCompletionToolParam] = [
     {
         "type": "function",
         "function": {
-            "name": "fetch_games",  #TOOL 1
+            "name": "fetch_games",  # TOOL 1
             "description": "Obtiene las últimas partidas de un usuario de Lichess",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "username": {
                         "type": "string",
-                        "description": "Nombre de usuario de Lichess"
+                        "description": "Nombre de usuario de Lichess",
                     },
                     "limit": {
                         "type": "integer",
                         "description": "Número de partidas a obtener",
-                        "default": 10
-                    }
+                        "default": 10,
+                    },
                 },
-                "required": ["username"]
-            }
-        }
+                "required": ["username"],
+            },
+        },
     },
     {
         "type": "function",
         "function": {
-            "name": "analyze_game", #TOOL 2
+            "name": "analyze_game",  # TOOL 2
             "description": "Analiza una partida de ajedrez en formato PGN con Stockfish y devuelve métricas por fase del juego",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "pgn": {
                         "type": "string",
-                        "description": "La partida en formato PGN"
+                        "description": "La partida en formato PGN",
                     }
                 },
-                "required": ["pgn"]
-            }
-        }
+                "required": ["pgn"],
+            },
+        },
     },
     {
         "type": "function",
         "function": {
-            "name": "search_theory",  #TOOL 3
+            "name": "search_theory",  # TOOL 3
             "description": "Busca teoría de ajedrez y recursos de estudio relevantes según la debilidad detectada",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Tema a buscar, por ejemplo: finales de torre, táctica defensiva, gambito de dama"
+                        "description": "Tema a buscar, por ejemplo: finales de torre, táctica defensiva, gambito de dama",
                     }
                 },
-                "required": ["query"]
-            }
-        }
-    }
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
-async def run_agent(message: str) -> str:
+
+async def run_agent(message: str) -> str | None:
     client = _get_openai_client()
-    messages = [
-       {
+    messages: list[Any] = [
+        {
             "role": "system",
             "content": """Eres Cerno, un coach de ajedrez experto y analítico.
 
@@ -90,12 +97,9 @@ async def run_agent(message: str) -> str:
         - Los datos reales del análisis de Stockfish
         - Los recursos encontrados con search_theory
 
-        Habla siempre en español y sé directo y específico."""
+        Habla siempre en español y sé directo y específico.""",
         },
-        {
-            "role": "user",
-            "content": message
-        }
+        {"role": "user", "content": message},
     ]
 
     while True:
@@ -103,7 +107,7 @@ async def run_agent(message: str) -> str:
             model=settings.openai_model,
             messages=messages,
             tools=tools,
-            tool_choice="auto"
+            tool_choice="auto",
         )
 
         msg = response.choices[0].message
@@ -112,8 +116,13 @@ async def run_agent(message: str) -> str:
             messages.append(msg)
 
             for tool_call in msg.tool_calls:
-                name = tool_call.function.name
-                args = json.loads(tool_call.function.arguments)
+                function_call = cast(
+                    ChatCompletionMessageFunctionToolCall,
+                    tool_call,
+                )
+                name = function_call.function.name
+                args = json.loads(function_call.function.arguments)
+                result: object
 
                 if name == "fetch_games":
                     games = await fetch_games(**args)
@@ -125,10 +134,12 @@ async def run_agent(message: str) -> str:
                 else:
                     result = {"error": "herramienta desconocida"}
 
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": json.dumps(result, ensure_ascii=False)
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": function_call.id,
+                        "content": json.dumps(result, ensure_ascii=False),
+                    }
+                )
         else:
             return msg.content

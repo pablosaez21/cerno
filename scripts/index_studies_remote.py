@@ -10,7 +10,6 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.index_studies import STUDY_GROUPS
 
-
 DEFAULT_TIMEOUT_SECONDS = 60.0
 
 

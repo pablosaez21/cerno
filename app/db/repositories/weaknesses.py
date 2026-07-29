@@ -18,10 +18,7 @@ def upsert_weakness_profile(
 
     phase_stats = weakness_profile.get("phase_stats", {})
     totals = calculate_error_totals(phase_stats)
-    scores = {
-        phase: score_phase(stats)
-        for phase, stats in phase_stats.items()
-    }
+    scores = {phase: score_phase(stats) for phase, stats in phase_stats.items()}
 
     values = {
         "games_analyzed": weakness_profile.get("games_analyzed", 0),
@@ -61,7 +58,9 @@ def get_user_weakness_profile(db: Session, username: str) -> WeaknessProfile | N
 
 def calculate_error_totals(phase_stats: dict) -> dict:
     return {
-        "inaccuracies": sum(stats.get("inaccuracies", 0) for stats in phase_stats.values()),
+        "inaccuracies": sum(
+            stats.get("inaccuracies", 0) for stats in phase_stats.values()
+        ),
         "mistakes": sum(stats.get("mistakes", 0) for stats in phase_stats.values()),
         "blunders": sum(stats.get("blunders", 0) for stats in phase_stats.values()),
     }

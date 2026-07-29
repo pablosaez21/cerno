@@ -14,8 +14,7 @@ async def read_weakness_profile(username: str, db: Session = Depends(get_db)):
     profile = get_user_weakness_profile(db, username)
     if not profile:
         raise HTTPException(
-            status_code=404,
-            detail=f"No weakness profile found for '{username}'."
+            status_code=404, detail=f"No weakness profile found for '{username}'."
         )
 
     recommendations = get_user_recommendations(db, username, limit=5)

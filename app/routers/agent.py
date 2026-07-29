@@ -1,15 +1,17 @@
-from fastapi import APIRouter, HTTPException
 import chromadb
-from app.services.agent import run_agent
-from app.services.rag import index_study, search_theory
+from fastapi import APIRouter, HTTPException
+
 from app.schemas.agent import (
     AgentRequest,
     StudyRequest,
     TheorySearchRequest,
     TheorySearchResponse,
 )
+from app.services.agent import run_agent
+from app.services.rag import index_study, search_theory
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+
 
 @router.post("/chat")
 async def chat(request: AgentRequest):
@@ -28,8 +30,7 @@ async def index_chess_study(request: StudyRequest):
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except chromadb.errors.ChromaError as exc:
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo indexar el estudio en ChromaDB."
+            status_code=500, detail="No se pudo indexar el estudio en ChromaDB."
         ) from exc
 
     return {
@@ -45,8 +46,7 @@ async def search_chess_theory(request: TheorySearchRequest):
         results = search_theory(request.query, request.n_results)
     except chromadb.errors.ChromaError as exc:
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo buscar teoría en ChromaDB."
+            status_code=500, detail="No se pudo buscar teoría en ChromaDB."
         ) from exc
 
-    return TheorySearchResponse(results=results)
+    return TheorySearchResponse.model_validate({"results": results})

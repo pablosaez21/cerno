@@ -10,9 +10,7 @@ class Settings(BaseSettings):
     stockfish_path: str | None = None
     chroma_path: str = "data/chromadb"
     frontend_origin: str = "http://localhost:3000"
-    backend_cors_origins: str = (
-        "http://localhost:3000,http://127.0.0.1:3000"
-    )
+    backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     max_games_per_analysis: int = 3
     max_stockfish_depth: int = 10
 
@@ -36,7 +34,9 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_database_url(self) -> str:
         if self.database_url.startswith("postgresql://"):
-            return self.database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+            return self.database_url.replace(
+                "postgresql://", "postgresql+psycopg://", 1
+            )
         return self.database_url
 
     def clamp_games_limit(self, limit: int) -> int:

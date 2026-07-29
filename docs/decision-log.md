@@ -1,7 +1,7 @@
 # Cerno decision log
 
 **Status:** Living architecture decision record
-**Last reviewed:** 2026-07-28
+**Last reviewed:** 2026-07-29
 
 ## 1. How to use this log
 
@@ -363,6 +363,113 @@ the PGN header independently of the structured Lichess record.
 
 **Evidence:** Endpoint regression proving the engine is not called.
 
+### DEC-023 — Ruff is the single Python style tool
+
+**Status:** Accepted and implemented in Phase 2A
+
+**Problem:** The repository had no Python lint or format contract. Adding
+independent tools for linting, import sorting, and formatting would create
+overlapping configuration and CI steps.
+
+**Decision:** Pin Ruff 0.16.0 for linting, import sorting, modernization checks,
+and formatting. Use Python 3.13 as the target. Exempt `B008` globally because
+FastAPI intentionally constructs dependency and body declarations in function
+defaults. Scope `E402` exceptions only to bootstrap files that must initialize
+the environment or path before application imports.
+
+**Alternatives:** Flake8 plus isort plus Black; pylint plus Black; no formatter
+gate.
+
+**Rationale:** One tool provides fast, deterministic local and CI behavior while
+keeping exceptional framework patterns visible and documented.
+
+**Impact:** Existing Python files received mechanical import and formatting
+normalization. No lint family is silently disabled through a broad file
+exclusion.
+
+**Evidence:** `ruff check app tests scripts` and `ruff format --check app tests
+scripts` both pass; 48 files are formatted.
+
+### DEC-024 — mypy uses a gradual repository-wide boundary
+
+**Status:** Accepted and implemented in Phase 2A
+
+**Problem:** The backend had strict-looking annotations in places but no
+executable static type contract. Enabling every strict mypy flag immediately
+would encourage exclusions or broad ignores instead of useful adoption.
+
+**Decision:** Pin mypy 2.3.0 and check all modules under `app/` and `scripts/`
+with `check_untyped_defs`, `no_implicit_optional`, and diagnostic warnings.
+Do not use module exclusions, `ignore_missing_imports`, global error-code
+suppression, or the deprecated SQLAlchemy mypy plugin. Narrowly type or cast
+dynamic third-party SDK boundaries.
+
+**Alternatives:** Pyright; strict mypy with broad exclusions; mypy only on new
+files; SQLAlchemy's deprecated plugin.
+
+**Rationale:** This makes existing function bodies part of the gate while
+allowing annotations to improve incrementally and preserving SQLAlchemy 2's
+native `Mapped` typing.
+
+**Impact:** Thirteen pre-existing type errors across seven modules were resolved
+with annotations, accurate return types, and narrow SDK-boundary casts. The RAG
+and agent product behavior was not redesigned.
+
+**Evidence:** `mypy app scripts --no-incremental` reports success for 36 source
+files, with no `# type: ignore` additions or ignored modules.
+
+### DEC-025 — The initial coverage gate is the measured 70% floor
+
+**Status:** Accepted and implemented in Phase 2A
+
+**Problem:** There was no official line or branch measurement. Choosing an
+aspirational threshold without a baseline would either fail immediately or
+encourage low-value tests.
+
+**Decision:** Measure `app/` with branch coverage and no source omissions. The
+initial `fail_under` value is 70%, based on the existing suite's 70.06% combined
+result. Report line and branch figures separately and generate terminal, XML,
+and HTML reports.
+
+**Alternatives:** No threshold; line-only coverage; an arbitrary 80% threshold;
+adding trivial tests solely to raise the baseline.
+
+**Rationale:** A floor with 0.06 percentage points of margin prevents immediate
+regression while making the serious gaps in repositories, RAG, and the agent
+explicit.
+
+**Impact:** New uncovered production code will normally require relevant tests.
+The floor must rise only with meaningful Phase 2B/2C evidence.
+
+**Evidence:** 755/1,028 lines (73.44%), 111/208 branches (53.37%), 70.06%
+combined, and 33 passing tests.
+
+### DEC-026 — Quality commands are shared by local development and CI
+
+**Status:** Accepted and implemented in Phase 2A
+
+**Problem:** Platform-specific shell snippets drift easily, and production
+requirements previously included test and build tooling.
+
+**Decision:** Keep runtime packages in `requirements.txt`, pin quality and build
+packages in `requirements-dev.txt`, and use `scripts/quality.py` as the
+cross-platform command dispatcher. GitHub Actions invokes the same targets in
+separate backend and frontend jobs. A local validator checks workflow YAML and
+required commands without claiming to execute a hosted runner.
+
+**Alternatives:** Makefile-only commands; duplicate commands in documentation and
+CI; keep pytest/build tooling in the production image.
+
+**Rationale:** A small Python dispatcher works on Windows and Linux and reduces
+the gap between local verification and the pull-request gate.
+
+**Impact:** Production installs no longer include pytest or Python packaging
+build tools. Frontend adds an explicit `typecheck` script. Hosted workflow
+behavior remains pending until the first push.
+
+**Evidence:** `python scripts/quality.py all`, `pip check`, and the local workflow
+validator pass.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
@@ -463,9 +570,13 @@ Measure Stockfish and multi-game latency before deciding whether REST/MCP need a
 
 ### OQ-009 — CI environment
 
-**Status:** Open
+**Status:** Partially verified in Phase 2A
 
-Verify Stockfish packaging/path, PostgreSQL service, Chroma model cache, browser dependencies, and runtime budgets in GitHub Actions.
+The deterministic Python 3.13 and Node 24 jobs, dependency installation,
+commands, and workflow structure are defined and pass locally. The first hosted
+run is pending until push. Stockfish packaging/path, PostgreSQL service, Chroma
+model cache, browser dependencies, and runtime budgets remain open for later
+Phase 2 subphases.
 
 ### OQ-010 — Retrieval thresholds and advanced techniques
 

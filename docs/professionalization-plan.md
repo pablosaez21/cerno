@@ -1,7 +1,7 @@
 # Cerno professionalization plan
 
 **Status:** Approved implementation sequence
-**Last reviewed:** 2026-07-28
+**Last reviewed:** 2026-07-29
 
 ## 1. Objective
 
@@ -168,24 +168,68 @@ Phase 1 must not be marked complete without evidence for every item above.
 
 ## 6. Phase 2 — Automated quality foundation
 
+**Overall status:** In progress. Phase 2A is complete locally; Phase 2B and Phase
+2C have not started.
+
 ### Objective
 
 Create automated constraints that make later RAG, prompt, agent, and MCP changes safe.
 
-### Scope
+### Phase 2A — Backend quality foundation and CI
 
-1. backend lint and type checking;
-2. line and branch coverage;
-3. unit tests for critical pure logic;
-4. property-based tests where invariants are valuable;
-5. Stockfish integration tests;
-6. PostgreSQL integration and migration tests;
-7. ChromaDB integration tests;
-8. API contract protection;
-9. frontend component tests;
-10. Playwright E2E;
-11. GitHub Actions quality gates;
-12. initial mutation testing on pure critical logic.
+**Status:** Complete locally as of 2026-07-29. The first hosted GitHub Actions run
+is pending until the branch is pushed.
+
+#### Scope
+
+1. separate pinned production and development dependencies;
+2. configure Python linting and formatting;
+3. configure gradual static typing across the existing backend and scripts;
+4. measure line and branch coverage and enforce the measured baseline;
+5. expose cross-platform local quality commands;
+6. add deterministic backend and frontend pull-request jobs;
+7. document the baseline, low-coverage areas, commands, and remaining risk.
+
+#### Acceptance evidence
+
+- Ruff passes and verifies formatting for 48 Python files.
+- mypy passes all 36 modules under `app/` and `scripts/` without module
+  exclusions or global missing-import suppression.
+- The unchanged 33-test backend suite passes.
+- Coverage is 73.44% for lines, 53.37% for branches, and 70.06% combined.
+- The enforced global floor is 70%, derived from the measured baseline.
+- Frontend ESLint, `tsc --noEmit`, and the Next.js production build pass.
+- `.github/workflows/quality.yml` contains independent backend and frontend jobs
+  for pushes and pull requests.
+- The workflow YAML and required commands pass the local structural validator.
+- `pip check` reports no broken requirements.
+
+GitHub-hosted action resolution, caches, artifact upload, and runner behavior can
+only be verified after the first push. Docker image validation was attempted, but
+the local Docker Desktop Linux engine was not running; this is recorded as
+environmental evidence, not silently treated as a pass.
+
+Phase 2A does not add frontend test tooling, Playwright, real PostgreSQL or
+ChromaDB integration, an expanded Stockfish suite, contract generation, mutation
+testing, or any RAG, prompt, agent, MCP, authentication, or observability work.
+
+### Remaining Phase 2 scope
+
+#### Phase 2B — Backend integration and contract confidence
+
+1. unit and property tests for uncovered critical pure logic;
+2. expanded Stockfish integration tests;
+3. PostgreSQL integration and migration tests;
+4. ChromaDB integration tests;
+5. backend/frontend API contract protection;
+6. initial mutation testing on stable pure logic.
+
+#### Phase 2C — Frontend and browser confidence
+
+1. frontend component and accessibility tests;
+2. controlled API mocking at the frontend boundary;
+3. Playwright PGN and Lichess flows;
+4. responsive board-viewer browser evidence.
 
 ### Acceptance criteria
 

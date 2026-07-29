@@ -2,7 +2,7 @@
 
 **Status:** Current-state reference and approved target architecture
 **Audience:** Contributors, reviewers, and technical interviewers
-**Last reviewed:** 2026-07-28
+**Last reviewed:** 2026-07-29
 
 ## 1. Purpose
 
@@ -47,7 +47,9 @@ The frontend is implemented in [`frontend/src`](../frontend/src):
 - [`api.ts`](../frontend/src/lib/api.ts) calls the REST API.
 - [`types.ts`](../frontend/src/lib/types.ts) manually mirrors backend response contracts.
 
-The frontend uses TypeScript strict mode and currently has lint and build validation, but no automated component or browser tests.
+The frontend uses TypeScript strict mode and currently has lint, explicit
+`tsc --noEmit`, and production-build validation, but no automated component or
+browser tests.
 
 ### 3.2 REST API
 
@@ -150,6 +152,25 @@ Docker Compose runs:
 - ChromaDB embedded in the API process with local volume persistence.
 
 The current `/health` route proves that the API process responds. It does not prove readiness of PostgreSQL, ChromaDB, Stockfish, Lichess, or OpenAI.
+
+### 3.10 Automated quality boundary
+
+Phase 2A adds deterministic constraints around the current architecture:
+
+- Ruff owns Python linting, import order, and formatting.
+- mypy checks all application and script modules without module exclusions.
+- pytest measures line and branch coverage of `app/` and enforces the measured
+  70% baseline.
+- `scripts/quality.py` exposes the same backend and frontend targets on Windows,
+  Linux, and GitHub Actions.
+- `.github/workflows/quality.yml` runs independent backend and frontend jobs on
+  relevant pushes and pull requests.
+
+This boundary verifies static quality, the existing isolated backend suite, and
+the frontend production build. It does not yet prove real PostgreSQL, ChromaDB,
+expanded Stockfish, browser, or API-contract integration; those remain later
+Phase 2 work. The workflow is locally validated, but its first hosted execution
+is pending until the branch is pushed.
 
 ## 4. Phase 1 correctness status
 

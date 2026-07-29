@@ -42,7 +42,7 @@ def _analyze_game_sync(pgn: str, depth: int) -> dict:
     critical_moments = []
 
     try:
-        with chess.engine.SimpleEngine.popen_uci(stockfish_path) as engine:
+        with chess.engine.SimpleEngine.popen_uci(str(stockfish_path)) as engine:
             for move in mainline_moves:
                 move_number = board.fullmove_number
                 player_turn = board.turn
@@ -110,14 +110,12 @@ def _evaluate_board(
 ) -> float:
     info = engine.analyse(board, chess.engine.Limit(depth=depth))
     score = info["score"].pov(pov).score(mate_score=MATE_SCORE)
-    if score is None:
-        return 0.0
     return round(score / 100, 2)
 
 
 def calculate_cpl(evaluation_before: float, evaluation_after: float) -> int:
     loss = max(0.0, evaluation_before - evaluation_after)
-    return int(round(loss * 100))
+    return round(loss * 100)
 
 
 def classify_move(cpl: int) -> str:
@@ -148,18 +146,15 @@ def get_summary(moves: list[dict]) -> dict:
 
         summary[phase] = {
             "avg_cpl": round(sum(cpls) / len(cpls), 1) if cpls else 0,
-            "inaccuracies": len([
-                move for move in phase_moves
-                if move["classification"] == "inaccuracy"
-            ]),
-            "mistakes": len([
-                move for move in phase_moves
-                if move["classification"] == "mistake"
-            ]),
-            "blunders": len([
-                move for move in phase_moves
-                if move["classification"] == "blunder"
-            ]),
+            "inaccuracies": len(
+                [move for move in phase_moves if move["classification"] == "inaccuracy"]
+            ),
+            "mistakes": len(
+                [move for move in phase_moves if move["classification"] == "mistake"]
+            ),
+            "blunders": len(
+                [move for move in phase_moves if move["classification"] == "blunder"]
+            ),
         }
 
     return summary

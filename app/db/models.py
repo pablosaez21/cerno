@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -31,7 +39,9 @@ class UserProfile(Base):
     )
 
     game_analyses: Mapped[list["GameAnalysis"]] = relationship(back_populates="user")
-    weakness_profiles: Mapped[list["WeaknessProfile"]] = relationship(back_populates="user")
+    weakness_profiles: Mapped[list["WeaknessProfile"]] = relationship(
+        back_populates="user"
+    )
     training_recommendations: Mapped[list["TrainingRecommendation"]] = relationship(
         back_populates="user"
     )
@@ -147,7 +157,9 @@ class AgentSession(Base, TimestampMixin):
     __tablename__ = "agent_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("user_profiles.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("user_profiles.id"), index=True
+    )
     input_message: Mapped[str] = mapped_column(Text)
     output_message: Mapped[str] = mapped_column(Text)
     tools_used: Mapped[list] = mapped_column(JSONB)

@@ -1,6 +1,5 @@
 from app.services.stockfish import detect_phase_weaknesses, get_summary
 
-
 PHASES = ("opening", "middlegame", "endgame")
 MOVER_COLORS = ("white", "black")
 CLASSIFICATION_COUNTERS = {
@@ -19,13 +18,9 @@ def project_analysis_for_player(analysis: dict, player_color: str) -> dict:
     _validate_mover_colors(moves)
     _validate_mover_colors(critical_moments)
 
-    player_moves = [
-        move for move in moves
-        if move["mover_color"] == player_color
-    ]
+    player_moves = [move for move in moves if move["mover_color"] == player_color]
     player_critical_moments = [
-        moment for moment in critical_moments
-        if moment["mover_color"] == player_color
+        moment for moment in critical_moments if moment["mover_color"] == player_color
     ]
     summary = get_summary(player_moves)
 
@@ -64,9 +59,7 @@ def aggregate_game_analyses(analyses: list[dict]) -> dict:
     secondary_weakness = detect_secondary_weakness(normalized_stats, main_weakness)
     detected_patterns = detect_patterns(normalized_stats, critical_moments)
     recommended_focus = build_recommended_focus(
-        main_weakness,
-        secondary_weakness,
-        detected_patterns
+        main_weakness, secondary_weakness, detected_patterns
     )
 
     profile = {
@@ -82,11 +75,8 @@ def aggregate_game_analyses(analyses: list[dict]) -> dict:
 
 
 def detect_main_weakness(phase_stats: dict) -> str:
-    scores = {
-        phase: score_phase(stats)
-        for phase, stats in phase_stats.items()
-    }
-    return max(scores, key=scores.get) if scores else "opening"
+    scores = {phase: score_phase(stats) for phase, stats in phase_stats.items()}
+    return max(scores, key=lambda phase: scores[phase]) if scores else "opening"
 
 
 def detect_secondary_weakness(phase_stats: dict, main_weakness: str) -> str | None:
