@@ -1,7 +1,7 @@
 # Cerno testing strategy
 
-**Status:** Approved target strategy with Phase 2A implemented locally
-**Implementation phase:** Phase 2A complete locally; the first hosted GitHub Actions run is pending
+**Status:** Approved target strategy with Phase 2A complete and Phase 2B implemented locally
+**Implementation phase:** Phase 2B awaits its first hosted integration run
 **Last reviewed:** 2026-07-29
 
 ## 1. Quality objective
@@ -17,9 +17,10 @@ The strategy follows four rules:
 
 ## 2. Current state
 
-The committed pre-Phase-1 baseline contained 21 collected backend cases. The
-Phase 2A working tree contains 33 collected cases, including parametrized
-regressions, and all pass in the latest verified run.
+The committed pre-Phase-1 baseline contained 21 collected backend cases. Phase
+2A established 33 deterministic backend cases and its backend/frontend jobs are
+green in GitHub Actions. Phase 2B now has 39 fast cases and 18 real integration
+cases, for 57 passing backend cases locally.
 
 Phase 2A adds the automated quality foundation without claiming the remaining
 Phase 2 integration and browser coverage:
@@ -56,14 +57,14 @@ Current strengths:
 
 Identified limitations:
 
-- the first hosted workflow run cannot be verified until this branch is pushed;
-- the global coverage gate is intentionally low because persistence, RAG, and
-  agent modules have little or no direct coverage;
+- the new `backend-integration` hosted job cannot be verified until this branch
+  is pushed;
+- the global gate remains 70% until the integration job has a stable hosted
+  baseline;
 - no frontend test framework;
 - no automated E2E;
-- Stockfish behavior is normally mocked in route tests;
-- PostgreSQL repositories are mocked in endpoint tests;
-- ChromaDB retrieval is mocked in API tests;
+- route tests still mock external boundaries, but PostgreSQL, ChromaDB, and
+  Stockfish now each have a separate real integration path;
 - OpenAI orchestration is largely replaced rather than exercised;
 - no mutation testing;
 - no contract drift protection.
@@ -87,6 +88,25 @@ boundaries rather than hidden through global ignores.
 Phase 2A deliberately adds no tests merely to inflate the baseline. Its purpose
 is to make the existing behavior measurable and prevent regression before Phase
 2B adds real adapter and persistence integration coverage.
+
+### 2.2 Phase 2B integration boundary
+
+Phase 2B uses real infrastructure without external credentials or developer
+state:
+
+- PostgreSQL 16 runs in a dedicated `cerno_test` service. A defensive fixture
+  accepts only the exact local database name and refuses the application's
+  configured database. Every case recreates `public`, migrates from empty to
+  Alembic `head`, and cleans the schema afterward.
+- ChromaDB uses a real persistent collection under pytest `tmp_path`, a
+  deterministic keyword embedding, and a controlled local corpus. Importing the
+  application no longer opens `data/chromadb`; the product collection is lazy.
+- Stockfish runs as a real process at depth 1. The test fixture resolves
+  `TEST_STOCKFISH_PATH`, `STOCKFISH_PATH`, the ignored Windows binary, and common
+  Linux package paths.
+- No integration test contacts Lichess, OpenAI, or another paid/live service.
+- `docker-compose.integration.yml` uses tmpfs and a distinct Compose project, so
+  it has no persistent volume and does not alter the ordinary Cerno stack.
 
 ## 3. Test layers
 
@@ -245,6 +265,8 @@ Property tests must use bounded strategies and produce readable failure examples
 
 ## 6. Stockfish integration
 
+**Phase 2B status:** Implemented and passing locally: 8 cases.
+
 ### 6.1 Fixture set
 
 Maintain small controlled PGN fixtures for:
@@ -272,6 +294,24 @@ At low depth, assert:
 
 Avoid relying on exact centipawn scores unless the engine binary and options are pinned and the assertion is intentionally version-specific.
 
+The implemented fixture set covers an ordinary game, White and Black player
+projections, castling, en passant, promotion, mate, a custom initial FEN, invalid
+PGN, and a missing executable. Every real engine assertion uses depth 1 and
+checks stable properties: ply count, mover ownership, valid FEN, non-negative
+CPL, allowed phase/classification, finite scores, and expected special-move UCI.
+
+Local Windows resolution prefers:
+
+```text
+TEST_STOCKFISH_PATH
+STOCKFISH_PATH
+engines/stockfish.exe
+stockfish on PATH
+```
+
+GitHub Actions installs the Ubuntu package and sets
+`TEST_STOCKFISH_PATH=/usr/games/stockfish`.
+
 ### 6.3 Performance signal
 
 Record analysis duration, depth, and plies for a small benchmark. Start with observation; only introduce a hard budget after a stable baseline exists.
@@ -279,6 +319,8 @@ Record analysis duration, depth, and plies for a small benchmark. Start with obs
 ## 7. PostgreSQL integration
 
 Use PostgreSQL, not SQLite as the only substitute, because the schema uses PostgreSQL-specific JSONB and production constraints.
+
+**Phase 2B status:** Implemented and passing locally: 6 cases.
 
 Test workflow:
 
@@ -308,9 +350,30 @@ Required cases:
 
 Integration fixtures must isolate and clean their own data.
 
+Local startup:
+
+```powershell
+.\venv\Scripts\python.exe scripts\quality.py integration-up
+.\venv\Scripts\python.exe scripts\quality.py postgres
+.\venv\Scripts\python.exe scripts\quality.py integration-down
+```
+
+The default test URL is
+`postgresql+psycopg://cerno_test:cerno_test@localhost:55432/cerno_test`.
+`TEST_DATABASE_URL` may override it only when the target is local, is named
+exactly `cerno_test`, and differs from Cerno's configured application database.
+
+The integration run found a real schema drift: ORM timestamp columns were
+non-nullable while migration `0001` created them nullable. Migration
+`0002_timestamp_columns_not_null` fills any historical nulls and applies the
+model constraint. Autogeneration comparison is now empty after upgrading a blank
+database to `head`.
+
 ## 8. ChromaDB integration
 
 Use a temporary directory and a small deterministic embedding function where semantic model behavior is not under test.
+
+**Phase 2B status:** Implemented and passing locally: 4 cases.
 
 Technical integration cases:
 
@@ -327,6 +390,12 @@ Technical integration cases:
 - read/write failure converted to a structured application error.
 
 A separate evaluation run should use the production embedding configuration.
+
+The current Phase 2B cases verify an empty collection, real upsert, metadata and
+distance persistence, unambiguous retrieval, idempotent replacement of an
+existing ID, reopening the on-disk collection, and a controlled initialization
+error. Source reconciliation and stale-chunk deletion are not current product
+contracts and remain Phase 3 work; Phase 2B does not invent them.
 
 ## 9. API contract testing
 
@@ -462,37 +531,37 @@ Line and branch coverage were introduced together in Phase 2A. The authoritative
 configuration is in `pyproject.toml`, uses `app/` as its source, and has no
 coverage omissions.
 
-The verified 2026-07-29 baseline is:
+The Phase 2A baseline and Phase 2B complete-suite result are:
 
-| Measure | Covered | Total | Result |
-| --- | ---: | ---: | ---: |
-| Lines | 755 | 1,028 | 73.44% |
-| Branches | 111 | 208 | 53.37% |
-| Combined coverage.py result | — | — | 70.06% |
-| Required gate | — | — | 70.00% |
+| Measure | Phase 2A | Phase 2B |
+| --- | ---: | ---: |
+| Lines | 755/1,028 — 73.44% | 872/1,050 — 83.05% |
+| Branches | 111/208 — 53.37% | 137/208 — 65.87% |
+| Combined coverage.py result | 70.06% | 80.21% |
+| Required gate | 70.00% | 70.00% |
 
-The gate is a non-regression floor derived from the measured suite, not an
-aspirational quality score. It leaves only 0.06 percentage points of margin, so
-new uncovered production code must normally add tests or justify a coordinated
-threshold decision. It must be raised as Phase 2B and 2C add meaningful coverage.
+The quick suite remains independently healthy at 71.78% combined. The gate is
+not raised automatically: the complete suite has ample local margin, but its
+GitHub service-container and packaged-Stockfish behavior has not yet produced a
+hosted baseline. Reconsider the threshold after stable hosted runs rather than
+coupling ordinary backend feedback to an unverified number.
 
-Lowest-covered modules at this baseline:
+Critical-module changes from Phase 2A to Phase 2B:
 
-| Module | Coverage |
-| --- | ---: |
-| `app/db/repositories/sessions.py` | 0.00% |
-| `app/db/repositories/analyses.py` | 14.47% |
-| `app/services/rag.py` | 18.07% |
-| `app/services/agent.py` | 23.40% |
-| `app/db/repositories/weaknesses.py` | 25.00% |
-| `app/db/repositories/users.py` | 31.25% |
-| `app/db/repositories/recommendations.py` | 45.45% |
-| `app/routers/games.py` | 55.88% |
+| Module | Phase 2A | Phase 2B |
+| --- | ---: | ---: |
+| `app/db/repositories/sessions.py` | 0.00% | 0.00% |
+| `app/db/repositories/analyses.py` | 14.47% | 76.32% |
+| `app/db/repositories/recommendations.py` | 45.45% | 100.00% |
+| `app/db/repositories/users.py` | 31.25% | 100.00% |
+| `app/db/repositories/weaknesses.py` | 25.00% | 100.00% |
+| `app/services/rag.py` | 18.07% | 50.48% |
+| `app/services/stockfish.py` | 71.54% | 84.62% |
+| `app/services/coach.py` | 77.33% | 78.54% |
 
-These numbers prioritize later work; they do not authorize starting RAG, agent,
-or persistence refactors in Phase 2A. Coverage exclusions must remain explicit,
-local, and justified. Raising a number through trivial assertions or mocking the
-logic under test is not acceptable.
+Agent sessions remain at 0% because agent work is outside Phase 2B. RAG download,
+chunk parsing, and production embeddings remain uncovered intentionally because
+their functional redesign belongs to Phase 3. Coverage exclusions remain zero.
 
 ## 14. Mutation testing
 
@@ -532,11 +601,11 @@ Every critical adapter requires at least one real automated integration path.
 
 ## 16. CI
 
-### 16.1 Phase 2A workflow
+### 16.1 Implemented workflow
 
 `.github/workflows/quality.yml` runs on relevant pushes and pull requests with
 read-only repository permissions and cancels superseded runs on the same ref.
-Its two independent jobs are:
+Its three independent jobs are:
 
 ```text
 backend:
@@ -555,17 +624,24 @@ frontend:
   ESLint
   tsc --noEmit
   Next.js production build
+
+backend-integration:
+  Python 3.13
+  PostgreSQL 16 service container with cerno_test
+  install Stockfish from Ubuntu packages
+  run all 57 backend cases with line and branch coverage
+  upload the complete coverage.xml
 ```
 
-The workflow does not require secrets, paid APIs, PostgreSQL, ChromaDB,
-Playwright, or a live Stockfish/Lichess dependency. YAML syntax and required job
-commands are checked locally by `scripts/validate_workflow.py`. The GitHub-hosted
-runner, action resolution, cache behavior, and artifact upload can only be
-confirmed by the first push.
+The integration job has no secrets, paid APIs, live Lichess calls, persistent
+Chroma volume, or `continue-on-error`. YAML structure, the PostgreSQL service,
+Stockfish installation, and required commands are checked locally by
+`scripts/validate_workflow.py`. Phase 2A's backend/frontend jobs are green on
+GitHub; the new integration job requires its first push.
 
 ### 16.2 Local commands
 
-Run the complete gate from the repository root:
+Run the fast Phase 2A gate from the repository root:
 
 ```powershell
 .\venv\Scripts\python.exe scripts\quality.py all
@@ -578,14 +654,40 @@ the equivalent portable command is:
 python scripts/quality.py all
 ```
 
-Available narrower targets are `lint`, `format`, `types`, `tests`, `coverage`,
-`workflow`, `backend`, and `frontend`. The latest full run produced:
+With Docker Desktop running, execute every Phase 2B gate and clean up the
+ephemeral PostgreSQL service automatically:
+
+```powershell
+.\venv\Scripts\python.exe scripts\quality.py full
+```
+
+Available Phase 2B targets:
 
 ```text
-Ruff: All checks passed; 48 files already formatted
+tests             fast tests only
+integration       every real integration
+postgres          PostgreSQL only
+chroma            ChromaDB only
+stockfish         Stockfish only
+suite             all backend tests
+coverage          fast-suite coverage
+coverage-all      complete-suite coverage
+integration-up    start isolated local PostgreSQL
+integration-down  stop isolated local PostgreSQL
+full              start integration DB, run every gate, then clean up
+```
+
+The latest complete backend evidence is:
+
+```text
+Ruff: All checks passed; 57 Python files formatted
 mypy: Success, no issues in 36 source files
-pytest: 33 passed
-coverage: 70.06%, required 70.00% reached
+fast pytest: 39 passed, 18 deselected
+PostgreSQL: 6 passed
+ChromaDB: 4 passed
+Stockfish: 8 passed
+complete pytest: 57 passed
+complete coverage: 80.21%, required 70.00% reached
 workflow validation: valid
 frontend ESLint: passed
 frontend TypeScript: passed
@@ -599,10 +701,8 @@ Later subphases should add, in parallel where safe:
 ```text
 frontend-component-tests
 contract-check
-postgres-integration
-chroma-integration
-stockfish-smoke
 playwright-pgn
+mutation-testing
 ```
 
 ### Scheduled/manual workflow
@@ -649,10 +749,27 @@ Phase 2A is complete locally with:
 - separate backend and frontend CI jobs;
 - local validation of every command represented in the workflow.
 
-The hosted GitHub Actions execution remains pending until the branch is pushed.
-This limitation does not imply completion of all Phase 2 work.
+The Phase 2A backend and frontend jobs are green in GitHub Actions.
 
-### 18.2 Full Phase 2
+### 18.2 Phase 2B
+
+Phase 2B is implemented and verified locally with:
+
+- empty PostgreSQL migration through `0002` and no model drift;
+- real repository, JSONB, relationship, foreign-key, commit, replacement,
+  upsert, and rollback evidence;
+- real temporary Chroma persistence, retrieval, metadata, upsert, and error
+  evidence;
+- real Stockfish execution across stable chess invariants and special moves;
+- 57 passing backend cases and 80.21% combined complete-suite coverage;
+- an isolated local Compose service and a GitHub PostgreSQL service container;
+- a required `backend-integration` job with no external credentials.
+
+Hosted completion evidence remains pending until the first push runs the new
+job. Phase 2B must not be described as fully hosted-verified before that run is
+green.
+
+### 18.3 Full Phase 2
 
 Phase 2 is complete only with:
 

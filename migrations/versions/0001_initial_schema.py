@@ -4,8 +4,9 @@ Revision ID: 0001_initial_schema
 Revises:
 Create Date: 2026-06-04
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "0001_initial_schema"
@@ -19,8 +20,12 @@ def upgrade() -> None:
         "user_profiles",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("lichess_username", sa.String(length=100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
     )
     op.create_index(
         "ix_user_profiles_lichess_username",
@@ -32,7 +37,9 @@ def upgrade() -> None:
     op.create_table(
         "game_analyses",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False),
+        sa.Column(
+            "user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False
+        ),
         sa.Column("lichess_game_id", sa.String(length=32)),
         sa.Column("pgn", sa.Text(), nullable=False),
         sa.Column("opponent", sa.String(length=100)),
@@ -41,7 +48,9 @@ def upgrade() -> None:
         sa.Column("opening_name", sa.String(length=255)),
         sa.Column("total_moves", sa.Integer(), nullable=False),
         sa.Column("analysis_summary", postgresql.JSONB(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
         sa.UniqueConstraint("user_id", "lichess_game_id", name="uq_user_game_analysis"),
     )
     op.create_index("ix_game_analyses_user_id", "game_analyses", ["user_id"])
@@ -54,7 +63,9 @@ def upgrade() -> None:
     op.create_table(
         "weakness_profiles",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False),
+        sa.Column(
+            "user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False
+        ),
         sa.Column("games_analyzed", sa.Integer(), nullable=False),
         sa.Column("main_weakness", sa.String(length=50), nullable=False),
         sa.Column("opening_score", sa.Float(), nullable=False),
@@ -66,8 +77,12 @@ def upgrade() -> None:
         sa.Column("mistakes_total", sa.Integer(), nullable=False),
         sa.Column("inaccuracies_total", sa.Integer(), nullable=False),
         sa.Column("profile_data", postgresql.JSONB(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
     )
     op.create_index("ix_weakness_profiles_user_id", "weakness_profiles", ["user_id"])
     op.create_index(
@@ -95,24 +110,36 @@ def upgrade() -> None:
         sa.Column("classification", sa.String(length=20), nullable=False),
         sa.Column("fen_before", sa.Text(), nullable=False),
         sa.Column("fen_after", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
     )
-    op.create_index("ix_move_analyses_game_analysis_id", "move_analyses", ["game_analysis_id"])
+    op.create_index(
+        "ix_move_analyses_game_analysis_id", "move_analyses", ["game_analysis_id"]
+    )
     op.create_index("ix_move_analyses_phase", "move_analyses", ["phase"])
-    op.create_index("ix_move_analyses_classification", "move_analyses", ["classification"])
+    op.create_index(
+        "ix_move_analyses_classification", "move_analyses", ["classification"]
+    )
 
     op.create_table(
         "training_recommendations",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False),
+        sa.Column(
+            "user_id", sa.Integer(), sa.ForeignKey("user_profiles.id"), nullable=False
+        ),
         sa.Column("game_analysis_id", sa.Integer(), sa.ForeignKey("game_analyses.id")),
-        sa.Column("weakness_profile_id", sa.Integer(), sa.ForeignKey("weakness_profiles.id")),
+        sa.Column(
+            "weakness_profile_id", sa.Integer(), sa.ForeignKey("weakness_profiles.id")
+        ),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("priority", sa.String(length=100), nullable=False),
         sa.Column("source_type", sa.String(length=50), nullable=False),
         sa.Column("rag_sources", postgresql.JSONB(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
     )
     op.create_index(
         "ix_training_recommendations_user_id",
@@ -127,7 +154,9 @@ def upgrade() -> None:
         sa.Column("input_message", sa.Text(), nullable=False),
         sa.Column("output_message", sa.Text(), nullable=False),
         sa.Column("tools_used", postgresql.JSONB(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
     )
     op.create_index("ix_agent_sessions_user_id", "agent_sessions", ["user_id"])
 

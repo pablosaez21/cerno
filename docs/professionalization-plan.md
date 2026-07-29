@@ -168,8 +168,9 @@ Phase 1 must not be marked complete without evidence for every item above.
 
 ## 6. Phase 2 — Automated quality foundation
 
-**Overall status:** In progress. Phase 2A is complete locally; Phase 2B and Phase
-2C have not started.
+**Overall status:** In progress. Phase 2A is complete and hosted-verified. Phase
+2B is complete locally but awaits its first hosted integration run. Phase 2C has
+not started.
 
 ### Objective
 
@@ -177,8 +178,8 @@ Create automated constraints that make later RAG, prompt, agent, and MCP changes
 
 ### Phase 2A — Backend quality foundation and CI
 
-**Status:** Complete locally as of 2026-07-29. The first hosted GitHub Actions run
-is pending until the branch is pushed.
+**Status:** Complete, including green backend and frontend GitHub Actions jobs,
+as confirmed on 2026-07-29.
 
 #### Scope
 
@@ -204,32 +205,69 @@ is pending until the branch is pushed.
 - The workflow YAML and required commands pass the local structural validator.
 - `pip check` reports no broken requirements.
 
-GitHub-hosted action resolution, caches, artifact upload, and runner behavior can
-only be verified after the first push. Docker image validation was attempted, but
-the local Docker Desktop Linux engine was not running; this is recorded as
-environmental evidence, not silently treated as a pass.
+GitHub-hosted action resolution, caches, artifact upload, runner behavior, and
+Docker Compose have subsequently been verified.
 
 Phase 2A does not add frontend test tooling, Playwright, real PostgreSQL or
 ChromaDB integration, an expanded Stockfish suite, contract generation, mutation
 testing, or any RAG, prompt, agent, MCP, authentication, or observability work.
 
-### Remaining Phase 2 scope
+### Phase 2B — Real backend integrations
 
-#### Phase 2B — Backend integration and contract confidence
+**Status:** Implemented and verified locally as of 2026-07-29. Hosted completion
+remains pending until the new `backend-integration` job is green after push.
 
-1. unit and property tests for uncovered critical pure logic;
-2. expanded Stockfish integration tests;
-3. PostgreSQL integration and migration tests;
-4. ChromaDB integration tests;
-5. backend/frontend API contract protection;
-6. initial mutation testing on stable pure logic.
+#### Scope
+
+1. real PostgreSQL 16 migration and repository tests;
+2. commit, rollback, JSONB, relationship, upsert, and replacement evidence;
+3. a real ChromaDB collection isolated in a temporary directory;
+4. deterministic local Chroma corpus and embeddings without network access;
+5. real Stockfish execution at low depth across stable chess invariants;
+6. isolated local infrastructure and a required GitHub integration job.
+
+#### Acceptance evidence
+
+- Six PostgreSQL cases recreate an empty schema and run Alembic to `head`.
+- Alembic autogeneration reports no model/migration drift after upgrade.
+- Real repositories persist users, analyses, critical moves, weakness profiles,
+  recommendations, relationships, and JSONB.
+- A coach-like transaction commits the full graph, while an injected failure
+  rolls back every flushed record.
+- Four ChromaDB cases use only pytest temporary directories and verify real
+  persistence, metadata, retrieval, idempotent upsert, reopening, and controlled
+  initialization failure.
+- Eight Stockfish cases execute the configured binary at depth 1 and cover
+  normal play, both player colors, castling, en passant, promotion, mate, custom
+  FEN, invalid PGN, and missing binary behavior.
+- The fast suite has 39 cases; all 18 integration cases and all 57 backend cases
+  pass locally.
+- Complete coverage is 83.05% lines, 65.87% branches, and 80.21% combined.
+- The 70% gate is retained pending a stable hosted integration baseline.
+- `backend-integration` provides PostgreSQL 16, installs Stockfish, runs the
+  complete suite, and uploads coverage without credentials or live APIs.
+
+The initial integration run exposed nullable timestamp drift between the ORM and
+`0001`. Migration `0002_timestamp_columns_not_null` repairs existing nulls before
+applying the intended non-null contract. No other model drift remains.
+
+#### Pending completion evidence
+
+- First green hosted execution of `backend-integration`.
+- Verification of the Ubuntu-packaged Stockfish path and runtime in that hosted
+  log.
+
+These pending hosted facts prevent Phase 2B from being marked fully complete,
+but do not block the locally verified implementation.
 
 #### Phase 2C — Frontend and browser confidence
 
 1. frontend component and accessibility tests;
 2. controlled API mocking at the frontend boundary;
 3. Playwright PGN and Lichess flows;
-4. responsive board-viewer browser evidence.
+4. responsive board-viewer browser evidence;
+5. backend/frontend API contract protection;
+6. property and mutation testing where evidence justifies them.
 
 ### Acceptance criteria
 

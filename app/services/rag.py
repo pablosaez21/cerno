@@ -1,24 +1,61 @@
+import sqlite3
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, cast
 
 import chromadb
 import httpx
+from chromadb.api.models.Collection import Collection
+from chromadb.api.types import Documents, EmbeddingFunction
 from chromadb.utils import embedding_functions
+from overrides import overrides
 
 from app.core.config import settings
 
 LICHESS_STUDY_BASE_URL = "https://lichess.org/study"
 LICHESS_TIMEOUT_SECONDS = 15.0
 
-client = chromadb.PersistentClient(path=settings.chroma_path)
 
-embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+class ChromaStoreError(chromadb.errors.ChromaError):
+    """Raised when Cerno cannot initialize its local Chroma store."""
 
-collection = client.get_or_create_collection(
-    name="chess_theory",
-    # Chroma accepts its default text embedding function at runtime, but its
-    # published generic protocol is wider than this concrete implementation.
-    embedding_function=cast(Any, embedding_fn),
-)
+    @classmethod
+    @overrides
+    def name(cls) -> str:
+        return "ChromaStoreError"
+
+
+def create_chroma_collection(
+    path: str | Path,
+    *,
+    name: str = "chess_theory",
+    embedding_function: EmbeddingFunction[Documents] | None = None,
+) -> Collection:
+    """Create an isolated persistent collection at an explicit path."""
+    active_embedding = (
+        embedding_function
+        if embedding_function is not None
+        else embedding_functions.DefaultEmbeddingFunction()
+    )
+
+    try:
+        client = chromadb.PersistentClient(path=str(path))
+        return client.get_or_create_collection(
+            name=name,
+            # Chroma's concrete default embedding type is narrower than the
+            # generic protocol accepted by get_or_create_collection.
+            embedding_function=cast(Any, active_embedding),
+        )
+    except (chromadb.errors.ChromaError, OSError, sqlite3.Error) as exc:
+        raise ChromaStoreError(
+            f"Could not open ChromaDB collection '{name}' at '{path}'."
+        ) from exc
+
+
+@lru_cache(maxsize=1)
+def get_collection() -> Collection:
+    """Return the product collection without touching disk during import."""
+    return create_chroma_collection(settings.chroma_path)
 
 
 async def fetch_lichess_study(study_id: str) -> str:
@@ -97,23 +134,43 @@ def _extract_tag_value(pgn_text: str, tag: str) -> str | None:
 async def index_study(study_id: str, category: str = "uncategorized") -> int:
     pgn_text = await fetch_lichess_study(study_id)
     chunks = chunk_study_pgn(pgn_text, study_id, category)
+    return upsert_chunks(chunks)
+
+
+def upsert_chunks(
+    chunks: list[dict],
+    *,
+    target_collection: Collection | None = None,
+) -> int:
+    """Upsert already-prepared chunks into the selected Chroma collection."""
     if not chunks:
         return 0
 
+    active_collection = (
+        target_collection if target_collection is not None else get_collection()
+    )
     documents = [c["text"] for c in chunks]
     ids = [c["id"] for c in chunks]
     metadatas = [c["metadata"] for c in chunks]
 
-    collection.upsert(documents=documents, ids=ids, metadatas=metadatas)
+    active_collection.upsert(documents=documents, ids=ids, metadatas=metadatas)
 
     return len(chunks)
 
 
-def search_theory(query: str, n_results: int = 3) -> list[dict]:
-    if collection.count() == 0:
+def search_theory(
+    query: str,
+    n_results: int = 3,
+    *,
+    target_collection: Collection | None = None,
+) -> list[dict]:
+    active_collection = (
+        target_collection if target_collection is not None else get_collection()
+    )
+    if active_collection.count() == 0:
         return []
 
-    results = collection.query(query_texts=[query], n_results=n_results)
+    results = active_collection.query(query_texts=[query], n_results=n_results)
 
     documents = (results.get("documents") or [[]])[0]
     metadatas = (results.get("metadatas") or [[]])[0]

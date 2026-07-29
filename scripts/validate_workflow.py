@@ -9,7 +9,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = PROJECT_ROOT / ".github" / "workflows" / "quality.yml"
-EXPECTED_JOBS = {"backend", "frontend"}
+EXPECTED_JOBS = {"backend", "frontend", "backend-integration"}
 
 
 def require_mapping(value: object, label: str) -> dict[str, Any]:
@@ -57,6 +57,27 @@ def validate_workflow() -> None:
     for command in ("npm run lint", "npm run typecheck", "npm run build"):
         if command not in frontend_commands:
             raise ValueError(f"Frontend job does not run '{command}'.")
+
+    integration_job = require_mapping(
+        jobs["backend-integration"],
+        "Job 'backend-integration'",
+    )
+    services = require_mapping(
+        integration_job.get("services"),
+        "Backend integration services",
+    )
+    if "postgres" not in services:
+        raise ValueError("Backend integration job must provide PostgreSQL.")
+
+    integration_commands = run_commands["backend-integration"]
+    for command in (
+        "apt-get install --yes stockfish",
+        "scripts/quality.py coverage-all",
+    ):
+        if command not in integration_commands:
+            raise ValueError(f"Backend integration job does not run '{command}'.")
+    if "continue-on-error" in integration_job:
+        raise ValueError("Backend integration failures must not be ignored.")
 
 
 def main() -> None:

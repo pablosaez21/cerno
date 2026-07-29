@@ -16,19 +16,28 @@ PHASES = ("opening", "middlegame", "endgame")
 MATE_SCORE = 10000
 
 
-async def analyze_game(pgn: str, depth: int = 12) -> dict:
+async def analyze_game(
+    pgn: str,
+    depth: int = 12,
+    *,
+    stockfish_path: str | Path | None = None,
+) -> dict:
     depth = settings.clamp_stockfish_depth(depth)
-    return await asyncio.to_thread(_analyze_game_sync, pgn, depth)
+    return await asyncio.to_thread(_analyze_game_sync, pgn, depth, stockfish_path)
 
 
-def _analyze_game_sync(pgn: str, depth: int) -> dict:
+def _analyze_game_sync(
+    pgn: str,
+    depth: int,
+    stockfish_path: str | Path | None = None,
+) -> dict:
     if not pgn or not pgn.strip():
         raise ValueError("PGN is required.")
 
     if depth < 1:
         raise ValueError("Depth must be greater than 0.")
 
-    stockfish_path = _resolve_stockfish_path()
+    resolved_stockfish_path = _resolve_stockfish_path(stockfish_path)
     game = chess.pgn.read_game(io.StringIO(pgn))
     if game is None:
         raise ValueError("Invalid PGN.")
@@ -42,7 +51,9 @@ def _analyze_game_sync(pgn: str, depth: int) -> dict:
     critical_moments = []
 
     try:
-        with chess.engine.SimpleEngine.popen_uci(str(stockfish_path)) as engine:
+        with chess.engine.SimpleEngine.popen_uci(
+            str(resolved_stockfish_path)
+        ) as engine:
             for move in mainline_moves:
                 move_number = board.fullmove_number
                 player_turn = board.turn
@@ -91,8 +102,8 @@ def _analyze_game_sync(pgn: str, depth: int) -> dict:
     }
 
 
-def _resolve_stockfish_path() -> Path:
-    path = STOCKFISH_PATH
+def _resolve_stockfish_path(explicit_path: str | Path | None = None) -> Path:
+    path = Path(explicit_path) if explicit_path is not None else STOCKFISH_PATH
     if not path.is_absolute():
         path = PROJECT_ROOT / path
 

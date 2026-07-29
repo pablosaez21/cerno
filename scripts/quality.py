@@ -10,7 +10,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
-PYTHON_TARGETS = ("app", "tests", "scripts")
+PYTHON_TARGETS = ("app", "tests", "scripts", "migrations")
+INTEGRATION_COMPOSE_FILE = PROJECT_ROOT / "docker-compose.integration.yml"
 
 
 def run(label: str, command: list[str], cwd: Path = PROJECT_ROOT) -> None:
@@ -25,6 +26,13 @@ def npm_executable() -> str:
     if npm is None:
         raise SystemExit("npm was not found on PATH.")
     return npm
+
+
+def docker_executable() -> str:
+    docker = shutil.which("docker")
+    if docker is None:
+        raise SystemExit("docker was not found on PATH.")
+    return docker
 
 
 def lint() -> None:
@@ -46,7 +54,42 @@ def type_check() -> None:
 
 
 def tests() -> None:
-    run("Backend tests", [PYTHON, "-m", "pytest", "-q"])
+    run(
+        "Fast backend tests",
+        [PYTHON, "-m", "pytest", "-q", "-m", "not integration"],
+    )
+
+
+def integration() -> None:
+    run(
+        "Backend integration tests",
+        [PYTHON, "-m", "pytest", "-q", "-m", "integration"],
+    )
+
+
+def postgres() -> None:
+    run(
+        "PostgreSQL integration tests",
+        [PYTHON, "-m", "pytest", "-q", "-m", "postgres"],
+    )
+
+
+def chroma() -> None:
+    run(
+        "ChromaDB integration tests",
+        [PYTHON, "-m", "pytest", "-q", "-m", "chroma"],
+    )
+
+
+def stockfish() -> None:
+    run(
+        "Stockfish integration tests",
+        [PYTHON, "-m", "pytest", "-q", "-m", "stockfish"],
+    )
+
+
+def suite() -> None:
+    run("Complete backend suite", [PYTHON, "-m", "pytest", "-q"])
 
 
 def coverage() -> None:
@@ -57,11 +100,64 @@ def coverage() -> None:
             "-m",
             "pytest",
             "-q",
+            "-m",
+            "not integration",
             "--cov=app",
             "--cov-branch",
             "--cov-report=term-missing",
             "--cov-report=xml:coverage.xml",
             "--cov-report=html:htmlcov",
+        ],
+    )
+
+
+def coverage_all() -> None:
+    run(
+        "Complete backend suite with line and branch coverage",
+        [
+            PYTHON,
+            "-m",
+            "pytest",
+            "-q",
+            "--cov=app",
+            "--cov-branch",
+            "--cov-report=term-missing",
+            "--cov-report=xml:coverage.xml",
+            "--cov-report=html:htmlcov",
+        ],
+    )
+
+
+def integration_up() -> None:
+    docker = docker_executable()
+    run(
+        "Start isolated PostgreSQL integration service",
+        [
+            docker,
+            "compose",
+            "--project-name",
+            "cerno-integration",
+            "-f",
+            str(INTEGRATION_COMPOSE_FILE),
+            "up",
+            "-d",
+            "--wait",
+        ],
+    )
+
+
+def integration_down() -> None:
+    docker = docker_executable()
+    run(
+        "Stop isolated PostgreSQL integration service",
+        [
+            docker,
+            "compose",
+            "--project-name",
+            "cerno-integration",
+            "-f",
+            str(INTEGRATION_COMPOSE_FILE),
+            "down",
         ],
     )
 
@@ -94,16 +190,38 @@ def all_quality() -> None:
     frontend()
 
 
+def full_quality() -> None:
+    integration_up()
+    try:
+        lint()
+        format_check()
+        type_check()
+        coverage_all()
+        workflow()
+        frontend()
+    finally:
+        integration_down()
+
+
 COMMANDS = {
     "lint": lint,
     "format": format_check,
     "types": type_check,
     "tests": tests,
+    "integration": integration,
+    "postgres": postgres,
+    "chroma": chroma,
+    "stockfish": stockfish,
+    "suite": suite,
     "coverage": coverage,
+    "coverage-all": coverage_all,
+    "integration-up": integration_up,
+    "integration-down": integration_down,
     "workflow": workflow,
     "backend": backend,
     "frontend": frontend,
     "all": all_quality,
+    "full": full_quality,
 }
 
 

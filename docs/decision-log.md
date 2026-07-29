@@ -465,10 +465,114 @@ the gap between local verification and the pull-request gate.
 
 **Impact:** Production installs no longer include pytest or Python packaging
 build tools. Frontend adds an explicit `typecheck` script. Hosted workflow
-behavior remains pending until the first push.
+behavior for the Phase 2A jobs was subsequently verified.
 
 **Evidence:** `python scripts/quality.py all`, `pip check`, and the local workflow
-validator pass.
+validator pass; the backend and frontend jobs are green in GitHub Actions.
+
+### DEC-027 — Real PostgreSQL tests use a dedicated disposable database
+
+**Status:** Accepted and implemented locally in Phase 2B
+
+**Problem:** Repository and transaction behavior was only exercised through
+mocks. Reusing the ordinary Compose database would risk destroying developer
+data when resetting schemas.
+
+**Decision:** Use PostgreSQL 16 directly, never SQLite. Locally,
+`docker-compose.integration.yml` exposes an ephemeral `cerno_test` database on
+port 55432 under a distinct Compose project. GitHub Actions provides the same
+database through a service container. Fixtures accept only a local database
+named exactly `cerno_test`, reject Cerno's configured application URL, recreate
+`public`, run Alembic to `head`, and clean it after every case.
+
+**Alternatives:** SQLite; Testcontainers; reuse the development database; one
+shared dirty schema for the whole test run.
+
+**Rationale:** A small dedicated Compose/service-container setup is explicit,
+works from Windows and Linux, and permits real commits while retaining a strong
+destructive-operation guard.
+
+**Impact:** Six integration cases cover migration, repositories, JSONB,
+relationships, foreign keys, replacement/upsert, full commit, and rollback.
+
+**Evidence:** `python scripts/quality.py postgres` reports six passing cases
+against PostgreSQL 16.
+
+### DEC-028 — Timestamp nullability drift is repaired by migration 0002
+
+**Status:** Accepted and implemented locally in Phase 2B
+
+**Problem:** Real autogeneration comparison found eight timestamp columns that
+the ORM treats as non-nullable but migration `0001` created as nullable.
+
+**Decision:** Preserve the ORM contract. Migration
+`0002_timestamp_columns_not_null` fills historical null values with `now()` and
+then makes those timestamp columns non-nullable. Do not rewrite already-applied
+`0001`.
+
+**Alternatives:** Make ORM timestamps optional; edit `0001`; ignore the drift.
+
+**Rationale:** Every affected timestamp already has a server default and is used
+as present by ordering and response code. A forward migration is safe for
+existing databases and reproducible for empty ones.
+
+**Impact:** Deployments apply one additive schema migration. Downgrade restores
+nullable columns but does not recreate historical null values.
+
+**Evidence:** Empty PostgreSQL upgrades through `0002`, expected tables and
+revision exist, and Alembic `compare_metadata` returns no differences.
+
+### DEC-029 — Chroma initialization is lazy and injectable
+
+**Status:** Accepted and implemented locally in Phase 2B
+
+**Problem:** Importing `app.services.rag` immediately opened the developer's
+persistent index, preventing an integration test from proving it used only
+temporary storage.
+
+**Decision:** Add a collection factory accepting path, name, and embedding
+function; cache the default product collection lazily; and allow indexing/search
+helpers to receive an explicit collection. Product callers retain their existing
+signatures and default behavior.
+
+**Alternatives:** Monkeypatch module globals after import; copy RAG logic into
+tests; use the developer index; rewrite retrieval.
+
+**Rationale:** Dependency injection at the storage boundary is the smallest
+change that guarantees isolation without changing retrieval behavior.
+
+**Impact:** Four real Chroma cases use pytest temporary directories and
+deterministic embeddings. Source reconciliation, stale-chunk deletion, and
+semantic improvements remain Phase 3 work.
+
+**Evidence:** Temporary persistence, metadata, retrieval, idempotent upsert,
+reopen, empty index, and controlled unavailable-path behavior pass.
+
+### DEC-030 — Stockfish tests inject the executable path and assert invariants
+
+**Status:** Accepted and implemented locally in Phase 2B
+
+**Problem:** The executable path was frozen during module import and engine
+behavior was normally mocked, making Windows/Linux integration awkward.
+
+**Decision:** Keep the existing configured default while allowing an optional
+path at the analysis boundary. Tests resolve an explicit local/CI binary, run at
+depth 1, and assert structural chess invariants rather than exact centipawn
+values.
+
+**Alternatives:** Commit a binary; mock the engine; assert exact engine scores;
+require a platform-specific hard-coded path.
+
+**Rationale:** An injected path is deterministic across operating systems and
+does not alter product callers. Stable invariants tolerate packaged Stockfish
+version differences.
+
+**Impact:** Eight real-engine cases cover ownership, FEN, CPL, phase,
+classification, castling, en passant, promotion, mate, custom FEN, invalid PGN,
+and missing binary errors.
+
+**Evidence:** `python scripts/quality.py stockfish` reports eight passing cases
+with the ignored Windows executable.
 
 ## 3. Verified discrepancies
 
@@ -570,13 +674,13 @@ Measure Stockfish and multi-game latency before deciding whether REST/MCP need a
 
 ### OQ-009 — CI environment
 
-**Status:** Partially verified in Phase 2A
+**Status:** Phase 2A resolved; Phase 2B hosted integration pending
 
-The deterministic Python 3.13 and Node 24 jobs, dependency installation,
-commands, and workflow structure are defined and pass locally. The first hosted
-run is pending until push. Stockfish packaging/path, PostgreSQL service, Chroma
-model cache, browser dependencies, and runtime budgets remain open for later
-Phase 2 subphases.
+The deterministic Python 3.13 and Node 24 jobs are green in GitHub Actions.
+Phase 2B defines and locally validates the PostgreSQL 16 service, temporary
+Chroma storage, Ubuntu Stockfish installation, and complete-suite runtime. Their
+hosted behavior remains pending until the first `backend-integration` run.
+Browser dependencies and runtime budgets remain open for Phase 2C.
 
 ### OQ-010 — Retrieval thresholds and advanced techniques
 

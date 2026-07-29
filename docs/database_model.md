@@ -109,3 +109,8 @@ erDiagram
 - `weakness_profiles.profile_data` keeps the full aggregated profile as JSONB while exposing key fields as columns.
 - `training_recommendations.rag_sources` stores the RAG sources used to generate the plan.
 - `agent_sessions.tools_used` is reserved for tracing conversational tool calls.
+- Timestamp columns represented as required `datetime` values in the ORM are
+  `NOT NULL` in PostgreSQL. Migration `0002_timestamp_columns_not_null`
+  defensively fills historical nulls before enforcing that contract.
+- Phase 2B verifies the schema by upgrading an empty real PostgreSQL database to
+  Alembic `head` and comparing the resulting schema with SQLAlchemy metadata.

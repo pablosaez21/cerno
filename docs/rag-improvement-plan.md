@@ -2,7 +2,7 @@
 
 **Status:** Approved target design for Phase 3
 **Current capability:** Semantic retrieval with source metadata; not fully grounded generation
-**Last reviewed:** 2026-07-28
+**Last reviewed:** 2026-07-29
 
 ## 1. Purpose
 
@@ -14,7 +14,9 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
 
 [`app/services/rag.py`](../app/services/rag.py) currently:
 
-- creates a persistent ChromaDB client at module import;
+- lazily creates the persistent product collection on first use;
+- exposes an internal collection factory so integration tests can inject a
+  temporary path and deterministic embedding without touching the local index;
 - uses Chroma's default embedding function;
 - stores a fixed collection named `chess_theory`;
 - downloads Lichess studies as PGN;
@@ -23,6 +25,12 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
 - upserts stable IDs of the form `{study_id}_{index}`;
 - stores study, category, chapter, source, and type metadata;
 - returns dense top-k matches and L2 distances.
+
+Phase 2B verifies the existing technical behavior with a real temporary Chroma
+index: empty search, upsert, metadata, deterministic retrieval, persistence
+across reopen, and controlled initialization failure. It does not add source
+reconciliation, stale-chunk deletion, hybrid retrieval, no-answer, or any other
+Phase 3 behavior.
 
 [`app/services/weakness.py`](../app/services/weakness.py) creates heuristic theory queries. [`app/services/coach.py`](../app/services/coach.py) deduplicates retrieval results, builds source recommendations, and sends only derived theory themes to the LLM.
 

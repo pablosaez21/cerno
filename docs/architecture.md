@@ -111,7 +111,12 @@ This is the primary product flow because it has a bounded, structured response.
 
 ### 3.6 RAG
 
-[`app/services/rag.py`](../app/services/rag.py) creates a process-global persistent ChromaDB collection using the default embedding function. It downloads Lichess study PGN, splits it into chapter-sized documents, upserts documents and metadata, and performs dense top-k search.
+[`app/services/rag.py`](../app/services/rag.py) lazily creates the product's
+persistent ChromaDB collection using the default embedding function. It
+downloads Lichess study PGN, splits it into chapter-sized documents, upserts
+documents and metadata, and performs dense top-k search. The collection factory
+accepts an explicit path and embedding function so technical integration tests
+can use isolated storage without opening the developer's `data/chromadb`.
 
 The current system performs semantic retrieval and exposes sources. The structured coach passes derived theory themes to the LLM, not the retrieved passages themselves. The current description is therefore **retrieval-assisted coaching**, not fully grounded RAG.
 
@@ -142,6 +147,10 @@ This is provider-specific internal function calling. It is not MCP:
 
 The coach can persist analyses transactionally when `save=true`. Agent-session persistence exists as a repository function but is not connected to the current agent flow.
 
+Alembic migration `0002_timestamp_columns_not_null` aligns the database with the
+ORM's non-null timestamp contract. It fills any historical null timestamp before
+applying the constraint.
+
 ### 3.9 Local infrastructure
 
 Docker Compose runs:
@@ -152,6 +161,12 @@ Docker Compose runs:
 - ChromaDB embedded in the API process with local volume persistence.
 
 The current `/health` route proves that the API process responds. It does not prove readiness of PostgreSQL, ChromaDB, Stockfish, Lichess, or OpenAI.
+
+`docker-compose.integration.yml` is separate from that product stack. It starts
+only an ephemeral PostgreSQL 16 database named `cerno_test` on local port 55432,
+stores its data in tmpfs, and uses a distinct Compose project. Integration
+fixtures reject non-local targets, any database name other than `cerno_test`,
+and the URL configured for the application.
 
 ### 3.10 Automated quality boundary
 
@@ -166,11 +181,19 @@ Phase 2A adds deterministic constraints around the current architecture:
 - `.github/workflows/quality.yml` runs independent backend and frontend jobs on
   relevant pushes and pull requests.
 
-This boundary verifies static quality, the existing isolated backend suite, and
-the frontend production build. It does not yet prove real PostgreSQL, ChromaDB,
-expanded Stockfish, browser, or API-contract integration; those remain later
-Phase 2 work. The workflow is locally validated, but its first hosted execution
-is pending until the branch is pushed.
+Phase 2B adds a separate real-integration boundary:
+
+```text
+PostgreSQL 16 -> blank schema -> Alembic head -> repositories -> commit/rollback
+pytest tmp_path -> persistent Chroma -> controlled corpus -> query/reopen
+real Stockfish -> depth 1 -> full move/FEN/ownership invariants
+```
+
+The fast backend job remains isolated for early feedback. A
+`backend-integration` job provides PostgreSQL, installs Stockfish, and runs the
+complete suite without secrets or live APIs. The real integrations are green
+locally; the new hosted job awaits its first push. Browser, frontend behavioral,
+and API-contract testing remain Phase 2C.
 
 ## 4. Phase 1 correctness status
 

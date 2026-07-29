@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - "app/**"
+      - "migrations/**"
       - "tests/**"
       - "scripts/**"
       - "frontend/**"
+      - "docker-compose.integration.yml"
       - "requirements*.txt"
       - "pyproject.toml"
       - "pytest.ini"
@@ -14,9 +16,11 @@ on:
   pull_request:
     paths:
       - "app/**"
+      - "migrations/**"
       - "tests/**"
       - "scripts/**"
       - "frontend/**"
+      - "docker-compose.integration.yml"
       - "requirements*.txt"
       - "pyproject.toml"
       - "pytest.ini"
@@ -100,3 +104,55 @@ jobs:
 
       - name: Frontend production build
         run: npm run build
+
+  backend-integration:
+    name: Backend real integrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://cerno_test:cerno_test@localhost:5432/cerno_test
+      TEST_STOCKFISH_PATH: /usr/games/stockfish
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: cerno_test
+          POSTGRES_USER: cerno_test
+          POSTGRES_PASSWORD: cerno_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cerno_test -d cerno_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Install Stockfish
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes stockfish
+          test -x "$TEST_STOCKFISH_PATH"
+
+      - name: Run real integrations and complete backend coverage
+        run: python scripts/quality.py coverage-all
+
+      - name: Upload complete backend coverage XML
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-integration-coverage
+          path: coverage.xml
+          if-no-files-found: error
