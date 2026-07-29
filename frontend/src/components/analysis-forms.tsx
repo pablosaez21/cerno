@@ -1,8 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronDown, ClipboardCheck, History } from "lucide-react";
+import {
+  readPgnMetadata,
+  type Orientation,
+} from "@/lib/game-viewer";
 
 export type LichessFormValue = {
   username: string;
@@ -13,6 +17,7 @@ export type LichessFormValue = {
 
 export type PgnFormValue = {
   pgn: string;
+  playerColor: Orientation;
   depth: number;
 };
 
@@ -122,11 +127,14 @@ export function AnalyzePgnForm({
   isLoading: boolean;
 }) {
   const [pgn, setPgn] = useState("");
+  const [playerColor, setPlayerColor] = useState<Orientation | "">("");
   const [depth, setDepth] = useState(8);
+  const metadata = useMemo(() => readPgnMetadata(pgn), [pgn]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit({ pgn: pgn.trim(), depth });
+    if (!playerColor) return;
+    onSubmit({ pgn: pgn.trim(), playerColor, depth });
   }
 
   return (
@@ -143,6 +151,42 @@ export function AnalyzePgnForm({
           placeholder={'[Event "Game"]\n[White "White"]\n[Black "Black"]\n\n1. e4 e5 2. Nf3 Nc6 ...'}
           required
         />
+      </div>
+
+      <div>
+        <label
+          htmlFor="pgn-player-color"
+          className="block text-sm font-semibold text-[var(--muted-strong)]"
+        >
+          Side to coach
+        </label>
+        <select
+          id="pgn-player-color"
+          aria-describedby="pgn-player-color-help"
+          className="control mt-2"
+          value={playerColor}
+          onChange={(event) =>
+            setPlayerColor(event.target.value as Orientation | "")
+          }
+          required
+        >
+          <option value="" disabled>
+            Select your side
+          </option>
+          <option value="white">
+            White{metadata.white ? ` · ${metadata.white}` : ""}
+          </option>
+          <option value="black">
+            Black{metadata.black ? ` · ${metadata.black}` : ""}
+          </option>
+        </select>
+        <p
+          id="pgn-player-color-help"
+          className="mt-2 text-xs font-normal leading-5 text-[var(--muted)]"
+        >
+          Cerno will diagnose this player&apos;s decisions while keeping the full
+          game available on the board.
+        </p>
       </div>
 
       <button

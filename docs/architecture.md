@@ -70,13 +70,16 @@ no response contract or chessboard library.
 - persisted user analyses and weakness profiles;
 - health.
 
-The OpenAPI schema currently exposes ten paths. Frontend types are not generated from that schema, so contract drift is possible.
+The OpenAPI schema currently exposes eleven paths. Frontend types are not
+generated from that schema, so contract drift is possible.
 
-`POST /games/analyze` returns full-game engine data plus neutral,
-engine-grounded coaching. Its `coaching.scope` is `full_game` because pasted PGN
-input has no trusted player-color selector. This contract remains separate from
-the player-specific diagnosis returned by `POST /coach/analyze-user`; the
-frontend therefore never attributes an arbitrary PGN side's errors to the user.
+`POST /games/analyze` remains the low-level full-game engine endpoint and
+returns additive neutral coaching. The product analysis workspace does not use
+that neutral report as an alternative UI. It sends pasted games to
+`POST /coach/analyze-pgn`, together with the explicitly selected player color,
+and receives the same structured coach response used by
+`POST /coach/analyze-user`. The selector prevents Cerno from attributing an
+arbitrary side's errors to the user.
 
 ### 3.3 Stockfish analysis
 
@@ -97,9 +100,10 @@ All plies are required by the board viewer. Since Phase 1, every move exposes
 
 [`app/services/coach.py`](../app/services/coach.py) currently:
 
-1. retrieves recent Lichess games;
+1. accepts recent games retrieved from Lichess or one uploaded PGN;
 2. analyzes each complete PGN;
-3. resolves the requested user's color from the game participants;
+3. resolves the requested user's color from the Lichess participants or uses
+   the explicit uploaded-PGN selection;
 4. derives a player-only projection while retaining the complete analysis;
 5. aggregates weaknesses from the player-only projections;
 6. generates theory queries;
@@ -109,6 +113,8 @@ All plies are required by the board viewer. Since Phase 1, every move exposes
 10. optionally persists the player-specific result.
 
 This is the primary product flow because it has a bounded, structured response.
+Both product entry points share this service and return the same response
+contract. Uploaded reports are non-persistent and contain one game.
 
 ### 3.5 Weakness aggregation
 

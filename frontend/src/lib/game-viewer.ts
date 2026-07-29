@@ -53,14 +53,19 @@ export function readPgnMetadata(pgn: string): {
     const orientation =
       headers.Orientation?.toLowerCase() === "black" ? "black" : "white";
     return {
-      event: headers.Event,
-      white: headers.White,
-      black: headers.Black,
+      event: knownHeader(headers.Event),
+      white: knownHeader(headers.White),
+      black: knownHeader(headers.Black),
       orientation,
     };
   } catch {
     return { orientation: "white" };
   }
+}
+
+function knownHeader(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized && normalized !== "?" ? normalized : undefined;
 }
 
 export function validFen(fen: string | undefined): fen is string {

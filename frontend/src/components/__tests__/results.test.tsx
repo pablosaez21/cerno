@@ -77,6 +77,36 @@ describe("analysis result contracts", () => {
     expect((await runAxe(container)).violations).toEqual([]);
   });
 
+  it("uses the complete coaching layout for an uploaded PGN", () => {
+    render(
+      <CoachResults
+        result={coachAnalysisBlackFixture}
+        source="pgn"
+      />,
+    );
+
+    expect(screen.getByText("PGN report / complete")).toBeVisible();
+    expect(screen.getByText("Uploaded PGN")).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "View profile" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Review the board" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Phase performance" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Critical moments" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Train with intent." }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Recommended theory" }),
+    ).toBeVisible();
+  });
+
   it("switches between analyzed games and updates player orientation", async () => {
     const user = userEvent.setup();
     const blackGame = coachAnalysisBlackFixture.game_analyses[0];

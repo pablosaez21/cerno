@@ -108,6 +108,14 @@ If the images are already built:
 docker compose up -d
 ```
 
+`docker compose restart` and `docker compose up -d` reuse the existing images;
+they do not copy repository changes into the containers. After changing backend
+or frontend code, rebuild both application images explicitly:
+
+```bash
+docker compose up -d --build api frontend
+```
+
 Application URLs:
 
 ```text

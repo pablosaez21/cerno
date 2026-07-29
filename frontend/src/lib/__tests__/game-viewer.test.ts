@@ -147,6 +147,7 @@ describe("GameViewer deterministic helpers", () => {
     expect(
       readPgnMetadata('[Orientation "Black"]\n\n1. e4 *').orientation,
     ).toBe("black");
+    expect(readPgnMetadata("")).toEqual({ orientation: "white" });
     expect(readPgnMetadata("invalid")).toEqual({ orientation: "white" });
   });
 

@@ -11,7 +11,6 @@ import {
 import {
   analysisHistoryFixture,
   coachAnalysisFixture,
-  pgnAnalysisFixture,
   weaknessProfileFixture,
 } from "@/test/fixtures";
 import { server } from "@/test/server";
@@ -44,22 +43,29 @@ describe("API URL construction", () => {
 });
 
 describe("API requests and valid responses", () => {
-  it("serializes the PGN analysis request", async () => {
+  it("serializes the player-specific PGN coaching request", async () => {
     let body: unknown;
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, async ({ request }) => {
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json(pgnAnalysisFixture);
+        return HttpResponse.json(coachAnalysisFixture);
       }),
     );
 
-    const result = await analyzePgn({ pgn: "1. e4 e5 *", depth: 8 });
+    const result = await analyzePgn({
+      pgn: "1. e4 e5 *",
+      playerColor: "white",
+      depth: 8,
+    });
 
-    expect(body).toEqual({ pgn: "1. e4 e5 *", depth: 8 });
-    expect(result.moves).toHaveLength(6);
-    expect(result.moves[0].mover_color).toBe("white");
-    expect(result.coaching.explanation).toContain("Across both sides");
-    expect(result.coaching.recommendations).not.toHaveLength(0);
+    expect(body).toEqual({
+      pgn: "1. e4 e5 *",
+      player_color: "white",
+      depth: 8,
+    });
+    expect(result.coach_advice).not.toBe("");
+    expect(result.training_plan.week_plan).not.toHaveLength(0);
+    expect(result.game_analyses[0].moves).toHaveLength(6);
   });
 
   it("serializes the complete Lichess request", async () => {
@@ -108,15 +114,19 @@ describe("API requests and valid responses", () => {
 
   it("supports a delayed response without changing its contract", async () => {
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, async () => {
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, async () => {
         await delay(20);
-        return HttpResponse.json(pgnAnalysisFixture);
+        return HttpResponse.json(coachAnalysisFixture);
       }),
     );
 
     await expect(
-      analyzePgn({ pgn: "1. e4 e5 *", depth: 6 }),
-    ).resolves.toEqual(pgnAnalysisFixture);
+      analyzePgn({
+        pgn: "1. e4 e5 *",
+        playerColor: "white",
+        depth: 6,
+      }),
+    ).resolves.toEqual(coachAnalysisFixture);
   });
 });
 
@@ -128,19 +138,19 @@ describe("API error normalization", () => {
     [500, "Analysis failed."],
   ])("surfaces a string detail for HTTP %s", async (status, detail) => {
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, () =>
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, () =>
         HttpResponse.json({ detail }, { status }),
       ),
     );
 
     await expect(
-      analyzePgn({ pgn: "invalid", depth: 6 }),
+      analyzePgn({ pgn: "invalid", playerColor: "white", depth: 6 }),
     ).rejects.toThrow(detail);
   });
 
   it("joins FastAPI validation-array details", async () => {
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, () =>
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, () =>
         HttpResponse.json(
           { detail: [{ msg: "PGN is too short" }, { msg: "Depth is invalid" }] },
           { status: 422 },
@@ -149,52 +159,54 @@ describe("API error normalization", () => {
     );
 
     await expect(
-      analyzePgn({ pgn: "x", depth: 99 }),
+      analyzePgn({ pgn: "x", playerColor: "white", depth: 99 }),
     ).rejects.toThrow("PGN is too short. Depth is invalid");
   });
 
   it("normalizes non-JSON error bodies", async () => {
     server.use(
       http.post(
-        `${API_BASE_URL}/games/analyze`,
+        `${API_BASE_URL}/coach/analyze-pgn`,
         () => new HttpResponse("upstream unavailable", { status: 502 }),
       ),
     );
 
     await expect(
-      analyzePgn({ pgn: "1. e4 *", depth: 6 }),
+      analyzePgn({ pgn: "1. e4 *", playerColor: "white", depth: 6 }),
     ).rejects.toThrow("The analysis service returned an error (502).");
   });
 
   it("reports empty and invalid successful responses", async () => {
     server.use(
       http.post(
-        `${API_BASE_URL}/games/analyze`,
+        `${API_BASE_URL}/coach/analyze-pgn`,
         () => new HttpResponse(null, { status: 200 }),
       ),
     );
     await expect(
-      analyzePgn({ pgn: "1. e4 *", depth: 6 }),
+      analyzePgn({ pgn: "1. e4 *", playerColor: "white", depth: 6 }),
     ).rejects.toThrow("empty response");
 
     server.use(
       http.post(
-        `${API_BASE_URL}/games/analyze`,
+        `${API_BASE_URL}/coach/analyze-pgn`,
         () => new HttpResponse("not-json", { status: 200 }),
       ),
     );
     await expect(
-      analyzePgn({ pgn: "1. e4 *", depth: 6 }),
+      analyzePgn({ pgn: "1. e4 *", playerColor: "white", depth: 6 }),
     ).rejects.toThrow("invalid JSON");
   });
 
   it("normalizes a network failure", async () => {
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, () => HttpResponse.error()),
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, () =>
+        HttpResponse.error(),
+      ),
     );
 
     await expect(
-      analyzePgn({ pgn: "1. e4 *", depth: 6 }),
+      analyzePgn({ pgn: "1. e4 *", playerColor: "white", depth: 6 }),
     ).rejects.toThrow("could not reach the analysis service");
   });
 });

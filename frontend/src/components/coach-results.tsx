@@ -11,12 +11,20 @@ import {
 import { LichessGameReview } from "@/components/lichess-game-review";
 import { PhaseStatsCards } from "@/components/phase-stats";
 
-export function CoachResults({ result }: { result: CoachAnalysis }) {
+export function CoachResults({
+  result,
+  source = "lichess",
+}: {
+  result: CoachAnalysis;
+  source?: "lichess" | "pgn";
+}) {
   return (
     <section className="result-enter wide-shell space-y-5 border-t border-[var(--line-strong)] pt-7 sm:pt-10">
       <header className="grid border border-[var(--line-strong)] bg-[var(--surface)] lg:grid-cols-[1fr_auto]">
         <div className="p-5 sm:p-7">
-          <p className="section-kicker">Lichess report / complete</p>
+          <p className="section-kicker">
+            {source === "lichess" ? "Lichess" : "PGN"} report / complete
+          </p>
           <h2 className="display-type mt-5 break-words text-[clamp(3.4rem,8vw,6.6rem)] text-[var(--text-strong)]">
             {result.username}
           </h2>
@@ -33,13 +41,20 @@ export function CoachResults({ result }: { result: CoachAnalysis }) {
             </div>
             <span className="font-mono text-xs font-bold text-[var(--muted)]">/{result.games_requested}</span>
           </div>
-          <Link
-            href={`/player/${encodeURIComponent(result.username)}`}
-            className="header-link !border-l-0 border-t border-[var(--line-strong)] !px-5"
-          >
-            View profile
-            <ArrowUpRight size={17} aria-hidden="true" />
-          </Link>
+          {source === "lichess" ? (
+            <Link
+              href={`/player/${encodeURIComponent(result.username)}`}
+              className="header-link !border-l-0 border-t border-[var(--line-strong)] !px-5"
+            >
+              View profile
+              <ArrowUpRight size={17} aria-hidden="true" />
+            </Link>
+          ) : (
+            <div className="header-link !cursor-default !border-l-0 border-t border-[var(--line-strong)] !px-5">
+              Uploaded PGN
+              <CircleAlert size={17} aria-hidden="true" />
+            </div>
+          )}
         </div>
       </header>
 

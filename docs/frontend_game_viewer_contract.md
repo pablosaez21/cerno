@@ -2,7 +2,8 @@
 
 ## Implemented data flow
 
-Both analysis endpoints now provide enough position-level data for the same board viewer.
+All analysis endpoints provide enough position-level data for the same board
+viewer.
 
 `POST /games/analyze` returns the complete ordered ply list. Each move contains:
 
@@ -24,17 +25,18 @@ The same response now includes additive full-game coaching:
 }
 ```
 
-The `full_game` scope is deliberate. A pasted PGN does not identify which color
-belongs to the current user, so this explanation covers both sides and never
-labels either side's error as the user's. Player-specific diagnosis remains
-exclusive to `/coach/analyze-user`, where the requested Lichess username
-establishes ownership before aggregation. The coaching is derived from the same
-Stockfish result returned to the viewer and does not run the engine twice.
+The low-level `full_game` scope remains deliberate: callers of
+`/games/analyze` have not supplied player ownership. The product PGN form now
+requires a White/Black selection and calls `POST /coach/analyze-pgn` instead.
+That endpoint returns the same structured contract as `/coach/analyze-user`.
+It uses the selected side for player-only diagnosis while retaining both sides
+in the nested game analysis used by the viewer.
 
-`POST /coach/analyze-user` now includes `game_analyses`. This is derived from the
-Stockfish results that the coach service already computes, so it does not trigger
-any additional engine work. Every entry includes the original PGN, player color,
-opponent, result, complete move sequence, phase summary, and critical moments.
+`POST /coach/analyze-user` and `POST /coach/analyze-pgn` include
+`game_analyses`. These are derived from the Stockfish results that the shared
+coach service already computes, so they do not trigger additional engine work.
+Every entry includes the original PGN, player color, opponent, result, complete
+move sequence, phase summary, and critical moments.
 
 The nested `game_analyses` entries remain full-game reports: all plies and all
 engine critical moments are available to the viewer. Top-level coach diagnosis and
@@ -77,13 +79,15 @@ Phase 2C protects the implemented viewer behavior at two layers:
 - React Testing Library exercises start/previous/next/end, direct move
   selection, ArrowLeft/ArrowRight/Home/End, critical jumps, White and Black
   orientation, manual flip, empty data, and inaccessible critical indices.
-- A coaching-result test proves that the game viewer keeps global moments while
-  the separate coaching section contains only personal moments.
+- Coaching-result and endpoint tests prove that the game viewer keeps global
+  moments while the separate coaching section contains only personal moments,
+  including for uploaded PGN.
 - Playwright proves that the production frontend can navigate a six-ply report
-  returned by the real FastAPI/Stockfish path. The PGN case now also requires a
-  non-empty coaching explanation and two visible recommendations, preventing a
-  board-and-metrics-only report from passing. It checks the board at 1280x720
-  and 390x844 so the complete square remains bounded by the viewport.
+  returned by the real FastAPI/Stockfish path. The PGN case requires the same
+  diagnosis, training-plan, phase, critical-moment, and viewer structure as the
+  Lichess report, preventing an engine-only alternative report from passing. It
+  checks the board at 1280x720 and 390x844 so the complete square remains
+  bounded by the viewport.
 
 The unit test replaces only `react-chessboard` rendering with a small semantic
 element; `chess.js` position reconstruction and all Cerno viewer logic remain

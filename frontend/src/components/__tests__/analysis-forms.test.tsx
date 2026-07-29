@@ -86,15 +86,25 @@ describe("AnalyzePgnForm", () => {
 
     const notation = screen.getByLabelText("Game notation");
     await user.click(notation);
-    await user.paste('  [Event "Test"]\n\n1. e4 *  ');
+    await user.paste(
+      '  [Event "Test"]\n[White "Ada"]\n[Black "Grace"]\n\n1. e4 *  ',
+    );
+    await user.selectOptions(screen.getByLabelText("Side to coach"), "black");
     await user.click(screen.getByText("Analysis settings"));
     await user.selectOptions(screen.getByLabelText("Engine depth"), "6");
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
 
     expect(onSubmit).toHaveBeenCalledWith({
-      pgn: '[Event "Test"]\n\n1. e4 *',
+      pgn: '[Event "Test"]\n[White "Ada"]\n[Black "Grace"]\n\n1. e4 *',
+      playerColor: "black",
       depth: 6,
     });
+    expect(
+      screen.getByRole("option", { name: "White · Ada" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Black · Grace" }),
+    ).toBeInTheDocument();
     expect((await runAxe(container)).violations).toEqual([]);
   });
 

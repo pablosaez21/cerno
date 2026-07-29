@@ -126,6 +126,112 @@ def test_analyze_user_returns_structured_coaching_response(client):
     assert payload["saved"] is False
 
 
+def test_analyze_pgn_returns_the_same_player_coaching_contract(client):
+    pgn = (
+        '[Event "Uploaded game"]\n'
+        '[White "PGNWhite"]\n'
+        '[Black "PGNBlack"]\n'
+        '[Result "0-1"]\n\n'
+        "1. e4 e5 2. Qh5 Nc6 3. Qxe5+ Nxe5 0-1"
+    )
+    white_mistake = {
+        "move_number": 3,
+        "move_uci": "h5e5",
+        "move_san": "Qxe5+",
+        "mover_color": "white",
+        "phase": "opening",
+        "evaluation_before": 0.2,
+        "evaluation_after": -4.1,
+        "cpl": 430,
+        "classification": "blunder",
+        "fen_before": "white-before",
+        "fen_after": "white-after",
+    }
+    black_mistake = {
+        "move_number": 3,
+        "move_uci": "c6e5",
+        "move_san": "Nxe5",
+        "mover_color": "black",
+        "phase": "opening",
+        "evaluation_before": 4.1,
+        "evaluation_after": 2.7,
+        "cpl": 140,
+        "classification": "mistake",
+        "fen_before": "black-before",
+        "fen_after": "black-after",
+    }
+    analysis = {
+        "total_moves": 6,
+        "summary": {},
+        "moves": [
+            {
+                **white_mistake,
+                "move_number": 1,
+                "move_uci": "e2e4",
+                "move_san": "e4",
+                "cpl": 10,
+                "classification": "good",
+            },
+            {
+                **black_mistake,
+                "move_number": 1,
+                "move_uci": "e7e5",
+                "move_san": "e5",
+                "cpl": 12,
+                "classification": "good",
+            },
+            white_mistake,
+            black_mistake,
+        ],
+        "critical_moments": [white_mistake, black_mistake],
+        "phase_weaknesses": ["opening"],
+    }
+    generated = {
+        "coach_advice": "Your opening needs a calmer threat check before recapturing.",
+        "priority": "opening calculation",
+        "week_plan": ["Replay the critical position from Black's side."],
+    }
+    analyze_game = AsyncMock(return_value=analysis)
+
+    with (
+        patch("app.services.coach.analyze_game", new=analyze_game),
+        patch("app.services.coach.search_theory", return_value=[]),
+        patch(
+            "app.services.coach.generate_training_plan",
+            new=AsyncMock(return_value=generated),
+        ),
+    ):
+        response = client.post(
+            "/coach/analyze-pgn",
+            json={"pgn": pgn, "player_color": "black", "depth": 1},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["username"] == "PGNBlack"
+    assert payload["games_requested"] == 1
+    assert payload["games_analyzed"] == 1
+    assert payload["coach_advice"] == generated["coach_advice"]
+    assert payload["training_plan"]["week_plan"]
+    assert payload["critical_moments"] == [
+        {
+            "game_id": payload["game_analyses"][0]["game_id"],
+            "move_number": 3,
+            "move": "Nxe5",
+            "phase": "opening",
+            "cpl": 140,
+            "classification": "mistake",
+        }
+    ]
+    assert payload["game_analyses"][0]["player_color"] == "black"
+    assert payload["game_analyses"][0]["opponent"] == "PGNWhite"
+    assert payload["game_analyses"][0]["result"] == "win"
+    assert payload["game_analyses"][0]["pgn"] == pgn
+    assert payload["game_analyses"][0]["moves"] == analysis["moves"]
+    assert payload["saved"] is False
+    analyze_game.assert_awaited_once_with(pgn, 1)
+
+
 def test_remove_source_references_from_training_plan_steps():
     steps = [
         "Focus on middlegame tactics using study efGLGZOM.",

@@ -1,9 +1,9 @@
 import type {
   AnalysisHistory,
   CoachAnalysis,
-  PgnAnalysis,
   WeaknessProfile,
 } from "@/lib/types";
+import type { Orientation } from "@/lib/game-viewer";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 const API_BASE_URL = normalizeApiBaseUrl(
@@ -111,10 +111,18 @@ export function analyzeLichessUser(input: {
   });
 }
 
-export function analyzePgn(input: { pgn: string; depth: number }) {
-  return apiRequest<PgnAnalysis>("/games/analyze", {
+export function analyzePgn(input: {
+  pgn: string;
+  playerColor: Orientation;
+  depth: number;
+}) {
+  return apiRequest<CoachAnalysis>("/coach/analyze-pgn", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      pgn: input.pgn,
+      player_color: input.playerColor,
+      depth: input.depth,
+    }),
   });
 }
 

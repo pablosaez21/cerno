@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -6,6 +8,12 @@ class CoachAnalyzeUserRequest(BaseModel):
     limit: int = Field(default=3, ge=1, le=10)
     depth: int = Field(default=12, ge=1, le=25)
     save: bool = False
+
+
+class CoachAnalyzePgnRequest(BaseModel):
+    pgn: str = Field(min_length=1)
+    player_color: Literal["white", "black"]
+    depth: int = Field(default=12, ge=1, le=25)
 
 
 class CoachDiagnosis(BaseModel):

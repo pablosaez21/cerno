@@ -634,7 +634,8 @@ leaves no owned temporary directory or listening process.
 
 ### DEC-033 — Pasted PGN coaching is explicitly full-game
 
-**Status:** Accepted and implemented as a Phase 2C regression fix
+**Status:** Superseded for the product UI by DEC-034; retained as the low-level
+REST contract
 
 **Problem:** `POST /games/analyze` returned only Stockfish moves and metrics, so
 the PGN frontend could render a board but no explanation or recommendation. A
@@ -662,6 +663,39 @@ regressions require coaching content while retaining complete move navigation.
 **Evidence:** The real depth-1 PGN response contains six plies, a
 `full_game` explanation, and two recommendations. The four Chromium scenarios
 remain green, including the controlled Lichess success/error flows.
+
+### DEC-034 — PGN and Lichess share one coaching report
+
+**Status:** Accepted and implemented as a Phase 2C regression correction
+
+**Problem:** Although DEC-033 restored coaching copy to pasted PGN, it created a
+second result hierarchy with different headings, metrics, and sections. The
+Lichess form rendered the structured player coach while PGN rendered the
+low-level engine report. This made the product change substantially depending
+on how the same game entered the application.
+
+**Decision:** Keep `/games/analyze` as a compatible low-level full-game
+endpoint. Add `/coach/analyze-pgn`, require an explicit White/Black player
+selection, and route that game through the same player projection, weakness
+aggregation, theory retrieval, training generation, and response schema as
+`/coach/analyze-user`. Render both results with `CoachResults`. Uploaded PGN
+reports remain temporary and non-persistent.
+
+**Rationale:** Lichess supplies PGN plus trusted player identity; an uploaded
+PGN supplies the same game data but lacks identity. An explicit color is the
+smallest missing input. Once supplied, maintaining a separate coaching service
+or React result tree has no product or correctness benefit.
+
+**Impact:** The two entry forms now differ only in source-specific input and
+metadata. Both display coach reading, diagnosis, the same board review, phase
+performance, player-specific critical moments, weekly plan, and theory
+recommendations. The full-game move list remains separate from player-specific
+diagnosis.
+
+**Evidence:** Backend regression coverage verifies the shared response,
+player-color projection, and full-game viewer data. Frontend unit and browser
+coverage requires the common report structure after PGN submission and retains
+the Lichess scenarios.
 
 ## 3. Verified discrepancies
 

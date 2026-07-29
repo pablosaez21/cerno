@@ -2,8 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.coach import CoachAnalyzeUserRequest, CoachAnalyzeUserResponse
-from app.services.coach import analyze_user
+from app.schemas.coach import (
+    CoachAnalyzePgnRequest,
+    CoachAnalyzeUserRequest,
+    CoachAnalyzeUserResponse,
+)
+from app.services.coach import analyze_pgn_for_player, analyze_user
 from app.services.lichess import (
     LichessRateLimitError,
     LichessServiceError,
@@ -36,6 +40,24 @@ async def analyze_lichess_user(
         ) from exc
     except LichessServiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail="Could not complete the coach analysis."
+        ) from exc
+
+    return CoachAnalyzeUserResponse(**result)
+
+
+@router.post("/analyze-pgn", response_model=CoachAnalyzeUserResponse)
+async def analyze_uploaded_pgn(request: CoachAnalyzePgnRequest):
+    try:
+        result = await analyze_pgn_for_player(
+            pgn=request.pgn,
+            player_color=request.player_color,
+            depth=request.depth,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:

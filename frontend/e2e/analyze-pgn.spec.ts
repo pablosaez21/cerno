@@ -17,17 +17,20 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("tab", { name: "02 · Paste PGN" }).click();
   await page.getByLabel("Game notation").fill(pgn);
+  await page.getByLabel("Side to coach").selectOption("white");
   await page.getByRole("button", { name: "Analyze PGN" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Game analysis" }),
+    page.getByRole("heading", { name: "E2EWhite" }),
   ).toBeVisible();
-  const coaching = page.getByRole("region", { name: "Coach reading" });
-  await expect(coaching).toContainText("Across both sides");
-  const recommendations = coaching.getByRole("list", {
-    name: "PGN coaching recommendations",
-  });
-  await expect(recommendations.getByRole("listitem")).toHaveCount(2);
+  await expect(page.getByText("PGN report / complete")).toBeVisible();
+  await expect(page.getByText("Diagnosis", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Train with intent." }),
+  ).toBeVisible();
+  await expect(
+    page.locator("ol").filter({ hasText: "Day 1" }).getByRole("listitem").first(),
+  ).toBeVisible();
   const viewer = page.getByRole("region", { name: "Game viewer" });
   await expect(viewer).toBeVisible();
   await expect(viewer.getByText("5 / 6", { exact: true })).toBeVisible();

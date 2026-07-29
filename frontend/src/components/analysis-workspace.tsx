@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { analyzeLichessUser, analyzePgn } from "@/lib/api";
-import type { CoachAnalysis, PgnAnalysis } from "@/lib/types";
+import type { CoachAnalysis } from "@/lib/types";
 import {
   AnalyzeLichessForm,
   AnalyzePgnForm,
@@ -12,7 +12,6 @@ import {
 import { CoachResults } from "@/components/coach-results";
 import { ErrorState } from "@/components/feedback-states";
 import { LoadingPipeline } from "@/components/loading-pipeline";
-import { PgnAnalysisResult } from "@/components/pgn-results";
 
 const lichessSteps = [
   "Fetching games from Lichess",
@@ -25,8 +24,9 @@ const lichessSteps = [
 const pgnSteps = [
   "Reading the PGN",
   "Evaluating each move with Stockfish",
-  "Locating critical moments",
-  "Building the game report",
+  "Detecting patterns and weaknesses",
+  "Matching relevant theory",
+  "Building the training plan",
 ];
 
 const outputSteps = [
@@ -43,8 +43,7 @@ export function AnalysisWorkspace() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coachResult, setCoachResult] = useState<CoachAnalysis | null>(null);
-  const [pgnResult, setPgnResult] = useState<PgnAnalysis | null>(null);
-  const [sourcePgn, setSourcePgn] = useState("");
+  const [resultSource, setResultSource] = useState<Mode>("lichess");
   const resultsRef = useRef<HTMLDivElement>(null);
 
   async function submitLichess(value: LichessFormValue) {
@@ -52,11 +51,10 @@ export function AnalysisWorkspace() {
     setLoading(true);
     setError(null);
     setCoachResult(null);
-    setPgnResult(null);
-    setSourcePgn("");
     try {
       const result = await analyzeLichessUser(value);
       setCoachResult(result);
+      setResultSource("lichess");
       window.setTimeout(
         () => resultsRef.current?.scrollIntoView({ behavior: "smooth" }),
         50,
@@ -73,11 +71,10 @@ export function AnalysisWorkspace() {
     setLoading(true);
     setError(null);
     setCoachResult(null);
-    setPgnResult(null);
-    setSourcePgn(value.pgn);
     try {
       const result = await analyzePgn(value);
-      setPgnResult(result);
+      setCoachResult(result);
+      setResultSource("pgn");
       window.setTimeout(
         () => resultsRef.current?.scrollIntoView({ behavior: "smooth" }),
         50,
@@ -183,7 +180,8 @@ export function AnalysisWorkspace() {
                 ))}
               </ol>
               <p className="mt-6 text-xs leading-5 text-[var(--muted)]">
-                Both sources feed the same position-level analysis. Lichess adds the cross-game coaching report.
+                Both sources feed the same coaching report. PGN analysis uses
+                the side you select; Lichess resolves it from the username.
               </p>
             </aside>
           </div>
@@ -203,9 +201,8 @@ export function AnalysisWorkspace() {
       </section>
 
       <div ref={resultsRef} className="pb-20">
-        {coachResult ? <CoachResults result={coachResult} /> : null}
-        {pgnResult ? (
-          <PgnAnalysisResult result={pgnResult} sourcePgn={sourcePgn} />
+        {coachResult ? (
+          <CoachResults result={coachResult} source={resultSource} />
         ) : null}
       </div>
     </>

@@ -1,6 +1,9 @@
+import hashlib
+import io
 import json
 from dataclasses import dataclass
 
+import chess.pgn
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 
@@ -9,7 +12,7 @@ from app.db.repositories.analyses import save_critical_moves, save_game_analysis
 from app.db.repositories.recommendations import save_training_recommendation
 from app.db.repositories.users import get_or_create_user
 from app.db.repositories.weaknesses import upsert_weakness_profile
-from app.schemas.game import Game
+from app.schemas.game import Game, Player
 from app.services.lichess import fetch_games
 from app.services.rag import search_theory
 from app.services.stockfish import analyze_game
@@ -107,6 +110,89 @@ async def analyze_user(
     if not games:
         raise ValueError(f"No games found for Lichess user '{username}'.")
 
+    return await analyze_player_games(
+        username=username,
+        games=games,
+        limit=limit,
+        depth=depth,
+        save=save,
+        db=db,
+    )
+
+
+async def analyze_pgn_for_player(
+    pgn: str,
+    player_color: str,
+    depth: int = 12,
+) -> dict:
+    """Run an uploaded PGN through the same structured coach pipeline."""
+    if player_color not in {"white", "black"}:
+        raise ValueError(f"Unsupported player color: {player_color}.")
+
+    depth = settings.clamp_stockfish_depth(depth)
+    game = build_uploaded_game(pgn)
+    username = (
+        game.white.username if player_color == "white" else game.black.username
+    )
+
+    return await analyze_player_games(
+        username=username,
+        games=[game],
+        limit=1,
+        depth=depth,
+        save=False,
+        db=None,
+        player_color_override=player_color,
+    )
+
+
+def build_uploaded_game(pgn: str) -> Game:
+    parsed = chess.pgn.read_game(io.StringIO(pgn))
+    if parsed is None:
+        raise ValueError("Invalid PGN.")
+
+    mainline = list(parsed.mainline())
+    if not mainline:
+        raise ValueError("Invalid PGN: no moves found.")
+
+    headers = parsed.headers
+    white_username = known_pgn_header(headers.get("White")) or "White player"
+    black_username = known_pgn_header(headers.get("Black")) or "Black player"
+    result = headers.get("Result", "*")
+    winner = {"1-0": "white", "0-1": "black"}.get(result)
+
+    return Game(
+        id=f"uploaded-{hashlib.sha256(pgn.encode('utf-8')).hexdigest()[:16]}",
+        speed="unknown",
+        rated=False,
+        winner=winner,
+        status="uploaded",
+        white=Player(username=white_username),
+        black=Player(username=black_username),
+        moves=" ".join(node.san() for node in mainline),
+        pgn=pgn,
+    )
+
+
+def known_pgn_header(value: str | None) -> str | None:
+    if value is None or value.strip() in {"", "?"}:
+        return None
+    return value.strip()
+
+
+async def analyze_player_games(
+    username: str,
+    games: list[Game],
+    limit: int,
+    depth: int,
+    save: bool,
+    db: Session | None,
+    player_color_override: str | None = None,
+) -> dict:
+    """Build one coach report from games whose player ownership is known."""
+    if player_color_override is not None and len(games) != 1:
+        raise ValueError("A player color override requires exactly one game.")
+
     player_analyses = []
     analyzed_games: list[AnalyzedPlayerGame] = []
     skipped_games = []
@@ -116,7 +202,7 @@ async def analyze_user(
             skipped_games.append({"game_id": game.id, "reason": "Game has no PGN."})
             continue
 
-        player_color = resolve_player_color(game, username)
+        player_color = player_color_override or resolve_player_color(game, username)
         if player_color is None:
             skipped_games.append(
                 {

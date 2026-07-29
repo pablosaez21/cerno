@@ -6,7 +6,6 @@ import { AnalysisWorkspace } from "@/components/analysis-workspace";
 import {
   coachAnalysisFixture,
   emptyCoachAnalysisFixture,
-  pgnAnalysisFixture,
   sourcePgn,
 } from "@/test/fixtures";
 import { runAxe } from "@/test/a11y";
@@ -53,9 +52,9 @@ describe("AnalysisWorkspace PGN flow", () => {
   it("announces loading, disables submission and renders a PGN result", async () => {
     const user = userEvent.setup();
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, async () => {
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, async () => {
         await delay(40);
-        return HttpResponse.json(pgnAnalysisFixture);
+        return HttpResponse.json(coachAnalysisFixture);
       }),
     );
     render(<AnalysisWorkspace />);
@@ -63,23 +62,22 @@ describe("AnalysisWorkspace PGN flow", () => {
     await user.click(screen.getByRole("tab", { name: "02 · Paste PGN" }));
     await user.click(screen.getByLabelText("Game notation"));
     await user.paste(sourcePgn);
+    await user.selectOptions(screen.getByLabelText("Side to coach"), "white");
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
 
     expect(screen.getByRole("button", { name: "Analyzing PGN" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent("Building the report");
     expect(
-      await screen.findByRole("heading", { name: "Game analysis" }),
+      await screen.findByRole("heading", { name: "FixtureWhite" }),
     ).toBeVisible();
-    expect(screen.getByText("6", { selector: "p" })).toBeVisible();
+    expect(screen.getByText("PGN report / complete")).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Coach reading" }),
+      screen.getByText(coachAnalysisFixture.coach_advice),
     ).toBeVisible();
+    expect(screen.getByText("Diagnosis", { exact: true })).toBeVisible();
     expect(
-      screen.getByText(pgnAnalysisFixture.coaching.explanation),
+      screen.getByText(coachAnalysisFixture.training_plan.week_plan[0]),
     ).toBeVisible();
-    expect(
-      screen.getByRole("list", { name: "PGN coaching recommendations" }),
-    ).toHaveTextContent(pgnAnalysisFixture.coaching.recommendations[0]);
     expect(screen.getByRole("region", { name: "Game viewer" })).toBeVisible();
   });
 
@@ -87,11 +85,11 @@ describe("AnalysisWorkspace PGN flow", () => {
     const user = userEvent.setup();
     let attempts = 0;
     server.use(
-      http.post(`${API_BASE_URL}/games/analyze`, () => {
+      http.post(`${API_BASE_URL}/coach/analyze-pgn`, () => {
         attempts += 1;
         return attempts === 1
           ? HttpResponse.json({ detail: "Invalid PGN fixture." }, { status: 400 })
-          : HttpResponse.json(pgnAnalysisFixture);
+          : HttpResponse.json(coachAnalysisFixture);
       }),
     );
     render(<AnalysisWorkspace />);
@@ -100,6 +98,7 @@ describe("AnalysisWorkspace PGN flow", () => {
     const notation = screen.getByLabelText("Game notation");
     await user.click(notation);
     await user.paste(sourcePgn);
+    await user.selectOptions(screen.getByLabelText("Side to coach"), "white");
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -109,7 +108,7 @@ describe("AnalysisWorkspace PGN flow", () => {
 
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
     expect(
-      await screen.findByRole("heading", { name: "Game analysis" }),
+      await screen.findByRole("heading", { name: "FixtureWhite" }),
     ).toBeVisible();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -120,13 +119,14 @@ describe("AnalysisWorkspace PGN flow", () => {
     await user.click(screen.getByRole("tab", { name: "02 · Paste PGN" }));
     await user.click(screen.getByLabelText("Game notation"));
     await user.paste(sourcePgn);
+    await user.selectOptions(screen.getByLabelText("Side to coach"), "white");
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
-    await screen.findByRole("heading", { name: "Game analysis" });
+    await screen.findByRole("heading", { name: "FixtureWhite" });
 
     await user.click(screen.getByRole("tab", { name: "01 · Lichess player" }));
 
     expect(screen.getByLabelText("Lichess username")).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Game analysis" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "FixtureWhite" })).toBeVisible();
   });
 });
 

@@ -8,6 +8,7 @@ test("recovers after an invalid PGN", async ({ page }) => {
   await page.getByRole("tab", { name: "02 · Paste PGN" }).click();
   const notation = page.getByLabel("Game notation");
   await notation.fill("this is not a valid PGN");
+  await page.getByLabel("Side to coach").selectOption("white");
   await page.getByRole("button", { name: "Analyze PGN" }).click();
 
   await expect(
