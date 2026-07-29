@@ -131,9 +131,7 @@ async def analyze_pgn_for_player(
 
     depth = settings.clamp_stockfish_depth(depth)
     game = build_uploaded_game(pgn)
-    username = (
-        game.white.username if player_color == "white" else game.black.username
-    )
+    username = game.white.username if player_color == "white" else game.black.username
 
     return await analyze_player_games(
         username=username,
