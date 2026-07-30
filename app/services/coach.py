@@ -1,10 +1,9 @@
 import hashlib
 import io
-import json
 from dataclasses import dataclass
+from typing import Any
 
 import chess.pgn
-from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -12,9 +11,23 @@ from app.db.repositories.analyses import save_critical_moves, save_game_analysis
 from app.db.repositories.recommendations import save_training_recommendation
 from app.db.repositories.users import get_or_create_user
 from app.db.repositories.weaknesses import upsert_weakness_profile
+from app.schemas.coach import (
+    CoachPromptInput,
+    GeneratedCoachOutput,
+    GeneratedCoachRecommendation,
+    PromptSourceEvidence,
+)
 from app.schemas.game import Game, Player
+from app.services.coach_generation import (
+    CoachGenerationResult,
+    build_prompt_input,
+    fallback_generation,
+    fallback_week_steps,
+    generate_coach_output,
+    generation_metadata,
+)
 from app.services.lichess import fetch_games
-from app.services.rag import search_theory
+from app.services.rag import retrieve_theory
 from app.services.stockfish import analyze_game
 from app.services.weakness import (
     aggregate_game_analyses,
@@ -237,20 +250,25 @@ async def analyze_player_games(
         weakness_profile["theory_queries"],
         phase=weakness_profile["main_weakness"],
     )
-    theory_recommendations = build_theory_recommendations(theory_results)
     critical_moments = collect_critical_moments(player_analyses)
-    generated_training = await generate_training_plan(
+    prompt_context = build_prompt_input(
         username=username,
         weakness_profile=weakness_profile,
-        theory_recommendations=theory_recommendations,
         critical_moments=critical_moments,
+        theory_results=theory_results,
     )
-    training_plan = normalize_training_plan(generated_training, weakness_profile)
-    coach_advice = (
-        generated_training.get("coach_advice")
-        if isinstance(generated_training, dict)
-        else None
-    ) or build_fallback_coach_advice(weakness_profile, critical_moments)
+    theory_recommendations = build_theory_recommendations(theory_results)
+    sources = build_source_attributions(prompt_context.sources)
+    generated_training = await generate_training_plan(
+        prompt_context,
+    )
+    generation_result = normalize_generation_result(
+        generated_training,
+        prompt_context,
+        weakness_profile,
+    )
+    generated_output = generation_result.output
+    training_plan = training_plan_from_output(generated_output, weakness_profile)
     saved = False
     if save:
         if db is None:
@@ -277,9 +295,18 @@ async def analyze_player_games(
             "detected_patterns": weakness_profile["detected_patterns"],
             "recommended_focus": weakness_profile["recommended_focus"],
         },
-        "coach_advice": coach_advice,
+        "coach_advice": generated_output.coaching_summary,
         "critical_moments": critical_moments,
         "theory_recommendations": theory_recommendations,
+        "grounding_status": prompt_context.retrieval_status,
+        "strengths": generated_output.strengths,
+        "weaknesses": generated_output.weaknesses,
+        "actionable_recommendations": [
+            recommendation.model_dump()
+            for recommendation in generated_output.recommendations
+        ],
+        "sources": sources,
+        "generation": generation_result.metadata.model_dump(),
         "training_plan": training_plan,
         "game_analyses": build_game_analyses(analyzed_games),
         "skipped_games": skipped_games,
@@ -382,16 +409,18 @@ def collect_theory_results(
     seen_sources = set()
 
     for query in queries:
-        for result in search_theory(
+        retrieval = retrieve_theory(
             query,
             n_results=n_results,
             phase=phase,
-        ):
+        )
+        for evidence in retrieval.documents:
+            result = evidence.model_dump()
             metadata = result.get("metadata", {})
             source_key = (
-                metadata.get("study_id"),
+                metadata.get("source_id") or metadata.get("study_id"),
                 metadata.get("chapter"),
-                metadata.get("source"),
+                metadata.get("content_hash") or metadata.get("source"),
             )
             if source_key in seen_sources:
                 continue
@@ -410,23 +439,53 @@ def collect_theory_results(
 
 
 def build_theory_recommendations(theory_results: list[dict]) -> list[dict]:
-    recommendations = []
+    recommendations: list[dict[str, Any]] = []
 
     for result in theory_results:
         metadata = result.get("metadata", {})
         query = result.get("query", "training focus")
+        citation_id = f"S{len(recommendations) + 1}"
         recommendations.append(
             {
+                "citation_id": citation_id,
+                "source_id": metadata.get("source_id") or metadata.get("study_id"),
+                "title": metadata.get("study_title") or metadata.get("chapter"),
                 "source": metadata.get("source"),
                 "category": metadata.get("category"),
+                "phase": metadata.get("phase"),
                 "study_id": metadata.get("study_id"),
                 "chapter": metadata.get("chapter"),
+                "author": metadata.get("author"),
+                "attribution": metadata.get("attribution_url"),
+                "content_license": metadata.get("content_license"),
+                "license_url": metadata.get("license_url"),
                 "reason": f"Relevant for: {query}.",
                 "distance": result.get("distance"),
             }
         )
 
     return recommendations
+
+
+def build_source_attributions(
+    sources: list[PromptSourceEvidence],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "citation_id": source.citation_id,
+            "source_id": source.source_id,
+            "title": source.title,
+            "chapter": source.chapter,
+            "phase": source.phase,
+            "category": source.category,
+            "author": source.author,
+            "attribution": source.attribution,
+            "content_license": source.content_license,
+            "license_url": source.license_url,
+            "canonical_url": source.canonical_url,
+        }
+        for source in sources
+    ]
 
 
 def collect_critical_moments(analyses: list[dict], limit: int = 10) -> list[dict]:
@@ -462,95 +521,131 @@ def build_diagnosis_summary(weakness_profile: dict) -> str:
 
 
 async def generate_training_plan(
-    username: str,
-    weakness_profile: dict,
-    theory_recommendations: list[dict],
-    critical_moments: list[dict],
-) -> dict:
-    api_key = settings.openai_api_key
-    if not api_key:
-        return build_fallback_training_plan(weakness_profile)
-
-    client = AsyncOpenAI(api_key=api_key)
-    prompt = build_training_plan_prompt(
-        username,
-        weakness_profile,
-        theory_recommendations,
-        critical_moments,
-    )
-
-    try:
-        response = await client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are Cerno, a concise chess coach. "
-                        "Return only valid JSON with keys coach_advice, priority and week_plan. "
-                        "coach_advice must be one natural paragraph with a warm, specific tone. "
-                        "week_plan must be a list of 5 short strings. "
-                        "Do not mention study IDs, database IDs, source IDs, raw RAG references, "
-                        "or the recommended theory section in the training plan."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-        )
-        content = response.choices[0].message.content or ""
-        parsed = json.loads(content)
-        if _is_valid_training_plan(parsed):
-            return parsed
-    except Exception:
-        return build_fallback_training_plan(weakness_profile)
-
-    return build_fallback_training_plan(weakness_profile)
+    context: CoachPromptInput,
+) -> CoachGenerationResult:
+    return await generate_coach_output(context)
 
 
-def build_training_plan_prompt(
-    username: str,
-    weakness_profile: dict,
-    theory_recommendations: list[dict],
-    critical_moments: list[dict],
-) -> str:
-    return json.dumps(
-        {
-            "username": username,
-            "weakness_profile": weakness_profile,
-            "critical_moments": critical_moments[:8],
-            "theory_themes": summarize_theory_themes(theory_recommendations),
-            "task": (
-                "Create a practical one-week chess training plan and a short coach_advice paragraph. "
-                "The coach_advice should explain the player's style from the evidence: main phase weakness, "
-                "blunders, mistakes, tactical habits, and any relative strengths. "
-                "Use friendly motivational language, but keep it specific and avoid repeating the same grandmaster jokes. "
-                "Do not tell the user to open a study by ID; recommended theory is shown elsewhere."
+def normalize_generation_result(
+    generated: Any,
+    context: CoachPromptInput,
+    weakness_profile: dict[str, Any],
+) -> CoachGenerationResult:
+    if isinstance(generated, CoachGenerationResult):
+        return generated
+    if not isinstance(generated, dict):
+        return fallback_generation(context, reason="validation_error")
+
+    week_plan = [
+        str(step)
+        for step in generated.get("week_plan", [])
+        if isinstance(step, str) and step.strip()
+    ]
+    if not week_plan:
+        return fallback_generation(context, reason="validation_error")
+
+    recommendations = [
+        GeneratedCoachRecommendation(
+            title=str(
+                generated.get("priority")
+                or weakness_profile.get("main_weakness")
+                or "Training focus"
             ),
-        },
-        ensure_ascii=False,
+            explanation=(
+                "These steps are derived from the deterministic game-analysis profile."
+            ),
+            actions=week_plan[:3],
+            evidence_type="game_analysis",
+            engine_evidence_ids=(
+                [context.engine_evidence[0].evidence_id]
+                if context.engine_evidence
+                else []
+            ),
+            source_ids=[],
+        )
+    ]
+    if len(week_plan) > 3:
+        recommendations.append(
+            GeneratedCoachRecommendation(
+                title="Continue the review routine",
+                explanation=(
+                    "Complete the remaining steps and compare them with the "
+                    "analyzed positions."
+                ),
+                actions=week_plan[3:5],
+                evidence_type="game_analysis",
+                engine_evidence_ids=[],
+                source_ids=[],
+            )
+        )
+    if context.sources:
+        recommendations.append(
+            GeneratedCoachRecommendation(
+                title=f"Review {context.sources[0].title}",
+                explanation=(
+                    "Use the supplied theory section to support the diagnosed "
+                    "training area."
+                ),
+                actions=[
+                    "Compare the supplied theory with one critical game position."
+                ],
+                evidence_type="theory",
+                engine_evidence_ids=[],
+                source_ids=[context.sources[0].citation_id],
+            )
+        )
+
+    output = GeneratedCoachOutput(
+        coaching_summary=str(
+            generated.get("coach_advice")
+            or build_fallback_coach_advice(weakness_profile, [])
+        ),
+        priority=str(
+            generated.get("priority")
+            or weakness_profile.get("main_weakness")
+            or "Training focus"
+        ),
+        strengths=[],
+        weaknesses=[
+            f"The main evaluation losses occur in the "
+            f"{weakness_profile.get('main_weakness', 'middlegame')}."
+        ],
+        recommendations=recommendations,
+    )
+    if context.retrieval_status == "insufficient_evidence":
+        notice = (
+            " No relevant theory source was available, so these recommendations "
+            "are based only on the game analysis."
+        )
+        output = output.model_copy(
+            update={"coaching_summary": output.coaching_summary.rstrip() + notice}
+        )
+    return CoachGenerationResult(
+        output=output,
+        metadata=generation_metadata(
+            mode="fallback",
+            reason="validation_error",
+            retrieval_pipeline_version=context.retrieval_pipeline_version,
+        ),
     )
 
 
-def summarize_theory_themes(theory_recommendations: list[dict]) -> list[str]:
-    themes = []
-    for item in theory_recommendations:
-        chapter = item.get("chapter")
-        category = item.get("category")
-        reason = item.get("reason")
-        label = chapter or category or reason
-        if label and label not in themes:
-            themes.append(label)
-    return themes[:5]
-
-
-def normalize_training_plan(generated: dict, weakness_profile: dict) -> dict:
-    if _is_valid_training_plan(generated):
-        return {
-            "priority": generated["priority"],
-            "week_plan": remove_source_references(generated["week_plan"]),
-        }
-    return build_fallback_training_plan(weakness_profile)
+def training_plan_from_output(
+    output: GeneratedCoachOutput,
+    weakness_profile: dict[str, Any],
+) -> dict[str, Any]:
+    steps = [
+        action
+        for recommendation in output.recommendations
+        for action in recommendation.actions
+    ]
+    phase = str(weakness_profile.get("main_weakness") or "middlegame")
+    for fallback_step in fallback_week_steps(phase):
+        if len(steps) >= 5:
+            break
+        if fallback_step not in steps:
+            steps.append(fallback_step)
+    return {"priority": output.priority, "week_plan": steps}
 
 
 def remove_source_references(steps: list[str]) -> list[str]:
@@ -565,41 +660,6 @@ def remove_source_references(steps: list[str]) -> list[str]:
             )
         cleaned.append(step)
     return cleaned
-
-
-def build_fallback_training_plan(weakness_profile: dict) -> dict:
-    main = weakness_profile.get("main_weakness", "opening")
-    focus = weakness_profile.get("recommended_focus", [])
-    priority = focus[0] if focus else f"{main} improvement"
-
-    phase_plan = {
-        "opening": [
-            "Day 1: review basic opening principles and compare them with your critical moments.",
-            "Day 2: choose one recurring opening mistake and write the correct plan in your own words.",
-            "Day 3: play 3 rapid games focusing only on development, center control, and king safety.",
-            "Day 4: review the opening phase of those games and mark repeated mistakes.",
-            "Day 5: repeat the best line from memory and write down the plans in your own words.",
-        ],
-        "middlegame": [
-            "Day 1: solve 20 tactical puzzles with no time pressure.",
-            "Day 2: review your biggest critical moments and identify the missed candidate moves.",
-            "Day 3: practice king safety and piece coordination positions.",
-            "Day 4: play 3 rapid games focusing on calculation before forcing moves.",
-            "Day 5: review every serious mistake and group them by pattern.",
-        ],
-        "endgame": [
-            "Day 1: review basic king activity and pawn ending rules.",
-            "Day 2: practice simple conversion positions against an engine.",
-            "Day 3: practice one rook or pawn endgame theme until the plan feels automatic.",
-            "Day 4: play training positions starting from simplified material.",
-            "Day 5: review endgame critical moments and write the correct plan.",
-        ],
-    }
-
-    return {
-        "priority": priority,
-        "week_plan": phase_plan.get(main, phase_plan["opening"]),
-    }
 
 
 def build_fallback_coach_advice(
@@ -654,12 +714,3 @@ def detect_best_phase(phase_stats: dict) -> str | None:
 
     candidates.sort(key=lambda item: item[1])
     return candidates[0][0]
-
-
-def _is_valid_training_plan(plan: dict) -> bool:
-    return (
-        isinstance(plan, dict)
-        and isinstance(plan.get("priority"), str)
-        and isinstance(plan.get("week_plan"), list)
-        and all(isinstance(item, str) for item in plan["week_plan"])
-    )

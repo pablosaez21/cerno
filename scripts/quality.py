@@ -176,6 +176,13 @@ def rag_eval() -> None:
     )
 
 
+def prompt_eval() -> None:
+    run(
+        "Coach prompt contract evaluation",
+        [PYTHON, "scripts/evaluate_coach_generation.py"],
+    )
+
+
 def frontend() -> None:
     npm = npm_executable()
     frontend_root = PROJECT_ROOT / "frontend"
@@ -264,6 +271,7 @@ COMMANDS = {
     "integration-down": integration_down,
     "workflow": workflow,
     "rag-eval": rag_eval,
+    "prompt-eval": prompt_eval,
     "backend": backend,
     "frontend": frontend,
     "frontend-tests": frontend_tests,

@@ -113,7 +113,7 @@ Statuses:
 
 ### DEC-006 — Current RAG is retrieval-assisted, not fully grounded
 
-**Status:** Accepted
+**Status:** Superseded by DEC-038 for the structured coach
 
 **Problem:** Retrieved source records are shown, but the structured coach passes only derived themes to generation.
 
@@ -730,6 +730,123 @@ reranking behavior are unchanged.
 `evals/results/`; technical retrieval tests use only temporary Chroma
 directories.
 
+### DEC-036 — Licensed pinned Wikibooks corpus and split retrieval evaluation
+
+**Status:** Accepted and implemented
+
+**Problem:** The manifest contained only opening studies. The original Phase 3
+golden set was also reused for calibration and reporting, so it could not
+measure generalization after adding middlegame and endgame evidence.
+
+**Decision:** Add only a small set of human-authored Wikibooks chapters whose
+text is explicitly CC BY-SA 4.0. Pin every revision and retain author,
+attribution, license, category, phase, topic, and content hash in the index.
+Exclude page furniture, references, and block quotations. Keep `rag-v1` and
+dense retrieval, but calibrate the distance cutoff on
+`evals/rag_calibration_queries.jsonl` using balanced accuracy and report final
+metrics only on `evals/rag_evaluation_queries.jsonl`.
+
+**Rationale:** Revision-pinned MediaWiki content is automatable, reviewable, and
+legally attributable without importing bulk low-quality or unlicensed data.
+Balanced accuracy prevents the larger answerable class from selecting a cutoff
+that stops abstaining.
+
+**Impact:** The enabled corpus grows from 14 sources/387 chunks to 20
+sources/432 chunks: 27 middlegame and 18 endgame chunks are new. The calibrated
+cutoff becomes `1.2241348028182983`. On the held-out 17-case set,
+Recall@1/Recall@3/MRR/abstention precision move from
+`0.0769/0.1538/0.1154/0.3333` to `0.5385/0.5385/0.5385/0.4000`. Unsupported
+held-out queries still return `insufficient_evidence`; Spanish answerable
+queries remain the largest measured weakness.
+
+**Evidence:** Source/licensing review is in
+`docs/rag-corpus-source-review.md`; before, calibration, and after reports are
+versioned under `evals/results/`. No prompt, generation, frontend, agent, MCP,
+hybrid-search, reranking, or grounding behavior changed.
+
+### DEC-037 — English-only RAG scope and held-out diagnostics
+
+**Status:** Accepted and implemented; supersedes the multilingual assumption in
+DEC-036 for the current product scope
+
+**Problem:** The calibration and evaluation datasets mixed English and Spanish
+queries even though Cerno is an English-only application and the indexed
+corpus is English. The benchmark therefore measured an unapproved multilingual
+capability. Abstention rows also hid the nearest rejected candidate, making
+threshold failures difficult to diagnose.
+
+**Decision:** Keep the thematic coverage and difficulty but express every
+golden query in natural English. Keep source prose, readable metadata, reports,
+and RAG operational messages in English. Reject non-English golden rows.
+Record the best rejected candidate, distance, expected and retrieved category
+and phase, applied filters, and rejection reason for abstentions. Continue to
+calibrate on the dedicated calibration split and evaluate only on the held-out
+split.
+
+Two labels were reviewed against the source text rather than changed to improve
+metrics. Planning remains answerable only as the documented relationship
+between positional evaluation and a plan required by the position. The rook
+and pawn case asks only for the documented winning factors; a complete
+weak-side defensive method remains unsupported.
+
+**Rationale:** Evaluation should match the supported product language and
+should distinguish ranking, threshold, filtering, and corpus-coverage failures.
+Unsupported multilingual behavior must not influence the production threshold.
+
+**Impact:** English topic metadata reduces the reproducible index from 432 to
+430 chunks without losing source coverage. With the previous
+`1.2241348028182983` threshold, the English held-out set scores
+Recall@1/Recall@3/MRR/abstention precision of
+`0.9231/1.0000/0.9615/1.0000`, but incorrectly accepts one unsupported
+composed-problem query. Calibration selects the lower
+`0.893064558506012` threshold. The final held-out run keeps the same ranking
+metrics, returns all four unsupported cases as `insufficient_evidence`, and
+has zero false positives and zero false negatives. The embedding version is
+unchanged.
+
+**Scope:** Multilingual retrieval and translation remain outside the current
+scope. Coach prompts, generation, frontend, agent, MCP, hybrid search,
+reranking, and grounding are unchanged.
+
+### DEC-038 — Grounded Structured Outputs for the production coach
+
+**Status:** Accepted and implemented
+
+**Problem:** Both production coach entry points reached one OpenAI call, but
+that call received only derived theory labels, combined instructions and
+dynamic data in inline strings, requested JSON in prose, and parsed it
+manually. Source records shown by the API could not be tied to individual
+generated recommendations, and all provider or validation errors collapsed
+silently into the fallback.
+
+**Decision:** Keep the shared Lichess/PGN coach and current model parameters,
+but move its English developer instructions into versioned prompt code. Pass
+deterministic analysis, engine evidence, and bounded retrieved chunks as
+separate structured data. Treat player labels and retrieved text as untrusted.
+Use the OpenAI SDK's Pydantic Structured Outputs path, then validate every
+engine and source ID at the application boundary. A theory recommendation
+requires supplied source IDs; game-analysis recommendations cannot cite theory.
+During `insufficient_evidence`, retain useful Stockfish/profile coaching,
+forbid theory/citations, and show a natural evidence notice.
+
+**Rationale:** Grounding requires the model to receive actual evidence and the
+application to verify its references. A code-owned prompt and Pydantic contract
+provide traceability and safe failure without adding a prompt platform or
+changing retrieval.
+
+**Impact:** `cerno.coach.grounded_training` version `2.0.0` adds structured
+summary, strengths, weaknesses, actionable recommendations, source attribution,
+grounding status, and safe generation metadata to the REST contract. Legacy
+diagnosis, training plan, theory recommendations, and full-game viewer data
+remain compatible. The deterministic fallback uses the same output model.
+
+**Evidence:** Eight versioned evaluation cases cover both entry points, all
+game phases, multiple/conflicting/no evidence, and untrusted source/PGN/player
+content. The candidate fixtures score `1.0` on all deterministic contract
+metrics. Tests use fake clients and make no real OpenAI request. The agent,
+MCP, corpus, embeddings, retrieval policy, prompts outside the production
+coach, and later phases are unchanged.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
@@ -774,13 +891,16 @@ The brief includes Streamable HTTP auth/limits in Phase 6 and broader auth/limit
 
 The brief uses `TrainingRecommendation` as an example Pydantic output name, while the repository already has a SQLAlchemy model named `TrainingRecommendation`.
 
-**Resolution:** Use module-qualified names or a distinct application name such as `GeneratedRecommendation`; final schema is approved in Phase 4.
+**Resolution:** Phase 4 uses the distinct Pydantic names
+`GeneratedCoachRecommendation` and `GeneratedCoachOutput`.
 
 ### 3.7 Prompt and MCP directories
 
 The proposed `prompts/`, `evals/`, source manifest, and MCP server files do not currently exist.
 
-**Resolution:** They are target architecture, not current-state documentation.
+**Resolution:** Phase 4 now owns `app/prompts/`, `prompts/`, and the coach
+evaluation dataset under `evals/`. MCP server files still do not exist and
+remain a later-phase target.
 
 ## 4. Open verification items
 
@@ -798,15 +918,22 @@ Decide whether persisted profiles/analyses are public by Lichess username, priva
 
 ### OQ-003 — Supported product languages
 
-**Status:** Open
+**Status:** Resolved for the production RAG and structured coach
 
-The visible product is English, the current experimental agent prompt is Spanish, and the target plans mention both languages. Approve supported languages and fallback behavior before prompt/MCP schema finalization.
+Cerno currently supports English retrieval queries only, and its indexed
+corpus and production structured coach are English. Multilingual retrieval and
+translation are outside the current scope. The pre-existing experimental agent
+prompt remains unchanged by Phase 3/4 because the agent is not a production
+coach entry point. Its hardening remains Phase 5.
 
 ### OQ-004 — Prompt provider structured-output capability
 
-**Status:** Open
+**Status:** Resolved
 
-Select and verify the provider/model/SDK behavior during Phase 4. Pydantic application validation is required regardless.
+The installed OpenAI SDK and configured `gpt-4o-mini` path support
+`chat.completions.parse` with a Pydantic response format. Phase 4 uses that
+provider constraint and retains application-level validation and deterministic
+fallback regardless.
 
 ### OQ-005 — MCP SDK/version
 

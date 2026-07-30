@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from app.services.rag import (
     chunks_for_source,
     create_chroma_collection,
-    fetch_lichess_study,
+    fetch_source,
     load_manifest,
     reconcile_index,
     reindex_source,
@@ -54,8 +54,8 @@ async def build_index(args: argparse.Namespace) -> int:
         if not source.enabled:
             continue
         try:
-            pgn_text = await fetch_lichess_study(source.id)
-            chunks = chunks_for_source(pgn_text, source)
+            source_text = await fetch_source(source)
+            chunks = chunks_for_source(source_text, source)
             report = reindex_source(
                 chunks,
                 source.id,

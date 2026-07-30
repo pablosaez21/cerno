@@ -334,8 +334,8 @@ Detailed requirements are in [testing-strategy.md](./testing-strategy.md).
 
 ## 7. Phase 3 — Reliable, evaluable retrieval
 
-**Status:** Completed on 2026-07-29 under the explicitly approved reduced
-scope below.
+**Status:** Completed and finally adjusted for the English-only product scope
+on 2026-07-30.
 
 ### Objective
 
@@ -355,6 +355,10 @@ generation.
 8. calibrated top-k and threshold;
 9. compatibility adapter for the existing REST, coach, and agent consumers.
 
+RAG queries, indexed source prose, readable metadata, and evaluation artifacts
+are English-only. Multilingual retrieval and translation are outside this
+phase.
+
 The implementation brief explicitly excludes hybrid search, reranking, RRF,
 HyDE, GraphRAG, ColBERT, grounding/citations, prompt changes, MCP, and new
 unverified sources. Those items are not silently treated as completed.
@@ -363,9 +367,10 @@ unverified sources. Those items are not silently treated as completed.
 
 - The source manifest reproduces an index without orphan chunks.
 - Chunks include required provenance and pipeline versions.
-- Corpus gaps are measured; middlegame and endgame requests abstain while no
-  approved sources exist.
-- A versioned golden dataset includes answerable and unanswerable cases.
+- Corpus gaps are measured; unsupported requests abstain rather than borrowing
+  evidence from another phase or category.
+- Separate versioned English calibration and evaluation datasets include
+  answerable and unanswerable cases.
 - Retrieval metrics are reported globally and per category.
 - Cerno returns `insufficient_evidence` for calibrated unsupported queries.
 - A regression report compares the new pipeline with the previous baseline.
@@ -373,6 +378,8 @@ unverified sources. Those items are not silently treated as completed.
 Advanced methods remain conditional. See [rag-improvement-plan.md](./rag-improvement-plan.md).
 
 ## 8. Phase 4 — Prompt engineering
+
+**Status:** Implemented locally on 2026-07-30. Phase 5 has not started.
 
 ### Objective
 
@@ -398,6 +405,18 @@ Make prompt behavior explicit, versioned, schema-validated, evaluable, and resis
 - Adversarial retrieved text cannot override system/task instructions in tests.
 - Fallback reason and generation mode are observable.
 - Prompt evaluation reports schema validity, groundedness, relevance, latency, and cost where available.
+
+### Implementation evidence
+
+- `cerno.coach.grounded_training` version `2.0.0` is implemented as code in
+  `app/prompts/coach.py` and registered in `prompts/prompt-registry.json`.
+- The production coach uses Pydantic Structured Outputs and validates supplied
+  engine/source references before exposing the result.
+- Lichess and PGN share the same generation path and response model.
+- Eight versioned deterministic cases compare the pre-Phase-4 contract with
+  the grounded contract; the manual live evaluator is capped and opt-in.
+- Provider failure, validation failure, and missing-key fallback reasons are
+  observable without exposing prompt or response text.
 
 See [prompt-engineering-plan.md](./prompt-engineering-plan.md).
 

@@ -15,6 +15,7 @@ ignore = [
 "app/main.py" = ["E402"]
 "scripts/index_studies.py" = ["E402"]
 "scripts/evaluate_rag.py" = ["E402"]
+"scripts/evaluate_coach_generation.py" = ["E402"]
 "scripts/reconcile_rag_index.py" = ["E402"]
 "scripts/index_studies_remote.py" = ["E402"]
 "scripts/test_rag_queries.py" = ["E402"]

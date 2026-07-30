@@ -2,11 +2,13 @@
 
 **Status:** Current-state reference and approved target architecture
 **Audience:** Contributors, reviewers, and technical interviewers
-**Last reviewed:** 2026-07-29
+**Last reviewed:** 2026-07-30
 
 ## 1. Purpose
 
-This document describes how Cerno works today, the correctness constraints that must be preserved, and the target architecture for its professionalization. It does not claim that future capabilities such as grounded generation or MCP already exist.
+This document describes how Cerno works today, the correctness constraints that
+must be preserved, and the target architecture for its professionalization.
+The structured coach now has grounded generation; MCP does not exist yet.
 
 Implementation sequencing and acceptance criteria are defined in [professionalization-plan.md](./professionalization-plan.md). Specialist designs live in the testing, RAG, prompt, and MCP documents.
 
@@ -108,13 +110,29 @@ All plies are required by the board viewer. Since Phase 1, every move exposes
 5. aggregates weaknesses from the player-only projections;
 6. generates theory queries;
 7. searches ChromaDB;
-8. builds theory recommendations;
-9. generates a training plan with OpenAI or a local fallback;
-10. optionally persists the player-specific result.
+8. passes bounded retrieved chunks and source metadata to the grounded coach
+   generator;
+9. validates a structured coaching summary, strengths, weaknesses, actionable
+   recommendations, and source references, or uses a deterministic fallback;
+10. derives the existing training-plan fields from that validated result;
+11. optionally persists the player-specific result.
 
 This is the primary product flow because it has a bounded, structured response.
 Both product entry points share this service and return the same response
 contract. Uploaded reports are non-persistent and contain one game.
+
+[`app/prompts/coach.py`](../app/prompts/coach.py) owns the stable English
+developer instructions and prompt version. Dynamic player labels, deterministic
+analysis, engine evidence, and retrieved passages are serialized separately.
+Player labels and retrieved passages are explicitly untrusted data. The service
+uses the OpenAI SDK's Pydantic Structured Outputs path and validates all engine
+and source IDs again before a response reaches the API.
+
+The additive response fields expose grounding status, strengths, weaknesses,
+actionable recommendations, source attribution, and generation metadata. The
+existing diagnosis, theory recommendations, training plan, and full-game
+analysis remain available for compatibility. Both Lichess and PGN use this
+identical response contract.
 
 ### 3.5 Weakness aggregation
 
@@ -133,21 +151,38 @@ contract. Uploaded reports are non-persistent and contain one game.
 
 [`app/services/rag.py`](../app/services/rag.py) lazily creates the product's
 persistent ChromaDB collection using the default embedding function. It
-downloads only manifest-approved Lichess study PGN, parses chapters with
-`python-chess`, creates bounded content-addressed chunks, and records source,
-chapter, category, phase, topic, content hash, and pipeline/embedding versions.
+downloads only manifest-approved sources. Lichess study PGN is parsed with
+`python-chess`; pinned Wikibooks revisions are retrieved through the official
+MediaWiki API and reduced to licensed teaching prose. Both paths create bounded
+content-addressed chunks and record source, chapter, category, phase, topic,
+content hash, and pipeline/embedding versions. Wikimedia chunks additionally
+retain revision, collective author, attribution URL, and content license.
 Source reindexing is idempotent and removes stale chunks; the separate
 reconciliation command reports drift and deletes only orphaned or
 manifest-obsolete content when `--apply` is explicit.
 
 Retrieval first applies available phase/category metadata and then a calibrated
-distance gate. Its internal result is typed as `evidence_found` or
+distance gate calibrated on a dedicated dataset, separate from the held-out
+evaluation set. Its internal result is typed as `evidence_found` or
 `insufficient_evidence`. Existing REST, coach, and agent consumers retain their
 list contract: insufficient evidence is adapted to an empty list. The
 collection factory accepts an explicit path and embedding function so tests use
 isolated storage without opening the developer's `data/chromadb`.
 
-The current system performs semantic retrieval and exposes sources. The structured coach passes derived theory themes to the LLM, not the retrieved passages themselves. The current description is therefore **retrieval-assisted coaching**, not fully grounded RAG.
+RAG queries, indexed source prose, and human-readable metadata are currently
+English-only. Multilingual retrieval and translation are outside the current
+architecture.
+
+The current system performs semantic retrieval with abstention. When evidence
+exists, the structured coach consumes up to five bounded passages with stable
+`S1`-style IDs, source title/chapter, phase/category, author, attribution,
+license, and canonical URL. Theory recommendations must cite supplied IDs;
+application validation rejects invented references. Engine-derived
+recommendations use `E1`-style game-analysis IDs and do not cite RAG sources.
+
+When retrieval returns `insufficient_evidence`, coaching remains useful and
+deterministic from Stockfish/profile data, contains no theory recommendation or
+source citation, and states that no relevant theory source was available.
 
 The target design is specified in [rag-improvement-plan.md](./rag-improvement-plan.md).
 

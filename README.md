@@ -79,7 +79,9 @@ ChromaDB and PostgreSQL have separate responsibilities:
 3. Stockfish evaluates the games and identifies critical moments.
 4. The weakness service aggregates errors by game phase.
 5. Cerno searches ChromaDB for relevant theory.
-6. OpenAI generates a short coach advice paragraph and a training plan, with a local fallback if no API key is configured.
+6. The structured coach produces a typed summary, strengths, weaknesses, and
+   actionable recommendations. Theory advice cites only retrieved source IDs;
+   a deterministic local fallback is used when generation is unavailable.
 7. When `save=true`, the analysis is persisted in PostgreSQL.
 
 ## Running Locally With Docker
@@ -203,7 +205,8 @@ http://localhost:3000
 1. Open `http://localhost:3000`.
 2. Enter a Lichess username.
 3. Analyze recent games.
-4. Review the coach advice, phase accuracy, critical moments, training plan, and recommended theory.
+4. Review the coach reading, actionable recommendations, phase performance,
+   critical moments, training plan, and attributed sources.
 5. Open the player profile to inspect saved analysis history.
 6. Optionally paste a PGN manually for direct Stockfish analysis.
 
@@ -215,9 +218,13 @@ The Lichess analysis screen is ordered for a non-technical user:
 2. `Phase accuracy`: opening, middlegame, and endgame loss metrics shown in pawn units.
 3. `Critical moments`: the most important mistakes or blunders, with their estimated pawn loss.
 4. `Training plan`: five practical actions for the next week.
-5. `Recommended theory`: relevant study material retrieved from ChromaDB.
+5. `Actionable coaching`: engine-backed and, when evidence exists, cited
+   theory-backed recommendations.
+6. `Sources`: retrieved material with title/chapter, author, license, and links
+   when available.
 
-The training plan intentionally avoids raw study IDs such as `efGLGZOM`. Theory links and study metadata belong in the `Recommended theory` section, while the plan should stay readable and action-oriented.
+If retrieval reports `insufficient_evidence`, the report remains useful from
+Stockfish and the player profile but contains no theory claim or citation.
 
 ## Understanding The Analysis Metrics
 
@@ -276,6 +283,7 @@ This means the opening was comparatively accurate, the middlegame was the weakes
 | `POST` | `/games/analyze` | Analyze a PGN with Stockfish |
 | `POST` | `/theory/search` | Search the ChromaDB knowledge base |
 | `POST` | `/coach/analyze-user` | Run the structured coaching flow |
+| `POST` | `/coach/analyze-pgn` | Run the same coach flow for an uploaded PGN and selected player color |
 | `POST` | `/agent/chat` | Conversational tool-calling endpoint |
 | `GET` | `/users/{username}/analyses` | Retrieve persisted analyses |
 | `GET` | `/users/{username}/weakness-profile` | Retrieve the persisted weakness profile |
@@ -382,6 +390,8 @@ The tests mock external boundaries and do not require:
 
 - Stockfish analysis is a useful coaching approximation, not an elite professional preparation tool.
 - The initial RAG knowledge base is intentionally small and curated; a new production volume may need manual study indexing before theory recommendations become rich.
+- Retrieval and the production structured coach currently support English
+  only.
 - The conversational agent is less structured than the main coach endpoint.
 
 ## Roadmap

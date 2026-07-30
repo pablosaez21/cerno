@@ -18,6 +18,10 @@ export function CoachResults({
   result: CoachAnalysis;
   source?: "lichess" | "pgn";
 }) {
+  const sourceById = new Map(
+    result.sources.map((item) => [item.citation_id, item]),
+  );
+
   return (
     <section className="result-enter wide-shell space-y-5 border-t border-[var(--line-strong)] pt-7 sm:pt-10">
       <header className="grid border border-[var(--line-strong)] bg-[var(--surface)] lg:grid-cols-[1fr_auto]">
@@ -74,6 +78,17 @@ export function CoachResults({
           <p className="mt-5 max-w-4xl text-lg font-medium leading-8 text-[var(--text-strong)] sm:text-xl">
             {result.coach_advice}
           </p>
+          <p className="mt-5 inline-flex border border-[var(--line-strong)] bg-[var(--night-deep)] px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]">
+            {result.grounding_status === "evidence_found"
+              ? "Corpus-grounded coaching"
+              : "Game-analysis evidence only"}
+          </p>
+          {result.strengths.length || result.weaknesses.length ? (
+            <div className="mt-6 grid gap-5 border-t border-[var(--line)] pt-5 sm:grid-cols-2">
+              <EvidenceList title="Strengths" items={result.strengths} />
+              <EvidenceList title="Weaknesses" items={result.weaknesses} />
+            </div>
+          ) : null}
         </article>
         <aside className="border-t border-[var(--line-strong)] bg-[var(--night-deep)] p-5 sm:p-7 lg:border-t-0">
           <p className="eyebrow !text-[var(--accent-strong)]">Diagnosis</p>
@@ -147,9 +162,66 @@ export function CoachResults({
         )}
       </section>
 
+      <section className="border border-[var(--line-strong)] bg-[var(--surface)]">
+        <ReportHeading
+          number="05"
+          title="Actionable coaching"
+          count={result.actionable_recommendations.length}
+          inset
+        />
+        <div className="divide-y divide-[var(--line)] border-t border-[var(--line-strong)]">
+          {result.actionable_recommendations.map((recommendation, index) => (
+            <article
+              key={`${recommendation.title}-${index}`}
+              className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:p-6"
+            >
+              <div>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]">
+                  {recommendation.evidence_type === "theory"
+                    ? "Theory evidence"
+                    : "Game-analysis evidence"}
+                </p>
+                <h3 className="display-type mt-3 text-3xl text-[var(--text-strong)]">
+                  {recommendation.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  {recommendation.explanation}
+                </p>
+              </div>
+              <div>
+                <ul className="space-y-2 text-sm leading-6">
+                  {recommendation.actions.map((action) => (
+                    <li key={action} className="flex gap-3">
+                      <span className="font-mono text-[var(--accent)]">→</span>
+                      <span>{action}</span>
+                    </li>
+                  ))}
+                </ul>
+                {recommendation.source_ids.length ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {recommendation.source_ids.map((sourceId) => {
+                      const citedSource = sourceById.get(sourceId);
+                      return (
+                        <span
+                          key={sourceId}
+                          className="border border-[var(--line-strong)] bg-[var(--accent-soft)] px-2 py-1 font-mono text-[10px] font-bold uppercase text-[var(--accent-strong)]"
+                        >
+                          {sourceId}
+                          {citedSource ? ` · ${citedSource.title}` : ""}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="grid border border-[var(--line-strong)] lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <div className="bg-[var(--accent-soft)] p-5 sm:p-7">
-          <p className="eyebrow !text-[var(--accent-strong)]">05 · Weekly plan</p>
+          <p className="eyebrow !text-[var(--accent-strong)]">06 · Weekly plan</p>
           <h3 className="display-type mt-5 text-5xl text-[var(--text-strong)] sm:text-6xl">Train with intent.</h3>
           <p className="mt-5 border-t border-[var(--line-strong)] pt-4 text-sm leading-6 text-[var(--muted-strong)]">
             Current priority: {result.training_plan.priority}
@@ -178,24 +250,24 @@ export function CoachResults({
 
       <section className="border border-[var(--line-strong)] bg-[var(--surface)]">
         <ReportHeading
-          number="06"
-          title="Recommended theory"
-          count={result.theory_recommendations.length}
+          number="07"
+          title="Sources"
+          count={result.sources.length}
           inset
         />
-        {result.theory_recommendations.length ? (
+        {result.sources.length ? (
           <div className="grid border-t border-[var(--line-strong)] md:grid-cols-2">
-            {result.theory_recommendations.map((item, index) => (
+            {result.sources.map((item) => (
               <article
-                key={`${item.study_id}-${item.chapter}-${index}`}
+                key={item.citation_id}
                 className="border-b border-[var(--line)] p-5 odd:md:border-r last:md:border-b-0"
               >
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="display-type text-2xl text-[var(--text-strong)]">
-                    {item.chapter || item.study_id || "Lichess study"}
+                    {item.chapter || item.title}
                   </h3>
                   <span className="font-mono text-xs font-bold text-[var(--accent)]">
-                    {String(index + 1).padStart(2, "0")}
+                    {item.citation_id}
                   </span>
                 </div>
                 {item.category ? (
@@ -203,26 +275,79 @@ export function CoachResults({
                     {titleCase(item.category)}
                   </p>
                 ) : null}
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{item.reason}</p>
-                {item.source ? (
-                  <a
-                    href={item.source}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase text-[var(--accent)] hover:text-[var(--accent-strong)] hover:underline"
-                  >
-                    Open source
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  </a>
-                ) : null}
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  {item.author || "Source author not supplied"}
+                  {item.content_license ? ` · ${item.content_license}` : ""}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-4">
+                  {item.canonical_url ? (
+                    <a
+                      href={item.canonical_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase text-[var(--accent)] hover:text-[var(--accent-strong)] hover:underline"
+                    >
+                      Open source
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                  {item.attribution &&
+                  item.attribution !== item.canonical_url ? (
+                    <a
+                      href={item.attribution}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase text-[var(--muted)] hover:text-[var(--text-strong)] hover:underline"
+                    >
+                      Attribution
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                  {item.license_url ? (
+                    <a
+                      href={item.license_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase text-[var(--muted)] hover:text-[var(--text-strong)] hover:underline"
+                    >
+                      License
+                      <ArrowUpRight size={14} aria-hidden="true" />
+                    </a>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>
         ) : (
-          <InlineEmpty text="No related theory was found." />
+          <InlineEmpty text="No relevant theory source was available. The coaching above remains based on game-analysis evidence." />
         )}
       </section>
     </section>
+  );
+}
+
+function EvidenceList({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) {
+  return (
+    <div>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--muted)]">
+        {title}
+      </p>
+      {items.length ? (
+        <ul className="mt-2 space-y-1 text-sm leading-6 text-[var(--muted-strong)]">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-[var(--muted)]">None identified.</p>
+      )}
+    </div>
   );
 }
 

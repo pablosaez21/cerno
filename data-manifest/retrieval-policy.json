@@ -2,8 +2,9 @@
   "pipeline_version": "rag-v1",
   "embedding_version": "chroma-default-all-MiniLM-L6-v2",
   "distance_metric": "squared_l2",
-  "max_distance": 1.3739006519317627,
-  "calibrated_on": "evals/rag_queries.jsonl",
-  "calibration_method": "highest classification accuracy, conservative tie-break",
-  "notes": "Calibrated on the Phase 3 golden set against a clean temporary rag-v1 index on 2026-07-29."
+  "max_distance": 0.893064558506012,
+  "calibrated_on": "evals/rag_calibration_queries.jsonl",
+  "evaluated_on": "evals/rag_evaluation_queries.jsonl",
+  "calibration_method": "highest balanced accuracy, then accuracy, abstention precision, answer recall and conservative tie-break",
+  "notes": "Calibrated on the English-only calibration split after the licensed corpus expansion on 2026-07-30; the held-out evaluation split was not used to choose this threshold."
 }

@@ -27,7 +27,8 @@ pytestmark = [pytest.mark.integration, pytest.mark.chroma]
 
 KEYWORDS = (
     ("opening", "develop", "center", "castle"),
-    ("middlegame", "tactic", "outpost", "attack"),
+    ("middlegame", "strategy", "plan", "evaluate", "tactic", "outpost", "attack"),
+    ("structure", "isolated", "doubled", "backward"),
     ("rook", "file", "rank"),
     ("pawn", "opposition", "king"),
     ("cooking", "kitchen", "recipe"),
@@ -85,7 +86,7 @@ def corpus() -> list[dict]:
             "text": "Middlegame tactics begin with forcing moves and an outpost attack.",
             "metadata": {
                 "study_id": "fixture-study",
-                "category": "middlegame",
+                "category": "middlegame_strategy",
                 "phase": "middlegame",
                 "chapter": "Forcing moves",
                 "source": "fixture://middlegame",
@@ -94,10 +95,22 @@ def corpus() -> list[dict]:
         },
         {
             "id": "fixture-study_2",
+            "text": "An isolated pawn structure needs active piece play and planning.",
+            "metadata": {
+                "study_id": "fixture-study",
+                "category": "pawn_structures",
+                "phase": "middlegame",
+                "chapter": "Isolated pawn",
+                "source": "fixture://pawn-structures",
+                "type": "test_fixture",
+            },
+        },
+        {
+            "id": "fixture-study_3",
             "text": "A rook belongs on an open file and becomes active from the seventh rank.",
             "metadata": {
                 "study_id": "fixture-study",
-                "category": "rook_endgame",
+                "category": "rook_endgames",
                 "phase": "endgame",
                 "chapter": "Active rook",
                 "source": "fixture://rook-endgame",
@@ -105,11 +118,11 @@ def corpus() -> list[dict]:
             },
         },
         {
-            "id": "fixture-study_3",
+            "id": "fixture-study_4",
             "text": "In a pawn ending, king opposition decides which pawn can promote.",
             "metadata": {
                 "study_id": "fixture-study",
-                "category": "pawn_endgame",
+                "category": "pawn_endgames",
                 "phase": "endgame",
                 "chapter": "King opposition",
                 "source": "fixture://pawn-endgame",
@@ -162,23 +175,23 @@ def test_temporary_collection_starts_empty(
 def test_real_upsert_persists_metadata_and_retrieves_unambiguous_result(
     temporary_collection: Collection,
 ) -> None:
-    assert upsert_chunks(corpus(), target_collection=temporary_collection) == 5
-    assert temporary_collection.count() == 5
+    assert upsert_chunks(corpus(), target_collection=temporary_collection) == 6
+    assert temporary_collection.count() == 6
 
-    stored = temporary_collection.get(ids=["fixture-study_2"])
+    stored = temporary_collection.get(ids=["fixture-study_3"])
     assert stored["documents"] == [
         "A rook belongs on an open file and becomes active from the seventh rank."
     ]
     assert stored["metadatas"][0]["chapter"] == "Active rook"
 
     results = search_theory(
-        "activate the rook on an open file",
+        "A rook belongs on an open file and becomes active from the seventh rank.",
         n_results=2,
         target_collection=temporary_collection,
     )
     assert results[0]["metadata"] == {
         "study_id": "fixture-study",
-        "category": "rook_endgame",
+        "category": "rook_endgames",
         "phase": "endgame",
         "chapter": "Active rook",
         "source": "fixture://rook-endgame",
@@ -198,15 +211,15 @@ def test_reindexing_same_ids_is_idempotent_and_persists_on_disk(
         name="integration_theory",
         embedding_function=KeywordEmbeddingFunction(),
     )
-    assert upsert_chunks(corpus(), target_collection=collection) == 5
+    assert upsert_chunks(corpus(), target_collection=collection) == 6
 
     replacement = [
         {
-            "id": "fixture-study_2",
+            "id": "fixture-study_3",
             "text": "Rook activity improves when the rook controls an open file.",
             "metadata": {
                 "study_id": "fixture-study",
-                "category": "rook_endgame",
+                "category": "rook_endgames",
                 "phase": "endgame",
                 "chapter": "Updated rook activity",
                 "source": "fixture://rook-endgame",
@@ -215,7 +228,7 @@ def test_reindexing_same_ids_is_idempotent_and_persists_on_disk(
         }
     ]
     assert upsert_chunks(replacement, target_collection=collection) == 1
-    assert collection.count() == 5
+    assert collection.count() == 6
 
     del collection
     gc.collect()
@@ -227,8 +240,8 @@ def test_reindexing_same_ids_is_idempotent_and_persists_on_disk(
         embedding_function=KeywordEmbeddingFunction(),
     )
     try:
-        stored = reopened.get(ids=["fixture-study_2"])
-        assert reopened.count() == 5
+        stored = reopened.get(ids=["fixture-study_3"])
+        assert reopened.count() == 6
         assert stored["documents"] == [
             "Rook activity improves when the rook controls an open file."
         ]
@@ -410,6 +423,46 @@ def test_typed_retrieval_relevant_irrelevant_and_filters(
     assert relevant.documents[0].metadata["phase"] == "endgame"
     assert irrelevant.status == "insufficient_evidence"
     assert irrelevant.documents == []
+
+
+@pytest.mark.parametrize(
+    ("query", "phase", "category"),
+    [
+        (
+            "Middlegame tactics begin with forcing moves and an outpost attack.",
+            "middlegame",
+            "middlegame_strategy",
+        ),
+        (
+            "In a pawn ending, king opposition decides which pawn can promote.",
+            "endgame",
+            "pawn_endgames",
+        ),
+        (
+            "A rook belongs on an open file and becomes active from the seventh rank.",
+            "endgame",
+            "rook_endgames",
+        ),
+    ],
+)
+def test_retrieves_explicit_middlegame_and_endgame_categories(
+    temporary_collection: Collection,
+    query: str,
+    phase: str,
+    category: str,
+) -> None:
+    upsert_chunks(corpus(), target_collection=temporary_collection)
+
+    result = retrieve_theory(
+        query,
+        phase=phase,
+        category=category,
+        max_distance=0.01,
+        target_collection=temporary_collection,
+    )
+
+    assert result.status == "evidence_found"
+    assert result.documents[0].metadata["category"] == category
 
 
 def test_unavailable_chroma_directory_returns_controlled_error(

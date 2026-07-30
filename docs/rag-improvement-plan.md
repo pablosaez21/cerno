@@ -1,8 +1,8 @@
 # Cerno RAG improvement plan
 
 **Status:** Reliable-retrieval scope implemented; advanced target items deferred
-**Current capability:** Evaluated dense retrieval with abstention; not fully grounded generation
-**Last reviewed:** 2026-07-29
+**Current capability:** Evaluated dense retrieval with abstention, consumed by a grounded structured coach
+**Last reviewed:** 2026-07-30
 
 ## 1. Purpose
 
@@ -19,8 +19,10 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
   temporary path and deterministic embedding without touching the local index;
 - uses Chroma's default embedding function;
 - stores a fixed collection named `chess_theory`;
-- downloads Lichess studies as PGN;
+- downloads manifest-approved Lichess PGN and pinned licensed Wikibooks pages;
 - parses studies with `python-chess`, including position-only teaching chapters;
+- extracts bounded Wikibooks teaching prose while retaining revision, author,
+  attribution, and license metadata;
 - creates bounded chunks no larger than 1,800 characters;
 - produces content-addressed stable IDs and SHA-256 `content_hash` metadata;
 - stores source/chapter/category/phase/topic plus pipeline and embedding versions;
@@ -30,9 +32,14 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
 
 Tests exercise all technical behavior with real Chroma collections under
 pytest `tmp_path`; they never open or mutate `data/chromadb`. Semantic quality
-is measured separately by `scripts/evaluate_rag.py`.
+is measured separately by `scripts/evaluate_rag.py`. Threshold calibration and
+held-out reporting now use different versioned JSONL datasets.
 
-[`app/services/weakness.py`](../app/services/weakness.py) creates heuristic theory queries. [`app/services/coach.py`](../app/services/coach.py) deduplicates retrieval results, builds source recommendations, and sends only derived theory themes to the LLM.
+[`app/services/weakness.py`](../app/services/weakness.py) creates heuristic
+theory queries. [`app/services/coach.py`](../app/services/coach.py) deduplicates
+retrieval results and hands the typed retrieval result to the Phase 4 coach
+generator. The retriever, index, corpus, embedding, filters, ranking, and
+threshold remain the Phase 3 implementation.
 
 ### Current-state statement
 
@@ -40,11 +47,19 @@ Cerno performs evaluated semantic retrieval, can display relevant study
 sources, and abstains on the reviewed unsupported cases. It does not yet
 guarantee:
 
-- balanced chess-phase coverage;
-- broader golden-set generalization;
-- balanced middlegame/endgame coverage;
-- grounded generation from retrieved passages;
-- structured citation validity.
+- deep or balanced chess-phase coverage;
+- broader golden-set generalization beyond the reviewed English cases;
+- comprehensive middlegame/endgame coverage;
+- broader grounded-generation evaluation beyond the reviewed Phase 4 fixtures.
+
+Cerno currently supports English retrieval queries only, and the indexed
+corpus is English. Multilingual retrieval and query translation are outside
+the current scope.
+
+Grounded prompt consumption and structured citation validation are implemented
+in Phase 4 and documented in
+[prompt-engineering-plan.md](./prompt-engineering-plan.md). They do not alter
+the retrieval metrics or acceptance evidence in this plan.
 
 ## 3. Verified local-index discrepancy
 
@@ -339,10 +354,11 @@ GraphRAG, HyDE, ColBERT, multi-query, and agentic retrieval remain optional expe
 
 ## 10. Golden evaluation dataset
 
-Target file:
+Versioned split files:
 
 ```text
-evals/rag_queries.jsonl
+evals/rag_calibration_queries.jsonl
+evals/rag_evaluation_queries.jsonl
 ```
 
 Suggested case:
@@ -363,12 +379,16 @@ Suggested case:
 Dataset composition:
 
 - opening, middlegame, tactics, and endgame;
-- English and Spanish if both are product requirements;
+- natural English terminology and player language;
 - exact terminology and natural player language;
 - ambiguous queries;
 - adversarial lexical overlap;
 - unsupported topics;
 - sources with similar titles but different chess meaning.
+
+The calibration and held-out evaluation datasets must remain separate.
+Multilingual cases require a separately approved product scope and evaluation
+design; they must not be mixed into the current English-only benchmark.
 
 Human review by a chess-knowledgeable person remains the reference for relevance labels.
 

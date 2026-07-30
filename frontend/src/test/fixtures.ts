@@ -126,6 +126,30 @@ export const coachAnalysisFixture: CoachAnalysis = {
     },
   ],
   theory_recommendations: [],
+  grounding_status: "insufficient_evidence",
+  strengths: ["The opening development was comparatively stable."],
+  weaknesses: ["The critical capture overlooked the opponent's reply."],
+  actionable_recommendations: [
+    {
+      title: "Review forcing replies",
+      explanation:
+        "The largest evaluation loss followed a forcing capture.",
+      actions: ["List every check and capture before choosing the move."],
+      evidence_type: "game_analysis",
+      engine_evidence_ids: ["E1"],
+      source_ids: [],
+    },
+  ],
+  sources: [],
+  generation: {
+    mode: "fallback",
+    reason: "no_api_key",
+    prompt_name: "cerno.coach.grounded_training",
+    prompt_version: "2.0.0",
+    schema_version: "2.0.0",
+    model: "gpt-4o-mini",
+    retrieval_pipeline_version: "rag-v1",
+  },
   training_plan: {
     priority: "opening calculation",
     week_plan: ["Review the critical capture.", "Solve forcing-move puzzles."],
@@ -149,6 +173,56 @@ export const coachAnalysisBlackFixture: CoachAnalysis = {
     },
   ],
   game_analyses: [coachGame("black")],
+};
+
+export const groundedCoachAnalysisFixture: CoachAnalysis = {
+  ...coachAnalysisBlackFixture,
+  grounding_status: "evidence_found",
+  theory_recommendations: [
+    {
+      citation_id: "S1",
+      source_id: "wikibooks-pawn-endings",
+      title: "Pawn Endings",
+      source: "https://example.test/pawn-endings",
+      category: "pawn_endgames",
+      phase: "endgame",
+      study_id: "wikibooks-pawn-endings",
+      chapter: "The Opposition",
+      author: "Wikibooks contributors",
+      attribution: "https://example.test/pawn-endings-history",
+      content_license: "CC BY-SA 4.0",
+      license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+      reason: "Relevant for: king opposition in pawn endings.",
+      distance: 0.42,
+    },
+  ],
+  actionable_recommendations: [
+    ...coachAnalysisBlackFixture.actionable_recommendations,
+    {
+      title: "Practice opposition",
+      explanation:
+        "Opposition helps the king control access to key squares.",
+      actions: ["Solve five opposition positions from both sides."],
+      evidence_type: "theory",
+      engine_evidence_ids: ["E1"],
+      source_ids: ["S1"],
+    },
+  ],
+  sources: [
+    {
+      citation_id: "S1",
+      source_id: "wikibooks-pawn-endings",
+      title: "Pawn Endings",
+      chapter: "The Opposition",
+      phase: "endgame",
+      category: "pawn_endgames",
+      author: "Wikibooks contributors",
+      attribution: "https://example.test/pawn-endings-history",
+      content_license: "CC BY-SA 4.0",
+      license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+      canonical_url: "https://example.test/pawn-endings",
+    },
+  ],
 };
 
 export const emptyCoachAnalysisFixture: CoachAnalysis = {

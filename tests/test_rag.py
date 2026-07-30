@@ -1,19 +1,44 @@
+import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
+from app.schemas.rag import RagSource
 from app.services.rag import (
     MAX_CHUNK_CHARACTERS,
     ChromaStoreError,
     chunk_study_pgn,
+    chunk_wikimedia_html,
     create_chroma_collection,
+    fetch_source,
+    fetch_wikimedia_page,
     get_collection,
     hash_content,
     retrieve_theory,
     search_theory,
     upsert_chunks,
 )
+
+
+def wikimedia_source() -> RagSource:
+    return RagSource(
+        id="wikibooks-pawn-endings",
+        provider="wikimedia-page",
+        title="Pawn Endings",
+        category="pawn_endgames",
+        phase="endgame",
+        topic="opposition and passed pawns",
+        language="en",
+        page_title="Chess/The Endgame/Pawn Endings",
+        revision_id=4242584,
+        source_url="https://example.test/pinned",
+        attribution_url="https://example.test/history",
+        author="Wikibooks contributors",
+        content_license="CC BY-SA 4.0",
+        license_url="https://creativecommons.org/licenses/by-sa/4.0/",
+    )
 
 
 def test_product_collection_is_created_lazily_and_cached():
@@ -158,6 +183,142 @@ def test_position_only_pgn_chapter_keeps_teaching_comment():
     assert len(chunks) == 1
     assert "Notes: Control e4, e5, d4 and d5." in chunks[0]["text"]
     assert "%csl" not in chunks[0]["text"]
+
+
+def test_wikimedia_chunking_is_bounded_attributed_and_excludes_unsafe_sections():
+    source = wikimedia_source()
+    html = f"""
+<p>Introductory endgame context.</p>
+<h2>The Opposition</h2>
+<p>{" ".join(["Opposition controls key squares."] * 100)}</p>
+<blockquote>Third-party quotation must not be indexed.</blockquote>
+<table><tr><td>Diagram furniture must not be indexed.</td></tr></table>
+<h2>References</h2>
+<p>Bibliography must not be indexed.</p>
+"""
+
+    chunks = chunk_wikimedia_html(html, source)
+
+    assert len(chunks) > 1
+    assert all(len(chunk["text"]) <= MAX_CHUNK_CHARACTERS for chunk in chunks)
+    combined = " ".join(chunk["text"] for chunk in chunks)
+    assert "Opposition controls key squares." in combined
+    assert "Third-party quotation" not in combined
+    assert "Diagram furniture" not in combined
+    assert "Bibliography" not in combined
+    for chunk in chunks:
+        metadata = chunk["metadata"]
+        assert metadata["provider"] == "wikimedia-page"
+        assert metadata["revision_id"] == 4242584
+        assert metadata["content_license"] == "CC BY-SA 4.0"
+        assert metadata["attribution_url"] == "https://example.test/history"
+        assert metadata["content_hash"] == hash_content(chunk["text"])
+
+
+def test_wikimedia_fetch_requires_the_pinned_title_and_revision():
+    source = wikimedia_source()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["oldid"] == "4242584"
+        assert request.headers["User-Agent"].startswith("Cerno-RAG/")
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "parse": {
+                    "title": source.page_title,
+                    "revid": source.revision_id,
+                    "text": "<h2>The Opposition</h2><p>Teaching prose.</p>",
+                }
+            },
+        )
+
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    with patch(
+        "app.services.rag.httpx.AsyncClient",
+        side_effect=lambda **kwargs: real_client(transport=transport, **kwargs),
+    ):
+        html = asyncio.run(fetch_wikimedia_page(source))
+
+    assert html.endswith("<p>Teaching prose.</p>")
+
+
+def test_wikimedia_fetch_retries_a_rate_limit():
+    source = wikimedia_source()
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        if requests == 1:
+            return httpx.Response(
+                429,
+                request=request,
+                headers={"Retry-After": "0"},
+            )
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "parse": {
+                    "title": source.page_title,
+                    "revid": source.revision_id,
+                    "text": "<p>Recovered.</p>",
+                }
+            },
+        )
+
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    with (
+        patch(
+            "app.services.rag.httpx.AsyncClient",
+            side_effect=lambda **kwargs: real_client(transport=transport, **kwargs),
+        ),
+        patch("app.services.rag.asyncio.sleep", new=AsyncMock()) as sleep,
+    ):
+        assert "Recovered" in asyncio.run(fetch_wikimedia_page(source))
+
+    assert requests == 2
+    sleep.assert_awaited_once_with(0.0)
+
+
+def test_wikimedia_fetch_returns_a_controlled_http_error():
+    source = wikimedia_source()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, request=request)
+
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    with (
+        patch(
+            "app.services.rag.httpx.AsyncClient",
+            side_effect=lambda **kwargs: real_client(transport=transport, **kwargs),
+        ),
+        pytest.raises(ValueError, match="HTTP 404"),
+    ):
+        asyncio.run(fetch_wikimedia_page(source))
+
+
+def test_generic_source_fetch_keeps_the_lichess_adapter():
+    source = RagSource(
+        id="fixture",
+        provider="lichess-study",
+        title="Fixture",
+        category="opening_principles",
+        phase="opening",
+        topic="development",
+        language="en",
+    )
+    with patch(
+        "app.services.rag.fetch_lichess_study",
+        new=AsyncMock(return_value="fixture pgn"),
+    ) as fetch:
+        assert asyncio.run(fetch_source(source)) == "fixture pgn"
+
+    fetch.assert_awaited_once_with("fixture")
 
 
 def test_typed_retrieval_abstains_when_phase_filter_has_no_content():

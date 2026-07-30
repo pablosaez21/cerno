@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.schemas.game import Game, Player
+from app.schemas.rag import TheoryEvidence, TheoryRetrievalResult
 from app.services.coach import (
     AnalyzedPlayerGame,
     collect_theory_results,
@@ -13,8 +14,22 @@ from app.services.coach import (
 from app.services.weakness import project_analysis_for_player
 
 
+def retrieval_result(
+    documents: list[TheoryEvidence] | None = None,
+) -> TheoryRetrievalResult:
+    return TheoryRetrievalResult(
+        status="evidence_found" if documents else "insufficient_evidence",
+        query="fixture query",
+        pipeline_version="rag-v1",
+        documents=documents or [],
+    )
+
+
 def test_theory_collection_passes_diagnosed_phase_to_retrieval():
-    with patch("app.services.coach.search_theory", return_value=[]) as search:
+    with patch(
+        "app.services.coach.retrieve_theory",
+        return_value=retrieval_result(),
+    ) as search:
         assert (
             collect_theory_results(
                 ["king safety principles"],
@@ -108,8 +123,8 @@ def test_analyze_user_returns_structured_coaching_response(client):
             new=AsyncMock(return_value=analysis),
         ),
         patch(
-            "app.services.coach.search_theory",
-            return_value=[theory_result],
+            "app.services.coach.retrieve_theory",
+            return_value=retrieval_result([TheoryEvidence(**theory_result)]),
         ),
         patch(
             "app.services.coach.generate_training_plan",
@@ -134,7 +149,17 @@ def test_analyze_user_returns_structured_coaching_response(client):
     assert payload["coach_advice"]
     assert payload["critical_moments"][0]["classification"] == "blunder"
     assert payload["theory_recommendations"][0]["study_id"] == "study-1"
-    assert payload["training_plan"] == training_plan
+    assert payload["training_plan"]["priority"] == training_plan["priority"]
+    assert payload["training_plan"]["week_plan"][:2] == training_plan["week_plan"]
+    assert payload["grounding_status"] == "evidence_found"
+    assert payload["sources"][0]["citation_id"] == "S1"
+    assert payload["sources"][0]["source_id"] == "study-1"
+    theory_recommendation = next(
+        item
+        for item in payload["actionable_recommendations"]
+        if item["evidence_type"] == "theory"
+    )
+    assert theory_recommendation["source_ids"] == ["S1"]
     assert len(payload["game_analyses"]) == 1
     assert payload["game_analyses"][0]["player_color"] == "white"
     assert payload["game_analyses"][0]["opponent"] == "opponent"
@@ -213,7 +238,10 @@ def test_analyze_pgn_returns_the_same_player_coaching_contract(client):
 
     with (
         patch("app.services.coach.analyze_game", new=analyze_game),
-        patch("app.services.coach.search_theory", return_value=[]),
+        patch(
+            "app.services.coach.retrieve_theory",
+            return_value=retrieval_result(),
+        ),
         patch(
             "app.services.coach.generate_training_plan",
             new=AsyncMock(return_value=generated),
@@ -229,8 +257,15 @@ def test_analyze_pgn_returns_the_same_player_coaching_contract(client):
     assert payload["username"] == "PGNBlack"
     assert payload["games_requested"] == 1
     assert payload["games_analyzed"] == 1
-    assert payload["coach_advice"] == generated["coach_advice"]
-    assert payload["training_plan"]["week_plan"]
+    assert payload["coach_advice"].startswith(generated["coach_advice"])
+    assert "No relevant theory source was available" in payload["coach_advice"]
+    assert payload["grounding_status"] == "insufficient_evidence"
+    assert payload["sources"] == []
+    assert all(
+        item["evidence_type"] == "game_analysis" and item["source_ids"] == []
+        for item in payload["actionable_recommendations"]
+    )
+    assert len(payload["training_plan"]["week_plan"]) == 5
     assert payload["critical_moments"] == [
         {
             "game_id": payload["game_analyses"][0]["game_id"],
@@ -294,7 +329,10 @@ def test_analyze_user_clamps_production_limits(client):
     with (
         patch("app.services.coach.fetch_games", new=fetch_games),
         patch("app.services.coach.analyze_game", new=analyze_game),
-        patch("app.services.coach.search_theory", return_value=[]),
+        patch(
+            "app.services.coach.retrieve_theory",
+            return_value=retrieval_result(),
+        ),
         patch(
             "app.services.coach.generate_training_plan",
             new=AsyncMock(
@@ -620,7 +658,10 @@ def _analyze_with_fakes(client, game: Game, analysis: dict):
             "app.services.coach.analyze_game",
             new=AsyncMock(return_value=analysis),
         ),
-        patch("app.services.coach.search_theory", return_value=[]),
+        patch(
+            "app.services.coach.retrieve_theory",
+            return_value=retrieval_result(),
+        ),
         patch(
             "app.services.coach.generate_training_plan",
             new=AsyncMock(

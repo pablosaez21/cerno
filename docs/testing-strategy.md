@@ -380,7 +380,8 @@ database to `head`.
 
 Use a temporary directory and a small deterministic embedding function where semantic model behavior is not under test.
 
-**Phase 3 status:** Implemented with 8 real temporary-Chroma cases.
+**Phase 3 status:** Implemented with real temporary-Chroma cases, including
+explicit middlegame-strategy, pawn-endgame, and rook-endgame retrieval.
 
 Technical integration cases:
 
@@ -402,8 +403,14 @@ The current cases verify an empty collection, real upsert, metadata and
 distance persistence, unambiguous retrieval, idempotent source replacement,
 stale deletion, manifest reconciliation and orphan cleanup, phase filters,
 typed abstention, reopening the on-disk collection, and controlled
-initialization failure. The semantic golden set runs separately with the
-production embedding through `python scripts/quality.py rag-eval`.
+initialization failure. The semantic golden evaluation runs separately with the
+production embedding through `python scripts/quality.py rag-eval`; threshold
+calibration uses `evals/rag_calibration_queries.jsonl`, while reported metrics
+use the held-out `evals/rag_evaluation_queries.jsonl`. Both datasets contain
+English queries only and retain opening, middlegame, endgame, out-of-domain,
+and unsupported in-domain coverage. Tests reject non-English golden cases.
+Multilingual retrieval and translation require a future, separately approved
+test strategy.
 
 ## 9. API contract testing
 
@@ -613,6 +620,31 @@ Golden assertions may cover stable structured data:
 - prompt structure and source IDs.
 
 Do not compare generative prose word for word unless a deterministic local fallback is specifically under test.
+
+### 12.1 Phase 4 coach prompt evaluation
+
+`evals/coach_generation_cases.jsonl` is separate from the RAG retrieval golden
+sets. It covers Lichess and PGN, all three game phases, multiple and conflicting
+sources, `insufficient_evidence`, irrelevant context, a retrieved instruction
+injection, and a PGN-comment injection that must never enter the prompt.
+
+Run the deterministic comparison with:
+
+```powershell
+.\venv\Scripts\python.exe scripts\quality.py prompt-eval
+```
+
+It checks schema validity, supplied-reference validity, citation coverage,
+term-level groundedness, insufficient-evidence compliance, actionable
+usefulness, and injection resistance. It never calls OpenAI. Unit tests inject
+a fake Structured Outputs client and cover malformed responses, invented IDs,
+uncited theory, forbidden theory during abstention, provider failure, and
+fallback behavior.
+
+The optional live evaluator is manual, requires `OPENAI_API_KEY`, and is capped
+at five cases. Its report omits prompts and model response text and retains only
+case IDs, scores, token counts, latency, and safe generation metadata. It is not
+a CI gate and must be run only with an approved cost budget.
 
 ## 13. Coverage policy
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import json
@@ -7,8 +8,9 @@ import re
 import sqlite3
 import unicodedata
 from functools import lru_cache
+from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import chess.pgn
 import chromadb
@@ -31,6 +33,11 @@ from app.schemas.rag import (
 
 LICHESS_STUDY_BASE_URL = "https://lichess.org/study"
 LICHESS_TIMEOUT_SECONDS = 15.0
+WIKIMEDIA_API_URL = "https://en.wikibooks.org/w/api.php"
+WIKIMEDIA_TIMEOUT_SECONDS = 30.0
+WIKIMEDIA_USER_AGENT = (
+    "Cerno-RAG/1.0 (educational chess corpus; https://github.com/pablo-reyes8/Cerno)"
+)
 PIPELINE_VERSION = "rag-v1"
 EMBEDDING_VERSION = "chroma-default-all-MiniLM-L6-v2"
 MAX_CHUNK_CHARACTERS = 1800
@@ -54,6 +61,22 @@ REQUIRED_CHUNK_METADATA = {
     "embedding_version",
     "content_hash",
 }
+WIKIMEDIA_REQUIRED_CHUNK_METADATA = {
+    "author",
+    "content_license",
+    "license_url",
+    "attribution_url",
+    "page_title",
+    "revision_id",
+}
+EXCLUDED_WIKIMEDIA_SECTIONS = {
+    "references",
+    "notes",
+    "external links",
+    "further reading",
+    "see also",
+    "using this wikibook",
+}
 
 PHASE_TERMS = {
     "endgame": (
@@ -61,32 +84,123 @@ PHASE_TERMS = {
         "ending",
         "pawn ending",
         "rook ending",
-        "final de",
-        "finales",
+        "king and pawn",
+        "rook and pawn",
+        "rook and one pawn",
+        "rook and two pawns",
+        "passed pawn",
+        "outside passed pawn",
+        "protected passed pawn",
+        "rule of the square",
+        "bishop and knight",
+        "two bishops",
+        "tablebase",
         "opposition",
-        "oposicion",
+        "rook versus rook",
+        "rook vs. rook",
     ),
     "middlegame": (
         "middlegame",
         "middle game",
-        "medio juego",
+        "positional plan",
+        "strategic plan",
+        "pawn structure",
+        "pawn structures",
+        "doubled pawn",
+        "isolated pawn",
+        "isolani",
+        "hanging pawn",
+        "backward pawn",
+        "king safety",
+        "king in the center",
+        "castled king",
+        "open files near the king",
+        "pawn shield",
+        "pawn storm",
         "minority attack",
-        "ataque de minorias",
         "piece coordination",
-        "coordinacion de piezas",
     ),
     "opening": (
         "opening",
-        "apertura",
+        "start of a game",
+        "start of the game",
+        "first moves",
+        "develop my pieces",
         "london system",
         "ruy lopez",
-        "espanola",
         "king's indian",
         "kings indian",
         "english opening",
         "reti",
     ),
 }
+
+
+class WikimediaContentParser(HTMLParser):
+    """Extract licensed teaching prose while excluding page furniture and citations."""
+
+    _ignored_tags: ClassVar[set[str]] = {
+        "blockquote",
+        "figure",
+        "math",
+        "nav",
+        "script",
+        "style",
+        "sup",
+        "table",
+    }
+    _heading_tags: ClassVar[set[str]] = {"h2", "h3", "h4"}
+    _content_tags: ClassVar[set[str]] = {"p", "li"}
+
+    def __init__(self, excluded_sections: set[str]) -> None:
+        super().__init__(convert_charrefs=True)
+        self.excluded_sections = {
+            normalize_for_matching(section) for section in excluded_sections
+        }
+        self.section = "Introduction"
+        self.blocks: list[tuple[str, str]] = []
+        self._ignored_depth = 0
+        self._capture_tag: str | None = None
+        self._capture_parts: list[str] = []
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        del attrs
+        if self._ignored_depth:
+            if tag in self._ignored_tags:
+                self._ignored_depth += 1
+            return
+        if tag in self._ignored_tags:
+            self._ignored_depth = 1
+            return
+        if tag in self._heading_tags | self._content_tags:
+            self._capture_tag = tag
+            self._capture_parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            if tag in self._ignored_tags:
+                self._ignored_depth -= 1
+            return
+        if tag != self._capture_tag:
+            return
+        text = normalize_text("".join(self._capture_parts))
+        if tag in self._heading_tags:
+            if text:
+                self.section = text
+        elif (
+            text and normalize_for_matching(self.section) not in self.excluded_sections
+        ):
+            self.blocks.append((self.section, text))
+        self._capture_tag = None
+        self._capture_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if not self._ignored_depth and self._capture_tag is not None:
+            self._capture_parts.append(data)
 
 
 class ChromaStoreError(chromadb.errors.ChromaError):
@@ -177,6 +291,82 @@ async def fetch_lichess_study(study_id: str) -> str:
     if not response.text.strip():
         raise ValueError(f"Lichess study '{study_id}' has no available PGN.")
     return response.text
+
+
+async def fetch_wikimedia_page(source: RagSource) -> str:
+    """Download a pinned Wikibooks revision through the official API."""
+    if source.provider != "wikimedia-page" or source.revision_id is None:
+        raise ValueError("A pinned Wikimedia source is required.")
+
+    params = {
+        "action": "parse",
+        "oldid": str(source.revision_id),
+        "prop": "text|revid",
+        "disableeditsection": "1",
+        "format": "json",
+        "formatversion": "2",
+        "maxlag": "5",
+    }
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": WIKIMEDIA_USER_AGENT,
+    }
+    last_error: httpx.HTTPError | None = None
+
+    async with httpx.AsyncClient(timeout=WIKIMEDIA_TIMEOUT_SECONDS) as http:
+        for attempt in range(3):
+            try:
+                response = await http.get(
+                    WIKIMEDIA_API_URL,
+                    params=params,
+                    headers=headers,
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                last_error = exc
+                if exc.response.status_code not in {429, 503} or attempt == 2:
+                    break
+                retry_after = exc.response.headers.get("Retry-After", "1")
+                try:
+                    retry_seconds = float(retry_after)
+                except ValueError:
+                    retry_seconds = 1.0
+                await asyncio.sleep(min(retry_seconds, 5.0))
+                continue
+            except httpx.HTTPError as exc:
+                last_error = exc
+                break
+
+            payload = response.json()
+            parsed = payload.get("parse") or {}
+            if (
+                parsed.get("revid") != source.revision_id
+                or parsed.get("title") != source.page_title
+            ):
+                raise ValueError(
+                    f"Wikimedia returned an unexpected revision for '{source.id}'."
+                )
+            html = parsed.get("text")
+            if not isinstance(html, str) or not html.strip():
+                raise ValueError(
+                    f"Wikimedia source '{source.id}' has no available content."
+                )
+            return html
+
+    if isinstance(last_error, httpx.HTTPStatusError):
+        status_code = last_error.response.status_code
+        raise ValueError(
+            f"Could not download Wikimedia source '{source.id}' (HTTP {status_code})."
+        ) from last_error
+    raise ValueError(
+        f"Could not connect to Wikimedia to download source '{source.id}'."
+    ) from last_error
+
+
+async def fetch_source(source: RagSource) -> str:
+    if source.provider == "lichess-study":
+        return await fetch_lichess_study(source.id)
+    return await fetch_wikimedia_page(source)
 
 
 def chunk_study_pgn(
@@ -281,6 +471,78 @@ def chunk_study_pgn(
 
     if not chunks:
         raise ValueError(f"Study '{study_id}' contains no PGN chapters.")
+    return chunks
+
+
+def chunk_wikimedia_html(html: str, source: RagSource) -> list[dict]:
+    """Create bounded prose chunks with complete provenance and attribution."""
+    if source.provider != "wikimedia-page" or source.revision_id is None:
+        raise ValueError("A pinned Wikimedia source is required.")
+    if not source.source_url:
+        raise ValueError("Wikimedia source URL is required.")
+
+    excluded_sections = EXCLUDED_WIKIMEDIA_SECTIONS | set(source.excluded_sections)
+    parser = WikimediaContentParser(excluded_sections)
+    parser.feed(html)
+    parser.close()
+
+    grouped: dict[str, list[str]] = {}
+    for section, text in parser.blocks:
+        grouped.setdefault(section, []).append(text)
+    chunks = []
+    for chapter_index, (section, blocks) in enumerate(grouped.items()):
+        context = (
+            f"{source.title}. {section}. "
+            f"Category: {source.category.replace('_', ' ')}. "
+            f"Phase: {source.phase}. Topic: {source.topic}."
+        )
+        units = [
+            part
+            for block in blocks
+            for part in split_bounded(block, MAX_CHUNK_CHARACTERS // 2)
+        ]
+        text_chunks = pack_units(
+            context,
+            units,
+            MAX_CHUNK_CHARACTERS,
+            label="Content",
+        )
+        chapter_id = f"{source.id}:{chapter_index}"
+        for chunk_index, text in enumerate(text_chunks):
+            content_hash = hash_content(text)
+            chunk_id = f"{source.id}:{chapter_index}:{chunk_index}:{content_hash[:12]}"
+            chunks.append(
+                {
+                    "id": chunk_id,
+                    "text": text,
+                    "metadata": {
+                        "source_id": source.id,
+                        "provider": source.provider,
+                        "study_id": source.id,
+                        "study_title": source.title,
+                        "chapter_id": chapter_id,
+                        "chapter": section,
+                        "category": source.category,
+                        "phase": source.phase,
+                        "topic": source.topic,
+                        "language": source.language,
+                        "source": source.source_url,
+                        "type": "wikimedia_page",
+                        "pipeline_version": PIPELINE_VERSION,
+                        "embedding_version": EMBEDDING_VERSION,
+                        "content_hash": content_hash,
+                        "revision_id": source.revision_id,
+                        "page_title": source.page_title or "",
+                        "author": source.author or "",
+                        "content_license": source.content_license or "",
+                        "license_url": source.license_url or "",
+                        "attribution_url": source.attribution_url or "",
+                    },
+                }
+            )
+
+    if not chunks:
+        raise ValueError(f"Wikimedia source '{source.id}' contains no teaching prose.")
     return chunks
 
 
@@ -398,9 +660,11 @@ async def index_study(study_id: str, category: str = "uncategorized") -> int:
     return report.indexed_chunks
 
 
-def chunks_for_source(pgn_text: str, source: RagSource) -> list[dict]:
+def chunks_for_source(source_text: str, source: RagSource) -> list[dict]:
+    if source.provider == "wikimedia-page":
+        return chunk_wikimedia_html(source_text, source)
     return chunk_study_pgn(
-        pgn_text,
+        source_text,
         source.id,
         source.category,
         phase=source.phase,
@@ -468,9 +732,10 @@ def reindex_source(
 def validate_chunk_metadata(chunks: list[dict]) -> None:
     for chunk in chunks:
         metadata = chunk.get("metadata") or {}
-        missing = sorted(
-            field for field in REQUIRED_CHUNK_METADATA if not metadata.get(field)
-        )
+        required_fields = set(REQUIRED_CHUNK_METADATA)
+        if metadata.get("provider") == "wikimedia-page":
+            required_fields.update(WIKIMEDIA_REQUIRED_CHUNK_METADATA)
+        missing = sorted(field for field in required_fields if not metadata.get(field))
         if missing:
             raise ValueError(
                 f"Chunk '{chunk.get('id')}' is missing metadata: {', '.join(missing)}."
@@ -515,7 +780,10 @@ def reconcile_index(
             if source_id:
                 unexpected_sources.add(source_id)
 
-        if any(not metadata.get(field) for field in REQUIRED_CHUNK_METADATA):
+        required_fields = set(REQUIRED_CHUNK_METADATA)
+        if metadata.get("provider") == "wikimedia-page":
+            required_fields.update(WIKIMEDIA_REQUIRED_CHUNK_METADATA)
+        if any(not metadata.get(field) for field in required_fields):
             incomplete_ids.append(chunk_id)
         if (
             metadata.get("pipeline_version") != active_manifest.pipeline_version

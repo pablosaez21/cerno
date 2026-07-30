@@ -1,0 +1,579 @@
+{
+  "dataset": "evals/rag_calibration_queries.jsonl",
+  "method": "highest balanced accuracy; then classification accuracy, abstention precision, answer recall, and lowest-distance tie-break",
+  "recommended": {
+    "threshold": 0.893064558506012,
+    "classification_accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "answer_recall": 1.0,
+    "abstention_precision": 1.0
+  },
+  "observations": [
+    {
+      "id": "cal-opening-principles-en",
+      "query": "Which opening principles help me develop pieces and control the center?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "opening_principles"
+      ],
+      "expected_chapters": [],
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5369994044303894,
+      "top_candidate": {
+        "source_id": "ygVnJzbX",
+        "category": "opening_principles",
+        "phase": "opening",
+        "chapter": "Principle 7\ufe0f\u20e3: Bring your pieces to the center",
+        "distance": 0.5369994044303894
+      }
+    },
+    {
+      "id": "cal-london-plans-en",
+      "query": "What are the main plans in the London System opening?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "opening_repertoire"
+      ],
+      "expected_chapters": [
+        "The Main Ideas"
+      ],
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.893064558506012,
+      "top_candidate": {
+        "source_id": "KjivNw7F",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "The Main Ideas",
+        "distance": 0.893064558506012
+      }
+    },
+    {
+      "id": "cal-strategy-en",
+      "query": "How should I evaluate a middlegame position before choosing a plan?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.8362137079238892,
+      "top_candidate": {
+        "source_id": "wikibooks-chess-strategy",
+        "category": "middlegame_strategy",
+        "phase": "middlegame",
+        "chapter": "Introduction",
+        "distance": 0.8362137079238892
+      }
+    },
+    {
+      "id": "cal-position-led-plan-en",
+      "query": "Why should a strategic middlegame plan follow the needs of the position?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.754386842250824,
+      "top_candidate": {
+        "source_id": "wikibooks-chess-strategy",
+        "category": "middlegame_strategy",
+        "phase": "middlegame",
+        "chapter": "Introduction",
+        "distance": 0.754386842250824
+      }
+    },
+    {
+      "id": "cal-isolani-en",
+      "query": "What are the strengths and weaknesses of an isolated queen pawn in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "The isolani"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.718061089515686,
+      "top_candidate": {
+        "source_id": "wikibooks-pawn-structure",
+        "category": "pawn_structures",
+        "phase": "middlegame",
+        "chapter": "The isolani",
+        "distance": 0.718061089515686
+      }
+    },
+    {
+      "id": "cal-hanging-pawns-en",
+      "query": "Which plans are typical with hanging pawns in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Hanging pawns and the isolated pawn couple"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7870265245437622,
+      "top_candidate": {
+        "source_id": "wikibooks-pawn-structure",
+        "category": "pawn_structures",
+        "phase": "middlegame",
+        "chapter": "Hanging pawns and the isolated pawn couple",
+        "distance": 0.7870265245437622
+      }
+    },
+    {
+      "id": "cal-king-safety-en",
+      "query": "Why is an intact pawn shield important for a castled king?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "The castled king position"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7097159028053284,
+      "top_candidate": {
+        "source_id": "wikibooks-king-safety",
+        "category": "king_safety",
+        "phase": "middlegame",
+        "chapter": "The castled king position",
+        "distance": 0.7097159028053284
+      }
+    },
+    {
+      "id": "cal-pawn-storm-en",
+      "query": "When does a pawn storm make sense against a castled king?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "The pawn storm"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5942839980125427,
+      "top_candidate": {
+        "source_id": "wikibooks-king-safety",
+        "category": "king_safety",
+        "phase": "middlegame",
+        "chapter": "The pawn storm",
+        "distance": 0.5942839980125427
+      }
+    },
+    {
+      "id": "cal-opposition-en",
+      "query": "How does the opposition decide king and pawn endings?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "The Opposition"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5004196763038635,
+      "top_candidate": {
+        "source_id": "wikibooks-pawn-endings",
+        "category": "pawn_endgames",
+        "phase": "endgame",
+        "chapter": "The Opposition",
+        "distance": 0.5004196763038635
+      }
+    },
+    {
+      "id": "cal-square-en",
+      "query": "How do I use the rule of the square in a pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "The Rule of the Square"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.52382892370224,
+      "top_candidate": {
+        "source_id": "wikibooks-pawn-endings",
+        "category": "pawn_endgames",
+        "phase": "endgame",
+        "chapter": "The Rule of the Square",
+        "distance": 0.52382892370224
+      }
+    },
+    {
+      "id": "cal-rook-cutoff-en",
+      "query": "Why should a rook cut off the enemy king in a rook and pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "One Pawn and Rook vs. Rook"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5826898217201233,
+      "top_candidate": {
+        "source_id": "wikibooks-rook-endings",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "One Pawn and Rook vs. Rook",
+        "distance": 0.5826898217201233
+      }
+    },
+    {
+      "id": "cal-connected-rook-pawns-en",
+      "query": "Why are connected pawns easier to advance in rook versus rook endings?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "Two Pawns and Rook vs. Rook"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5978353023529053,
+      "top_candidate": {
+        "source_id": "wikibooks-rook-endings",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "Two Pawns and Rook vs. Rook",
+        "distance": 0.5978353023529053
+      }
+    },
+    {
+      "id": "cal-bishop-knight-en",
+      "query": "Why must the defending king be driven to a corner matching the bishop color in bishop and knight mate?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "minor_piece_endgames"
+      ],
+      "expected_chapters": [
+        "King and Bishop and Knight vs. King"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.8042610883712769,
+      "top_candidate": {
+        "source_id": "wikibooks-minor-piece-endings",
+        "category": "minor_piece_endgames",
+        "phase": "endgame",
+        "chapter": "King and Bishop and Knight vs. King",
+        "distance": 0.8042610883712769
+      }
+    },
+    {
+      "id": "cal-irrelevant-cooking-en",
+      "query": "How do I make a juicy Spanish omelette?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.5948245525360107,
+      "top_candidate": {
+        "source_id": "Utd758xx",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "COZIO Variation",
+        "distance": 1.5948245525360107
+      }
+    },
+    {
+      "id": "cal-irrelevant-database-en",
+      "query": "How can I tune PostgreSQL autovacuum for a large database?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.6748450994491577,
+      "top_candidate": {
+        "source_id": "KjivNw7F",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "What Now?",
+        "distance": 1.6748450994491577
+      }
+    },
+    {
+      "id": "cal-no-coverage-clock-en",
+      "query": "What increment setting should a digital chess clock use for an arbiter exam?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.3221958875656128,
+      "top_candidate": {
+        "source_id": "efGLGZOM",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "Developing the right way!",
+        "distance": 1.3221958875656128
+      }
+    },
+    {
+      "id": "cal-no-coverage-variant-en",
+      "query": "Which alliance strategy works in four-player chess?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 0.9266524314880371,
+      "top_candidate": {
+        "source_id": "KjivNw7F",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "Introduction",
+        "distance": 0.9266524314880371
+      }
+    },
+    {
+      "id": "cal-no-coverage-tablebase-en",
+      "query": "How is retrograde analysis implemented inside a seven-piece tablebase?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 1.5482275485992432,
+      "top_candidate": {
+        "source_id": "wikibooks-pawn-endings",
+        "category": "pawn_endgames",
+        "phase": "endgame",
+        "chapter": "The Opposition",
+        "distance": 1.5482275485992432
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "threshold": 0.5004196763038635,
+      "classification_accuracy": 0.3333,
+      "balanced_accuracy": 0.5385,
+      "answer_recall": 0.0769,
+      "abstention_precision": 0.2941
+    },
+    {
+      "threshold": 0.52382892370224,
+      "classification_accuracy": 0.3889,
+      "balanced_accuracy": 0.5769,
+      "answer_recall": 0.1538,
+      "abstention_precision": 0.3125
+    },
+    {
+      "threshold": 0.5369994044303894,
+      "classification_accuracy": 0.4444,
+      "balanced_accuracy": 0.6154,
+      "answer_recall": 0.2308,
+      "abstention_precision": 0.3333
+    },
+    {
+      "threshold": 0.5826898217201233,
+      "classification_accuracy": 0.5,
+      "balanced_accuracy": 0.6538,
+      "answer_recall": 0.3077,
+      "abstention_precision": 0.3571
+    },
+    {
+      "threshold": 0.5942839980125427,
+      "classification_accuracy": 0.5556,
+      "balanced_accuracy": 0.6923,
+      "answer_recall": 0.3846,
+      "abstention_precision": 0.3846
+    },
+    {
+      "threshold": 0.5978353023529053,
+      "classification_accuracy": 0.6111,
+      "balanced_accuracy": 0.7308,
+      "answer_recall": 0.4615,
+      "abstention_precision": 0.4167
+    },
+    {
+      "threshold": 0.7097159028053284,
+      "classification_accuracy": 0.6667,
+      "balanced_accuracy": 0.7692,
+      "answer_recall": 0.5385,
+      "abstention_precision": 0.4545
+    },
+    {
+      "threshold": 0.718061089515686,
+      "classification_accuracy": 0.7222,
+      "balanced_accuracy": 0.8077,
+      "answer_recall": 0.6154,
+      "abstention_precision": 0.5
+    },
+    {
+      "threshold": 0.754386842250824,
+      "classification_accuracy": 0.7778,
+      "balanced_accuracy": 0.8462,
+      "answer_recall": 0.6923,
+      "abstention_precision": 0.5556
+    },
+    {
+      "threshold": 0.7870265245437622,
+      "classification_accuracy": 0.8333,
+      "balanced_accuracy": 0.8846,
+      "answer_recall": 0.7692,
+      "abstention_precision": 0.625
+    },
+    {
+      "threshold": 0.8042610883712769,
+      "classification_accuracy": 0.8889,
+      "balanced_accuracy": 0.9231,
+      "answer_recall": 0.8462,
+      "abstention_precision": 0.7143
+    },
+    {
+      "threshold": 0.8362137079238892,
+      "classification_accuracy": 0.9444,
+      "balanced_accuracy": 0.9615,
+      "answer_recall": 0.9231,
+      "abstention_precision": 0.8333
+    },
+    {
+      "threshold": 0.893064558506012,
+      "classification_accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 0.9266524314880371,
+      "classification_accuracy": 0.9444,
+      "balanced_accuracy": 0.9,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.3221958875656128,
+      "classification_accuracy": 0.8889,
+      "balanced_accuracy": 0.8,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.5482275485992432,
+      "classification_accuracy": 0.8333,
+      "balanced_accuracy": 0.7,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.5948245525360107,
+      "classification_accuracy": 0.7778,
+      "balanced_accuracy": 0.6,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.6748450994491577,
+      "classification_accuracy": 0.7222,
+      "balanced_accuracy": 0.5,
+      "answer_recall": 1.0,
+      "abstention_precision": 0.0
+    }
+  ]
+}

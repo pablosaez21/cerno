@@ -6,6 +6,7 @@ import { LichessGameReview } from "@/components/lichess-game-review";
 import { PgnAnalysisResult } from "@/components/pgn-results";
 import {
   coachAnalysisBlackFixture,
+  groundedCoachAnalysisFixture,
   pgnAnalysisFixture,
   sourcePgn,
 } from "@/test/fixtures";
@@ -103,8 +104,42 @@ describe("analysis result contracts", () => {
       screen.getByRole("heading", { name: "Train with intent." }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Recommended theory" }),
+      screen.getByRole("heading", { name: "Sources" }),
     ).toBeVisible();
+  });
+
+  it("renders grounding, recommendation citations and source attribution", () => {
+    render(<CoachResults result={groundedCoachAnalysisFixture} />);
+
+    expect(screen.getByText("Corpus-grounded coaching")).toBeVisible();
+    expect(screen.getByText("Theory evidence")).toBeVisible();
+    expect(screen.getByText("S1 · Pawn Endings")).toBeVisible();
+    expect(screen.getByText(/Wikibooks contributors/)).toHaveTextContent(
+      "CC BY-SA 4.0",
+    );
+    expect(screen.getByRole("link", { name: "Open source" })).toHaveAttribute(
+      "href",
+      "https://example.test/pawn-endings",
+    );
+    expect(screen.getByRole("link", { name: "Attribution" })).toHaveAttribute(
+      "href",
+      "https://example.test/pawn-endings-history",
+    );
+    expect(screen.getByRole("link", { name: "License" })).toHaveAttribute(
+      "href",
+      "https://creativecommons.org/licenses/by-sa/4.0/",
+    );
+  });
+
+  it("keeps coaching useful when no theory evidence is available", () => {
+    render(<CoachResults result={coachAnalysisBlackFixture} />);
+
+    expect(screen.getByText("Game-analysis evidence only")).toBeVisible();
+    expect(screen.getByText("Game-analysis evidence")).toBeVisible();
+    expect(
+      screen.getByText(/No relevant theory source was available/),
+    ).toBeVisible();
+    expect(screen.queryByText("Theory evidence")).not.toBeInTheDocument();
   });
 
   it("switches between analyzed games and updates player orientation", async () => {

@@ -31,13 +31,61 @@ export type CoachAnalysis = {
     classification: string;
   }[];
   theory_recommendations: {
+    citation_id?: string | null;
+    source_id?: string | null;
+    title?: string | null;
     source?: string | null;
     category?: string | null;
+    phase?: string | null;
     study_id?: string | null;
     chapter?: string | null;
+    author?: string | null;
+    attribution?: string | null;
+    content_license?: string | null;
+    license_url?: string | null;
     reason: string;
     distance?: number | null;
   }[];
+  grounding_status: "evidence_found" | "insufficient_evidence";
+  strengths: string[];
+  weaknesses: string[];
+  actionable_recommendations: {
+    title: string;
+    explanation: string;
+    actions: string[];
+    evidence_type: "game_analysis" | "theory";
+    engine_evidence_ids: string[];
+    source_ids: string[];
+  }[];
+  sources: {
+    citation_id: string;
+    source_id: string;
+    title: string;
+    chapter?: string | null;
+    phase?: string | null;
+    category?: string | null;
+    author?: string | null;
+    attribution?: string | null;
+    content_license?: string | null;
+    license_url?: string | null;
+    canonical_url?: string | null;
+  }[];
+  generation: {
+    mode: "llm" | "fallback";
+    reason:
+      | "none"
+      | "no_api_key"
+      | "provider_error"
+      | "validation_error";
+    prompt_name: string;
+    prompt_version: string;
+    schema_version: string;
+    model: string;
+    retrieval_pipeline_version: string;
+    input_tokens?: number | null;
+    output_tokens?: number | null;
+    latency_ms?: number | null;
+  };
   training_plan: {
     priority: string;
     week_plan: string[];

@@ -1,0 +1,458 @@
+{
+  "mode": "final",
+  "dataset": "evals/rag_evaluation_queries.jsonl",
+  "cases": 17,
+  "answerable_cases": 13,
+  "unanswerable_cases": 4,
+  "max_distance": 0.893064558506012,
+  "metrics": {
+    "recall_at_1": 0.9231,
+    "recall_at_3": 1.0,
+    "mrr": 0.9615,
+    "abstention_precision": 1.0,
+    "abstentions": 4
+  },
+  "results": [
+    {
+      "id": "eval-opening-centre-en",
+      "query": "Why should I develop my pieces and fight for the center at the start of a game?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "opening_principles"
+      ],
+      "expected_chapters": [],
+      "retrieved_category": "opening_principles",
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "retrieved_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7970615029335022,
+      "top_source": "vyS3PnUA",
+      "top_category": "opening_principles"
+    },
+    {
+      "id": "eval-ruy-lopez-en",
+      "query": "What are the main ideas of the Ruy Lopez opening?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "opening_repertoire"
+      ],
+      "expected_chapters": [],
+      "retrieved_category": "opening_repertoire",
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "retrieved_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6629467606544495,
+      "top_source": "Utd758xx",
+      "top_category": "opening_repertoire"
+    },
+    {
+      "id": "eval-evaluation-before-plan-en",
+      "query": "How are positional evaluation and planning connected in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "retrieved_category": "middlegame_strategy",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7561884522438049,
+      "top_source": "wikibooks-chess-strategy",
+      "top_category": "middlegame_strategy"
+    },
+    {
+      "id": "eval-position-requires-plan-en",
+      "query": "Why should a middlegame plan be based on what the position requires?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "retrieved_category": "middlegame_strategy",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7390637397766113,
+      "top_source": "wikibooks-chess-strategy",
+      "top_category": "middlegame_strategy"
+    },
+    {
+      "id": "eval-doubled-pawns-en",
+      "query": "Are doubled pawns always weak, and what dynamic compensation can they provide?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Doubled pawns",
+        "\"Weak\" pawns"
+      ],
+      "retrieved_category": "pawn_structures",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6553323268890381,
+      "top_source": "wikibooks-pawn-structure",
+      "top_category": "pawn_structures"
+    },
+    {
+      "id": "eval-backward-pawn-en",
+      "query": "What weakness does a backward pawn create, and what compensation can it provide?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Backward pawns"
+      ],
+      "retrieved_category": "pawn_structures",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.74132239818573,
+      "top_source": "wikibooks-pawn-structure",
+      "top_category": "pawn_structures"
+    },
+    {
+      "id": "eval-open-lines-king-en",
+      "query": "How do open files near the castled king affect king safety?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "Open lines in the attack against the king"
+      ],
+      "retrieved_category": "king_safety",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7971628904342651,
+      "top_source": "wikibooks-king-safety",
+      "top_category": "king_safety"
+    },
+    {
+      "id": "eval-king-centre-en",
+      "query": "Why is it dangerous to leave the king in the center when files begin to open?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "The king in the center"
+      ],
+      "retrieved_category": "king_safety",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7207496166229248,
+      "top_source": "wikibooks-king-safety",
+      "top_category": "king_safety"
+    },
+    {
+      "id": "eval-protected-passer-en",
+      "query": "Why is a protected passed pawn powerful in a king and pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "Protected Passed Pawn"
+      ],
+      "retrieved_category": "pawn_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6946707963943481,
+      "top_source": "wikibooks-pawn-endings",
+      "top_category": "pawn_endgames"
+    },
+    {
+      "id": "eval-outside-passer-en",
+      "query": "How does an outside passed pawn help in a pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "Outside Passed Pawn"
+      ],
+      "retrieved_category": "pawn_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.43187829852104187,
+      "top_source": "wikibooks-pawn-endings",
+      "top_category": "pawn_endgames"
+    },
+    {
+      "id": "eval-rook-pawns-en",
+      "query": "What practical plan should the stronger side use with rook and two pawns against a rook?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 2,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "Two Pawns and Rook vs. Rook"
+      ],
+      "retrieved_category": "rook_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7552992105484009,
+      "top_source": "wikibooks-rook-endings",
+      "top_category": "rook_endgames"
+    },
+    {
+      "id": "eval-rook-single-pawn-factors-en",
+      "query": "Which factors determine whether rook and one pawn versus rook can be won?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "One Pawn and Rook vs. Rook"
+      ],
+      "retrieved_category": "rook_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7364928722381592,
+      "top_source": "wikibooks-rook-endings",
+      "top_category": "rook_endgames"
+    },
+    {
+      "id": "eval-two-bishops-en",
+      "query": "How do two bishops on adjacent diagonals cut off and checkmate a lone king?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "minor_piece_endgames"
+      ],
+      "expected_chapters": [
+        "King and Two Bishops vs. King"
+      ],
+      "retrieved_category": "minor_piece_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.8188421726226807,
+      "top_source": "wikibooks-minor-piece-endings",
+      "top_category": "minor_piece_endgames"
+    },
+    {
+      "id": "eval-irrelevant-travel-en",
+      "query": "Which overnight train connects Madrid and Lisbon?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "general_openings",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "uK53IvBH",
+        "category": "general_openings",
+        "phase": "opening",
+        "chapter": "- Pyrenees Gambit",
+        "distance": 1.389336347579956
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-irrelevant-css-en",
+      "query": "How do CSS container queries differ from media queries?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "opening_repertoire",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "Utd758xx",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "OPEN Ruy Lopez",
+        "distance": 1.7555956840515137
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-no-coverage-composition-en",
+      "query": "How is the artistic originality of a composed checkmate problem judged?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "opening_principles",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "NfMygq6x",
+        "category": "opening_principles",
+        "phase": "opening",
+        "chapter": "Checkmating Patterns",
+        "distance": 1.1066064834594727
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-no-coverage-tablebase-en",
+      "query": "Which compression algorithm does a seven-piece Syzygy tablebase use?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "minor_piece_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "wikibooks-minor-piece-endings",
+        "category": "minor_piece_endgames",
+        "phase": "endgame",
+        "chapter": "King and Bishop and Knight vs. King",
+        "distance": 1.6766321659088135
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    }
+  ]
+}
