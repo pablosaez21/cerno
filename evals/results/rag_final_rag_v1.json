@@ -1,0 +1,124 @@
+{
+  "mode": "final",
+  "dataset": "evals/rag_queries.jsonl",
+  "cases": 12,
+  "answerable_cases": 5,
+  "unanswerable_cases": 7,
+  "metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_3": 1.0,
+    "mrr": 1.0,
+    "abstention_precision": 1.0,
+    "abstentions": 7
+  },
+  "results": [
+    {
+      "id": "opening-principles-en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "top_distance": 0.5870732069015503,
+      "top_source": "ygVnJzbX",
+      "top_category": "opening_principles"
+    },
+    {
+      "id": "opening-principles-es",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "top_distance": 1.3739006519317627,
+      "top_source": "ygVnJzbX",
+      "top_category": "opening_principles"
+    },
+    {
+      "id": "london-system-en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "top_distance": 0.8799307942390442,
+      "top_source": "KjivNw7F",
+      "top_category": "opening_repertoire"
+    },
+    {
+      "id": "ruy-lopez-es",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "top_distance": 1.1582117080688477,
+      "top_source": "Utd758xx",
+      "top_category": "opening_repertoire"
+    },
+    {
+      "id": "kings-indian-en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "top_distance": 0.5014724135398865,
+      "top_source": "efGLGZOM",
+      "top_category": "opening_repertoire"
+    },
+    {
+      "id": "middlegame-en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "middlegame-es",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "rook-endgame-en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "rook-endgame-es",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "pawn-endgame-en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "irrelevant-cooking-es",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "irrelevant-programming-en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    }
+  ]
+}

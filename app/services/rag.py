@@ -1,8 +1,16 @@
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import re
 import sqlite3
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
+import chess.pgn
 import chromadb
 import httpx
 from chromadb.api.models.Collection import Collection
@@ -11,9 +19,74 @@ from chromadb.utils import embedding_functions
 from overrides import overrides
 
 from app.core.config import settings
+from app.schemas.rag import (
+    RagManifest,
+    RagPhase,
+    RagSource,
+    ReconciliationReport,
+    SourceIndexReport,
+    TheoryEvidence,
+    TheoryRetrievalResult,
+)
 
 LICHESS_STUDY_BASE_URL = "https://lichess.org/study"
 LICHESS_TIMEOUT_SECONDS = 15.0
+PIPELINE_VERSION = "rag-v1"
+EMBEDDING_VERSION = "chroma-default-all-MiniLM-L6-v2"
+MAX_CHUNK_CHARACTERS = 1800
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "data-manifest" / "chess-theory-sources.json"
+DEFAULT_POLICY_PATH = PROJECT_ROOT / "data-manifest" / "retrieval-policy.json"
+REQUIRED_CHUNK_METADATA = {
+    "source_id",
+    "provider",
+    "study_id",
+    "study_title",
+    "chapter_id",
+    "chapter",
+    "category",
+    "phase",
+    "topic",
+    "language",
+    "source",
+    "type",
+    "pipeline_version",
+    "embedding_version",
+    "content_hash",
+}
+
+PHASE_TERMS = {
+    "endgame": (
+        "endgame",
+        "ending",
+        "pawn ending",
+        "rook ending",
+        "final de",
+        "finales",
+        "opposition",
+        "oposicion",
+    ),
+    "middlegame": (
+        "middlegame",
+        "middle game",
+        "medio juego",
+        "minority attack",
+        "ataque de minorias",
+        "piece coordination",
+        "coordinacion de piezas",
+    ),
+    "opening": (
+        "opening",
+        "apertura",
+        "london system",
+        "ruy lopez",
+        "espanola",
+        "king's indian",
+        "kings indian",
+        "english opening",
+        "reti",
+    ),
+}
 
 
 class ChromaStoreError(chromadb.errors.ChromaError):
@@ -42,8 +115,6 @@ def create_chroma_collection(
         client = chromadb.PersistentClient(path=str(path))
         return client.get_or_create_collection(
             name=name,
-            # Chroma's concrete default embedding type is narrower than the
-            # generic protocol accepted by get_or_create_collection.
             embedding_function=cast(Any, active_embedding),
         )
     except (chromadb.errors.ChromaError, OSError, sqlite3.Error) as exc:
@@ -58,6 +129,33 @@ def get_collection() -> Collection:
     return create_chroma_collection(settings.chroma_path)
 
 
+@lru_cache(maxsize=4)
+def load_manifest(path: Path = DEFAULT_MANIFEST_PATH) -> RagManifest:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    manifest = RagManifest.model_validate(payload)
+    source_ids = [source.id for source in manifest.sources]
+    if len(source_ids) != len(set(source_ids)):
+        raise ValueError(f"RAG manifest contains duplicate source IDs: {path}.")
+    if manifest.pipeline_version != PIPELINE_VERSION:
+        raise ValueError("RAG manifest pipeline version does not match the code.")
+    if manifest.embedding_version != EMBEDDING_VERSION:
+        raise ValueError("RAG manifest embedding version does not match the code.")
+    return manifest
+
+
+@lru_cache(maxsize=4)
+def load_relevance_threshold(path: Path = DEFAULT_POLICY_PATH) -> float:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("pipeline_version") != PIPELINE_VERSION:
+        raise ValueError("Retrieval policy pipeline version does not match the code.")
+    if payload.get("embedding_version") != EMBEDDING_VERSION:
+        raise ValueError("Retrieval policy embedding version does not match the code.")
+    threshold = payload.get("max_distance")
+    if not isinstance(threshold, int | float) or threshold <= 0:
+        raise ValueError("Retrieval policy max_distance must be positive.")
+    return float(threshold)
+
+
 async def fetch_lichess_study(study_id: str) -> str:
     url = f"{LICHESS_STUDY_BASE_URL}/{study_id}.pgn"
     headers = {"Accept": "application/x-chess-pgn"}
@@ -69,72 +167,248 @@ async def fetch_lichess_study(study_id: str) -> str:
     except httpx.HTTPStatusError as exc:
         status_code = exc.response.status_code
         raise ValueError(
-            f"No se pudo descargar el estudio de Lichess '{study_id}'. "
-            f"Status HTTP: {status_code}."
+            f"Could not download Lichess study '{study_id}' (HTTP {status_code})."
         ) from exc
     except httpx.HTTPError as exc:
         raise ValueError(
-            f"No se pudo conectar con Lichess para descargar el estudio '{study_id}'."
+            f"Could not connect to Lichess to download study '{study_id}'."
         ) from exc
 
     if not response.text.strip():
-        raise ValueError(f"El estudio de Lichess '{study_id}' no tiene PGN disponible.")
-
+        raise ValueError(f"Lichess study '{study_id}' has no available PGN.")
     return response.text
 
 
 def chunk_study_pgn(
-    pgn_text: str, study_id: str, category: str = "uncategorized"
+    pgn_text: str,
+    study_id: str,
+    category: str = "uncategorized",
+    *,
+    phase: str | None = None,
+    topic: str | None = None,
+    language: str = "en",
+    provider: str = "lichess-study",
+    study_title: str | None = None,
 ) -> list[dict]:
-    source = f"{LICHESS_STUDY_BASE_URL}/{study_id}"
-    games = []
-    current_game: list[str] = []
+    """Parse a study PGN and create bounded, reproducible teaching chunks."""
+    active_phase = phase or phase_for_category(category)
+    active_topic = topic or category.replace("_", " ")
+    active_title = study_title or study_id
+    source_url = f"{LICHESS_STUDY_BASE_URL}/{study_id}"
+    stream = io.StringIO(pgn_text)
+    chunks: list[dict] = []
+    chapter_index = 0
 
-    for line in pgn_text.splitlines():
-        if line.startswith("[Event ") and current_game:
-            games.append("\n".join(current_game).strip())
-            current_game = []
-        current_game.append(line)
+    while True:
+        game = chess.pgn.read_game(stream)
+        if game is None:
+            break
+        if game.errors:
+            raise ValueError(
+                f"Invalid PGN chapter in study '{study_id}': {game.errors[0]}."
+            )
 
-    if current_game:
-        games.append("\n".join(current_game).strip())
-
-    chunks = []
-    for index, game_text in enumerate(g for g in games if g.strip()):
         chapter = (
-            _extract_tag_value(game_text, "ChapterName")
-            or _extract_tag_value(game_text, "Chapter")
-            or "unknown"
+            first_known_header(
+                game.headers.get("ChapterName"),
+                game.headers.get("Chapter"),
+                game.headers.get("Event"),
+            )
+            or f"Chapter {chapter_index + 1}"
         )
-        chunks.append(
-            {
-                "id": f"{study_id}_{index}",
-                "text": game_text,
-                "metadata": {
-                    "study_id": study_id,
-                    "category": category,
-                    "chapter": chapter,
-                    "source": source,
-                    "type": "lichess_study",
-                },
-            }
+        chapter_id = f"{study_id}:{chapter_index}"
+        context = (
+            f"{active_title}. {chapter}. "
+            f"Category: {category.replace('_', ' ')}. "
+            f"Phase: {active_phase}. Topic: {active_topic}."
         )
+        nodes = list(game.mainline())
+        root_comment = normalize_pgn_comment(game.comment)
+        if nodes:
+            move_units = []
+            if root_comment:
+                move_units.extend(
+                    split_bounded(
+                        f"Context: {root_comment}",
+                        MAX_CHUNK_CHARACTERS // 2,
+                    )
+                )
+            move_units.extend(serialize_mainline(game))
+            text_chunks = pack_units(
+                context,
+                move_units,
+                MAX_CHUNK_CHARACTERS,
+                label="Moves",
+            )
+        elif root_comment:
+            text_chunks = pack_units(
+                context,
+                split_bounded(root_comment, MAX_CHUNK_CHARACTERS // 2),
+                MAX_CHUNK_CHARACTERS,
+                label="Notes",
+            )
+        else:
+            chapter_index += 1
+            continue
 
+        for chunk_index, text in enumerate(text_chunks):
+            content_hash = hash_content(text)
+            chunk_id = f"{study_id}:{chapter_index}:{chunk_index}:{content_hash[:12]}"
+            chunks.append(
+                {
+                    "id": chunk_id,
+                    "text": text,
+                    "metadata": {
+                        "source_id": study_id,
+                        "provider": provider,
+                        "study_id": study_id,
+                        "study_title": active_title,
+                        "chapter_id": chapter_id,
+                        "chapter": chapter,
+                        "category": category,
+                        "phase": active_phase,
+                        "topic": active_topic,
+                        "language": language,
+                        "source": source_url,
+                        "type": "lichess_study",
+                        "pipeline_version": PIPELINE_VERSION,
+                        "embedding_version": EMBEDDING_VERSION,
+                        "content_hash": content_hash,
+                    },
+                }
+            )
+        chapter_index += 1
+
+    if not chunks:
+        raise ValueError(f"Study '{study_id}' contains no PGN chapters.")
     return chunks
 
 
-def _extract_tag_value(pgn_text: str, tag: str) -> str | None:
-    prefix = f'[{tag} "'
-    for line in pgn_text.splitlines():
-        if line.startswith(prefix) and line.endswith('"]'):
-            return line[len(prefix) : -2]
+def serialize_mainline(game: chess.pgn.Game) -> list[str]:
+    board = game.board()
+    units = []
+    for node in game.mainline():
+        move_number = board.fullmove_number
+        prefix = f"{move_number}." if board.turn else f"{move_number}..."
+        san = board.san(node.move)
+        comment = normalize_pgn_comment(node.comment)
+        unit = f"{prefix} {san}"
+        if comment:
+            unit = f"{unit} -- {comment}"
+        units.extend(split_bounded(unit, MAX_CHUNK_CHARACTERS // 2))
+        board.push(node.move)
+    return units
+
+
+def pack_units(
+    context: str,
+    units: list[str],
+    limit: int,
+    *,
+    label: str = "Moves",
+) -> list[str]:
+    prefix = f"{context}\n{label}: "
+    available = limit - len(prefix)
+    if available < 200:
+        raise ValueError("RAG chunk context leaves insufficient room for moves.")
+
+    packed = []
+    current: list[str] = []
+    current_length = 0
+    for unit in units:
+        separator = 1 if current else 0
+        if current and current_length + separator + len(unit) > available:
+            packed.append(f"{prefix}{' '.join(current)}")
+            current = []
+            current_length = 0
+        current.append(unit)
+        current_length += separator + len(unit)
+    if current:
+        packed.append(f"{prefix}{' '.join(current)}")
+    return packed
+
+
+def split_bounded(text: str, limit: int) -> list[str]:
+    words = text.split()
+    if not words:
+        return []
+    parts = []
+    current = words[0]
+    for word in words[1:]:
+        if len(current) + len(word) + 1 > limit:
+            parts.append(current)
+            current = word
+        else:
+            current = f"{current} {word}"
+    parts.append(current)
+    return parts
+
+
+def normalize_text(value: str) -> str:
+    return " ".join(value.split())
+
+
+def normalize_pgn_comment(value: str) -> str:
+    without_graphics = re.sub(r"\[%[^\]]+\]", " ", value)
+    return normalize_text(without_graphics)
+
+
+def hash_content(text: str) -> str:
+    canonical = normalize_text(text)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def first_known_header(*values: str | None) -> str | None:
+    for value in values:
+        if value and value.strip() not in {"", "?"}:
+            return value.strip()
     return None
 
 
+def phase_for_category(category: str) -> RagPhase:
+    if "endgame" in category:
+        return "endgame"
+    if category in {"middlegame", "tactics", "pawn_structures", "king_safety"}:
+        return "middlegame"
+    if "opening" in category:
+        return "opening"
+    return "unknown"
+
+
 async def index_study(study_id: str, category: str = "uncategorized") -> int:
+    """Keep the existing administrative contract while reconciling one source."""
+    manifest = load_manifest()
+    source = next(
+        (item for item in manifest.sources if item.id == study_id),
+        None,
+    )
+    if source is None:
+        source = RagSource(
+            id=study_id,
+            provider="lichess-study",
+            title=study_id,
+            category=category,
+            phase=phase_for_category(category),
+            topic=category.replace("_", " "),
+            language="en",
+        )
     pgn_text = await fetch_lichess_study(study_id)
-    chunks = chunk_study_pgn(pgn_text, study_id, category)
-    return upsert_chunks(chunks)
+    chunks = chunks_for_source(pgn_text, source)
+    report = reindex_source(chunks, source.id)
+    return report.indexed_chunks
+
+
+def chunks_for_source(pgn_text: str, source: RagSource) -> list[dict]:
+    return chunk_study_pgn(
+        pgn_text,
+        source.id,
+        source.category,
+        phase=source.phase,
+        topic=source.topic,
+        language=source.language,
+        provider=source.provider,
+        study_title=source.title,
+    )
 
 
 def upsert_chunks(
@@ -145,39 +419,260 @@ def upsert_chunks(
     """Upsert already-prepared chunks into the selected Chroma collection."""
     if not chunks:
         return 0
+    active_collection = (
+        target_collection if target_collection is not None else get_collection()
+    )
+    active_collection.upsert(
+        documents=[chunk["text"] for chunk in chunks],
+        ids=[chunk["id"] for chunk in chunks],
+        metadatas=[chunk["metadata"] for chunk in chunks],
+    )
+    return len(chunks)
+
+
+def reindex_source(
+    chunks: list[dict],
+    source_id: str,
+    *,
+    target_collection: Collection | None = None,
+) -> SourceIndexReport:
+    if not chunks:
+        raise ValueError(f"Refusing to replace source '{source_id}' with no chunks.")
+    if any(chunk["metadata"].get("source_id") != source_id for chunk in chunks):
+        raise ValueError("Every chunk must belong to the source being reindexed.")
+    validate_chunk_metadata(chunks)
 
     active_collection = (
         target_collection if target_collection is not None else get_collection()
     )
-    documents = [c["text"] for c in chunks]
-    ids = [c["id"] for c in chunks]
-    metadatas = [c["metadata"] for c in chunks]
+    # `study_id` exists in both the legacy index and rag-v1, so a normal rebuild
+    # also removes pre-manifest IDs instead of leaving duplicate old chunks.
+    existing = active_collection.get(where={"study_id": source_id})
+    existing_ids = set(existing.get("ids") or [])
+    new_ids = {chunk["id"] for chunk in chunks}
+    unchanged = existing_ids == new_ids and len(existing_ids) == len(chunks)
 
-    active_collection.upsert(documents=documents, ids=ids, metadatas=metadatas)
+    upsert_chunks(chunks, target_collection=active_collection)
+    stale_ids = sorted(existing_ids - new_ids)
+    if stale_ids:
+        active_collection.delete(ids=stale_ids)
 
-    return len(chunks)
+    return SourceIndexReport(
+        source_id=source_id,
+        indexed_chunks=len(chunks),
+        stale_chunks_deleted=len(stale_ids),
+        unchanged=unchanged,
+    )
+
+
+def validate_chunk_metadata(chunks: list[dict]) -> None:
+    for chunk in chunks:
+        metadata = chunk.get("metadata") or {}
+        missing = sorted(
+            field for field in REQUIRED_CHUNK_METADATA if not metadata.get(field)
+        )
+        if missing:
+            raise ValueError(
+                f"Chunk '{chunk.get('id')}' is missing metadata: {', '.join(missing)}."
+            )
+        if metadata["content_hash"] != hash_content(chunk.get("text", "")):
+            raise ValueError(f"Chunk '{chunk.get('id')}' has an invalid content_hash.")
+
+
+def reconcile_index(
+    manifest: RagManifest | None = None,
+    *,
+    target_collection: Collection | None = None,
+    apply: bool = False,
+) -> ReconciliationReport:
+    active_manifest = manifest or load_manifest()
+    expected_sources = {
+        source.id for source in active_manifest.sources if source.enabled
+    }
+    active_collection = (
+        target_collection if target_collection is not None else get_collection()
+    )
+    stored = active_collection.get(include=["metadatas"])
+    ids = stored.get("ids") or []
+    metadatas = stored.get("metadatas") or []
+
+    indexed_sources = set()
+    unexpected_sources = set()
+    orphan_ids = []
+    incomplete_ids = []
+    version_mismatch_ids = []
+    hashes: dict[str, list[str]] = {}
+    deletable_ids = []
+
+    for chunk_id, raw_metadata in zip(ids, metadatas, strict=False):
+        metadata = raw_metadata or {}
+        source_id = str(metadata.get("source_id") or metadata.get("study_id") or "")
+        if source_id:
+            indexed_sources.add(source_id)
+        if not source_id or source_id not in expected_sources:
+            orphan_ids.append(chunk_id)
+            deletable_ids.append(chunk_id)
+            if source_id:
+                unexpected_sources.add(source_id)
+
+        if any(not metadata.get(field) for field in REQUIRED_CHUNK_METADATA):
+            incomplete_ids.append(chunk_id)
+        if (
+            metadata.get("pipeline_version") != active_manifest.pipeline_version
+            or metadata.get("embedding_version") != active_manifest.embedding_version
+        ):
+            version_mismatch_ids.append(chunk_id)
+
+        content_hash = metadata.get("content_hash")
+        if content_hash:
+            hashes.setdefault(str(content_hash), []).append(chunk_id)
+
+    duplicate_hashes = {
+        content_hash: chunk_ids
+        for content_hash, chunk_ids in hashes.items()
+        if len(chunk_ids) > 1
+    }
+    deleted_ids = sorted(set(deletable_ids)) if apply else []
+    if deleted_ids:
+        active_collection.delete(ids=deleted_ids)
+
+    return ReconciliationReport(
+        manifest_sources=sorted(expected_sources),
+        indexed_sources=sorted(indexed_sources),
+        missing_sources=sorted(expected_sources - indexed_sources),
+        unexpected_sources=sorted(unexpected_sources),
+        orphan_chunk_ids=sorted(orphan_ids),
+        incomplete_chunk_ids=sorted(incomplete_ids),
+        duplicate_content_hashes=duplicate_hashes,
+        version_mismatch_chunk_ids=sorted(version_mismatch_ids),
+        deleted_chunk_ids=deleted_ids,
+    )
+
+
+def retrieve_theory(
+    query: str,
+    n_results: int = 3,
+    *,
+    phase: str | None = None,
+    category: str | None = None,
+    max_distance: float | None = None,
+    target_collection: Collection | None = None,
+) -> TheoryRetrievalResult:
+    active_collection = (
+        target_collection if target_collection is not None else get_collection()
+    )
+    normalized_query = query.strip()
+    if not normalized_query or active_collection.count() == 0:
+        return insufficient_evidence(normalized_query)
+
+    active_phase = phase or infer_phase(normalized_query)
+    where = build_metadata_filter(active_phase, category)
+    matching_count = collection_count(active_collection, where)
+    if matching_count == 0:
+        return insufficient_evidence(normalized_query)
+
+    candidate_count = min(n_results, matching_count)
+    query_args: dict[str, Any] = {
+        "query_texts": [normalized_query],
+        "n_results": candidate_count,
+    }
+    if where is not None:
+        query_args["where"] = where
+    payload = active_collection.query(**query_args)
+    threshold = max_distance if max_distance is not None else load_relevance_threshold()
+    candidates = map_query_results(payload)
+    accepted = [
+        candidate for candidate in candidates if candidate.distance <= threshold
+    ][:n_results]
+    if not accepted:
+        return insufficient_evidence(normalized_query)
+    return TheoryRetrievalResult(
+        status="evidence_found",
+        query=normalized_query,
+        pipeline_version=PIPELINE_VERSION,
+        documents=accepted,
+    )
 
 
 def search_theory(
     query: str,
     n_results: int = 3,
     *,
+    phase: str | None = None,
+    category: str | None = None,
     target_collection: Collection | None = None,
 ) -> list[dict]:
-    active_collection = (
-        target_collection if target_collection is not None else get_collection()
+    """Compatibility adapter for existing REST, coach, and agent consumers."""
+    result = retrieve_theory(
+        query,
+        n_results=n_results,
+        phase=phase,
+        category=category,
+        target_collection=target_collection,
     )
-    if active_collection.count() == 0:
-        return []
+    return [document.model_dump() for document in result.documents]
 
-    results = active_collection.query(query_texts=[query], n_results=n_results)
 
-    documents = (results.get("documents") or [[]])[0]
-    metadatas = (results.get("metadatas") or [[]])[0]
-    distances = (results.get("distances") or [[]])[0]
+def insufficient_evidence(query: str) -> TheoryRetrievalResult:
+    return TheoryRetrievalResult(
+        status="insufficient_evidence",
+        query=query,
+        pipeline_version=PIPELINE_VERSION,
+        documents=[],
+    )
 
+
+def infer_phase(query: str) -> str | None:
+    normalized = normalize_for_matching(query)
+    for phase in ("endgame", "middlegame", "opening"):
+        if any(term in normalized for term in PHASE_TERMS[phase]):
+            return phase
+    return None
+
+
+def normalize_for_matching(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value.casefold())
+    without_accents = "".join(
+        character for character in decomposed if not unicodedata.combining(character)
+    )
+    return re.sub(r"\s+", " ", without_accents).strip()
+
+
+def build_metadata_filter(
+    phase: str | None,
+    category: str | None,
+) -> dict[str, Any] | None:
+    filters = []
+    if phase:
+        filters.append({"phase": phase})
+    if category:
+        filters.append({"category": category})
+    if not filters:
+        return None
+    if len(filters) == 1:
+        return filters[0]
+    return {"$and": filters}
+
+
+def collection_count(
+    collection: Collection,
+    where: dict[str, Any] | None,
+) -> int:
+    if where is None:
+        return collection.count()
+    return len(collection.get(where=where, include=[]).get("ids") or [])
+
+
+def map_query_results(payload: Any) -> list[TheoryEvidence]:
+    documents = (payload.get("documents") or [[]])[0]
+    metadatas = (payload.get("metadatas") or [[]])[0]
+    distances = (payload.get("distances") or [[]])[0]
     return [
-        {"text": document, "metadata": metadata or {}, "distance": distance}
+        TheoryEvidence(
+            text=document,
+            metadata=metadata or {},
+            distance=float(distance),
+        )
         for document, metadata, distance in zip(
             documents,
             metadatas,

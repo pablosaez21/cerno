@@ -332,37 +332,42 @@ forced framework upgrade.
 
 Detailed requirements are in [testing-strategy.md](./testing-strategy.md).
 
-## 7. Phase 3 — RAG professionalization
+## 7. Phase 3 — Reliable, evaluable retrieval
+
+**Status:** Completed on 2026-07-29 under the explicitly approved reduced
+scope below.
 
 ### Objective
 
-Turn the current opening-focused semantic search into a reproducible, evaluated retrieval system that can abstain and support grounded generation.
+Turn the opening-focused semantic search into a reproducible, evaluated
+retrieval system that can abstain. This phase does not claim grounded
+generation.
 
 ### Scope
 
 1. golden evaluation dataset;
 2. versioned source manifest;
 3. index reconciliation and cleanup;
-4. balanced corpus across chess phases;
+4. measured corpus coverage, with explicit abstention for uncovered phases;
 5. PGN-aware chunking;
 6. metadata filters;
 7. `insufficient_evidence`;
 8. calibrated top-k and threshold;
-9. hybrid search;
-10. reranking only if measured;
-11. grounding with retrieved passages;
-12. structured citations.
+9. compatibility adapter for the existing REST, coach, and agent consumers.
+
+The implementation brief explicitly excludes hybrid search, reranking, RRF,
+HyDE, GraphRAG, ColBERT, grounding/citations, prompt changes, MCP, and new
+unverified sources. Those items are not silently treated as completed.
 
 ### Acceptance criteria
 
 - The source manifest reproduces an index without orphan chunks.
 - Chunks include required provenance and pipeline versions.
-- The corpus covers approved opening, middlegame, tactical, and endgame categories.
+- Corpus gaps are measured; middlegame and endgame requests abstain while no
+  approved sources exist.
 - A versioned golden dataset includes answerable and unanswerable cases.
 - Retrieval metrics are reported globally and per category.
 - Cerno returns `insufficient_evidence` for calibrated unsupported queries.
-- Retrieved content reaching the LLM is bounded, identified, and treated as untrusted data.
-- Generated citations refer only to supplied source IDs.
 - A regression report compares the new pipeline with the previous baseline.
 
 Advanced methods remain conditional. See [rag-improvement-plan.md](./rag-improvement-plan.md).

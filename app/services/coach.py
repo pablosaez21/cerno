@@ -233,7 +233,10 @@ async def analyze_player_games(
         raise ValueError("No games could be analyzed.")
 
     weakness_profile = aggregate_game_analyses(player_analyses)
-    theory_results = collect_theory_results(weakness_profile["theory_queries"])
+    theory_results = collect_theory_results(
+        weakness_profile["theory_queries"],
+        phase=weakness_profile["main_weakness"],
+    )
     theory_recommendations = build_theory_recommendations(theory_results)
     critical_moments = collect_critical_moments(player_analyses)
     generated_training = await generate_training_plan(
@@ -369,12 +372,21 @@ def resolve_player_color(game: Game, username: str) -> str | None:
     return "white" if is_white else "black"
 
 
-def collect_theory_results(queries: list[str], n_results: int = 2) -> list[dict]:
+def collect_theory_results(
+    queries: list[str],
+    n_results: int = 2,
+    *,
+    phase: str | None = None,
+) -> list[dict]:
     collected = []
     seen_sources = set()
 
     for query in queries:
-        for result in search_theory(query, n_results=n_results):
+        for result in search_theory(
+            query,
+            n_results=n_results,
+            phase=phase,
+        ):
             metadata = result.get("metadata", {})
             source_key = (
                 metadata.get("study_id"),

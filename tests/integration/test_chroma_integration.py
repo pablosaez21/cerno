@@ -9,9 +9,16 @@ from chromadb.api.client import SharedSystemClient
 from chromadb.api.models.Collection import Collection
 from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
 
+from app.schemas.rag import RagManifest, RagSource
 from app.services.rag import (
+    EMBEDDING_VERSION,
+    PIPELINE_VERSION,
     ChromaStoreError,
     create_chroma_collection,
+    hash_content,
+    reconcile_index,
+    reindex_source,
+    retrieve_theory,
     search_theory,
     upsert_chunks,
 )
@@ -67,6 +74,7 @@ def corpus() -> list[dict]:
             "metadata": {
                 "study_id": "fixture-study",
                 "category": "opening",
+                "phase": "opening",
                 "chapter": "Opening principles",
                 "source": "fixture://opening",
                 "type": "test_fixture",
@@ -78,6 +86,7 @@ def corpus() -> list[dict]:
             "metadata": {
                 "study_id": "fixture-study",
                 "category": "middlegame",
+                "phase": "middlegame",
                 "chapter": "Forcing moves",
                 "source": "fixture://middlegame",
                 "type": "test_fixture",
@@ -89,6 +98,7 @@ def corpus() -> list[dict]:
             "metadata": {
                 "study_id": "fixture-study",
                 "category": "rook_endgame",
+                "phase": "endgame",
                 "chapter": "Active rook",
                 "source": "fixture://rook-endgame",
                 "type": "test_fixture",
@@ -100,6 +110,7 @@ def corpus() -> list[dict]:
             "metadata": {
                 "study_id": "fixture-study",
                 "category": "pawn_endgame",
+                "phase": "endgame",
                 "chapter": "King opposition",
                 "source": "fixture://pawn-endgame",
                 "type": "test_fixture",
@@ -111,6 +122,7 @@ def corpus() -> list[dict]:
             "metadata": {
                 "study_id": "irrelevant",
                 "category": "irrelevant",
+                "phase": "unknown",
                 "chapter": "Cooking",
                 "source": "fixture://irrelevant",
                 "type": "test_fixture",
@@ -167,6 +179,7 @@ def test_real_upsert_persists_metadata_and_retrieves_unambiguous_result(
     assert results[0]["metadata"] == {
         "study_id": "fixture-study",
         "category": "rook_endgame",
+        "phase": "endgame",
         "chapter": "Active rook",
         "source": "fixture://rook-endgame",
         "type": "test_fixture",
@@ -194,6 +207,7 @@ def test_reindexing_same_ids_is_idempotent_and_persists_on_disk(
             "metadata": {
                 "study_id": "fixture-study",
                 "category": "rook_endgame",
+                "phase": "endgame",
                 "chapter": "Updated rook activity",
                 "source": "fixture://rook-endgame",
                 "type": "test_fixture",
@@ -223,6 +237,179 @@ def test_reindexing_same_ids_is_idempotent_and_persists_on_disk(
         del reopened
         gc.collect()
         SharedSystemClient.clear_system_cache()
+
+
+def complete_chunk(
+    chunk_id: str,
+    source_id: str,
+    text: str,
+    *,
+    phase: str = "opening",
+) -> dict:
+    return {
+        "id": chunk_id,
+        "text": text,
+        "metadata": {
+            "source_id": source_id,
+            "provider": "lichess-study",
+            "study_id": source_id,
+            "study_title": "Fixture",
+            "chapter_id": f"{source_id}:0",
+            "chapter": "Fixture chapter",
+            "category": "opening_principles",
+            "phase": phase,
+            "topic": "development center control",
+            "language": "en",
+            "source": f"fixture://{source_id}",
+            "type": "lichess_study",
+            "pipeline_version": PIPELINE_VERSION,
+            "embedding_version": EMBEDDING_VERSION,
+            "content_hash": hash_content(text),
+        },
+    }
+
+
+def fixture_manifest() -> RagManifest:
+    return RagManifest(
+        manifest_version="1",
+        pipeline_version=PIPELINE_VERSION,
+        embedding_version=EMBEDDING_VERSION,
+        sources=[
+            RagSource(
+                id="expected",
+                provider="lichess-study",
+                title="Expected fixture",
+                category="opening_principles",
+                phase="opening",
+                topic="development center control",
+                language="en",
+            )
+        ],
+    )
+
+
+def test_source_reindex_is_idempotent_and_removes_stale_chunks(
+    temporary_collection: Collection,
+) -> None:
+    initial = [
+        complete_chunk(
+            "expected:old",
+            "expected",
+            "Opening development controls the center.",
+        )
+    ]
+    first = reindex_source(
+        initial,
+        "expected",
+        target_collection=temporary_collection,
+    )
+    second = reindex_source(
+        initial,
+        "expected",
+        target_collection=temporary_collection,
+    )
+    replacement = [
+        complete_chunk(
+            "expected:new",
+            "expected",
+            "Opening development controls the center and prepares castling.",
+        )
+    ]
+    third = reindex_source(
+        replacement,
+        "expected",
+        target_collection=temporary_collection,
+    )
+
+    assert first.unchanged is False
+    assert second.unchanged is True
+    assert third.stale_chunks_deleted == 1
+    assert temporary_collection.get()["ids"] == ["expected:new"]
+
+
+def test_source_reindex_removes_legacy_chunks_for_same_study(
+    temporary_collection: Collection,
+) -> None:
+    upsert_chunks(
+        [
+            {
+                "id": "expected_legacy",
+                "text": "Legacy whole-chapter opening text.",
+                "metadata": {
+                    "study_id": "expected",
+                    "category": "opening_principles",
+                    "chapter": "Legacy",
+                    "source": "fixture://expected",
+                },
+            }
+        ],
+        target_collection=temporary_collection,
+    )
+    current = complete_chunk(
+        "expected:current",
+        "expected",
+        "Opening development controls the center.",
+    )
+
+    report = reindex_source(
+        [current],
+        "expected",
+        target_collection=temporary_collection,
+    )
+
+    assert report.stale_chunks_deleted == 1
+    assert temporary_collection.get()["ids"] == ["expected:current"]
+
+
+def test_reconciliation_detects_and_safely_deletes_orphans(
+    temporary_collection: Collection,
+) -> None:
+    upsert_chunks(
+        [
+            complete_chunk("expected:0", "expected", "Opening center control."),
+            complete_chunk("orphan:0", "orphan", "Obsolete opening content."),
+        ],
+        target_collection=temporary_collection,
+    )
+
+    dry_run = reconcile_index(
+        fixture_manifest(),
+        target_collection=temporary_collection,
+    )
+    applied = reconcile_index(
+        fixture_manifest(),
+        target_collection=temporary_collection,
+        apply=True,
+    )
+
+    assert dry_run.unexpected_sources == ["orphan"]
+    assert dry_run.orphan_chunk_ids == ["orphan:0"]
+    assert dry_run.deleted_chunk_ids == []
+    assert applied.deleted_chunk_ids == ["orphan:0"]
+    assert temporary_collection.get()["ids"] == ["expected:0"]
+
+
+def test_typed_retrieval_relevant_irrelevant_and_filters(
+    temporary_collection: Collection,
+) -> None:
+    upsert_chunks(corpus(), target_collection=temporary_collection)
+
+    relevant = retrieve_theory(
+        "rook file rank",
+        phase="endgame",
+        max_distance=0.01,
+        target_collection=temporary_collection,
+    )
+    irrelevant = retrieve_theory(
+        "postgres database optimizer",
+        max_distance=0.01,
+        target_collection=temporary_collection,
+    )
+
+    assert relevant.status == "evidence_found"
+    assert relevant.documents[0].metadata["phase"] == "endgame"
+    assert irrelevant.status == "insufficient_evidence"
+    assert irrelevant.documents == []
 
 
 def test_unavailable_chroma_directory_returns_controlled_error(

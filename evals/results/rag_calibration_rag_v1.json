@@ -1,0 +1,128 @@
+{
+  "dataset": "evals/rag_queries.jsonl",
+  "method": "highest classification accuracy; then answer recall; then lowest-distance conservative tie-break",
+  "recommended": {
+    "threshold": 1.3739006519317627,
+    "classification_accuracy": 1.0,
+    "answer_recall": 1.0,
+    "abstention_precision": 1.0
+  },
+  "observations": [
+    {
+      "id": "opening-principles-en",
+      "should_answer": true,
+      "filter_status": "evidence_found",
+      "top_distance": 0.5870732069015503
+    },
+    {
+      "id": "opening-principles-es",
+      "should_answer": true,
+      "filter_status": "evidence_found",
+      "top_distance": 1.3739006519317627
+    },
+    {
+      "id": "london-system-en",
+      "should_answer": true,
+      "filter_status": "evidence_found",
+      "top_distance": 0.8799307942390442
+    },
+    {
+      "id": "ruy-lopez-es",
+      "should_answer": true,
+      "filter_status": "evidence_found",
+      "top_distance": 1.1582117080688477
+    },
+    {
+      "id": "kings-indian-en",
+      "should_answer": true,
+      "filter_status": "evidence_found",
+      "top_distance": 0.5014724135398865
+    },
+    {
+      "id": "middlegame-en",
+      "should_answer": false,
+      "filter_status": "insufficient_evidence",
+      "top_distance": null
+    },
+    {
+      "id": "middlegame-es",
+      "should_answer": false,
+      "filter_status": "insufficient_evidence",
+      "top_distance": null
+    },
+    {
+      "id": "rook-endgame-en",
+      "should_answer": false,
+      "filter_status": "insufficient_evidence",
+      "top_distance": null
+    },
+    {
+      "id": "rook-endgame-es",
+      "should_answer": false,
+      "filter_status": "insufficient_evidence",
+      "top_distance": null
+    },
+    {
+      "id": "pawn-endgame-en",
+      "should_answer": false,
+      "filter_status": "insufficient_evidence",
+      "top_distance": null
+    },
+    {
+      "id": "irrelevant-cooking-es",
+      "should_answer": false,
+      "filter_status": "evidence_found",
+      "top_distance": 1.7020211219787598
+    },
+    {
+      "id": "irrelevant-programming-en",
+      "should_answer": false,
+      "filter_status": "evidence_found",
+      "top_distance": 1.5488609075546265
+    }
+  ],
+  "candidates": [
+    {
+      "threshold": 0.5014724135398865,
+      "classification_accuracy": 0.6667,
+      "answer_recall": 0.2,
+      "abstention_precision": 0.6364
+    },
+    {
+      "threshold": 0.5870732069015503,
+      "classification_accuracy": 0.75,
+      "answer_recall": 0.4,
+      "abstention_precision": 0.7
+    },
+    {
+      "threshold": 0.8799307942390442,
+      "classification_accuracy": 0.8333,
+      "answer_recall": 0.6,
+      "abstention_precision": 0.7778
+    },
+    {
+      "threshold": 1.1582117080688477,
+      "classification_accuracy": 0.9167,
+      "answer_recall": 0.8,
+      "abstention_precision": 0.875
+    },
+    {
+      "threshold": 1.3739006519317627,
+      "classification_accuracy": 1.0,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.5488609075546265,
+      "classification_accuracy": 0.9167,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.7020211219787598,
+      "classification_accuracy": 0.8333,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    }
+  ]
+}

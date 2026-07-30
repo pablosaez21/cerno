@@ -169,6 +169,13 @@ def workflow() -> None:
     )
 
 
+def rag_eval() -> None:
+    run(
+        "RAG golden-set evaluation",
+        [PYTHON, "scripts/evaluate_rag.py", "--mode", "final"],
+    )
+
+
 def frontend() -> None:
     npm = npm_executable()
     frontend_root = PROJECT_ROOT / "frontend"
@@ -256,6 +263,7 @@ COMMANDS = {
     "integration-up": integration_up,
     "integration-down": integration_down,
     "workflow": workflow,
+    "rag-eval": rag_eval,
     "backend": backend,
     "frontend": frontend,
     "frontend-tests": frontend_tests,

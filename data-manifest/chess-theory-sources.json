@@ -1,0 +1,157 @@
+{
+  "manifest_version": "1",
+  "pipeline_version": "rag-v1",
+  "embedding_version": "chroma-default-all-MiniLM-L6-v2",
+  "sources": [
+    {
+      "id": "ygVnJzbX",
+      "provider": "lichess-study",
+      "title": "Opening Principles",
+      "category": "opening_principles",
+      "phase": "opening",
+      "topic": "development center control king safety",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "NfMygq6x",
+      "provider": "lichess-study",
+      "title": "Introduction to Opening Theory",
+      "category": "opening_principles",
+      "phase": "opening",
+      "topic": "opening theory development",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "vyS3PnUA",
+      "provider": "lichess-study",
+      "title": "Opening Principles and Theory",
+      "category": "opening_principles",
+      "phase": "opening",
+      "topic": "opening principles development",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "6XvaoT1n",
+      "provider": "lichess-study",
+      "title": "Opening Fundamentals",
+      "category": "opening_principles",
+      "phase": "opening",
+      "topic": "opening fundamentals",
+      "language": "en",
+      "enabled": false
+    },
+    {
+      "id": "qVA8CAKj",
+      "provider": "lichess-study",
+      "title": "Common Openings",
+      "category": "general_openings",
+      "phase": "opening",
+      "topic": "common chess openings",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "M17xhXZI",
+      "provider": "lichess-study",
+      "title": "Chess Openings",
+      "category": "general_openings",
+      "phase": "opening",
+      "topic": "chess openings",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "uK53IvBH",
+      "provider": "lichess-study",
+      "title": "Opening Main Line Trainer",
+      "category": "general_openings",
+      "phase": "opening",
+      "topic": "opening main lines",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "allfhhua",
+      "provider": "lichess-study",
+      "title": "Beginner Opening Repertoire",
+      "category": "general_openings",
+      "phase": "opening",
+      "topic": "beginner opening repertoire",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "Utd758xx",
+      "provider": "lichess-study",
+      "title": "Ruy Lopez",
+      "category": "opening_repertoire",
+      "phase": "opening",
+      "topic": "Ruy Lopez Spanish opening",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "KjivNw7F",
+      "provider": "lichess-study",
+      "title": "London System",
+      "category": "opening_repertoire",
+      "phase": "opening",
+      "topic": "London System",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "efGLGZOM",
+      "provider": "lichess-study",
+      "title": "King's Indian Defense",
+      "category": "opening_repertoire",
+      "phase": "opening",
+      "topic": "King's Indian Defense",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "h4GuSZh3",
+      "provider": "lichess-study",
+      "title": "English Opening",
+      "category": "opening_repertoire",
+      "phase": "opening",
+      "topic": "English Opening",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "pgfDEvmk",
+      "provider": "lichess-study",
+      "title": "Reti Opening",
+      "category": "opening_repertoire",
+      "phase": "opening",
+      "topic": "Reti Opening",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "yzy5Hln3",
+      "provider": "lichess-study",
+      "title": "Learn Openings Quickly",
+      "category": "opening_training",
+      "phase": "opening",
+      "topic": "opening study training",
+      "language": "en",
+      "enabled": true
+    },
+    {
+      "id": "oBsew7N6",
+      "provider": "lichess-study",
+      "title": "Opening Systems",
+      "category": "opening_training",
+      "phase": "opening",
+      "topic": "opening systems training",
+      "language": "en",
+      "enabled": true
+    }
+  ]
+}

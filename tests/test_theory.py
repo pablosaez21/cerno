@@ -26,3 +26,14 @@ def test_theory_search_returns_structured_results(client):
     assert response.status_code == 200
     payload = response.json()
     assert payload == {"results": [search_result]}
+
+
+def test_theory_search_keeps_legacy_empty_results_contract(client):
+    with patch("app.routers.theory.search_theory", return_value=[]):
+        response = client.post(
+            "/theory/search",
+            json={"query": "unsupported endgame topic", "n_results": 3},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"results": []}

@@ -133,10 +133,19 @@ contract. Uploaded reports are non-persistent and contain one game.
 
 [`app/services/rag.py`](../app/services/rag.py) lazily creates the product's
 persistent ChromaDB collection using the default embedding function. It
-downloads Lichess study PGN, splits it into chapter-sized documents, upserts
-documents and metadata, and performs dense top-k search. The collection factory
-accepts an explicit path and embedding function so technical integration tests
-can use isolated storage without opening the developer's `data/chromadb`.
+downloads only manifest-approved Lichess study PGN, parses chapters with
+`python-chess`, creates bounded content-addressed chunks, and records source,
+chapter, category, phase, topic, content hash, and pipeline/embedding versions.
+Source reindexing is idempotent and removes stale chunks; the separate
+reconciliation command reports drift and deletes only orphaned or
+manifest-obsolete content when `--apply` is explicit.
+
+Retrieval first applies available phase/category metadata and then a calibrated
+distance gate. Its internal result is typed as `evidence_found` or
+`insufficient_evidence`. Existing REST, coach, and agent consumers retain their
+list contract: insufficient evidence is adapted to an empty list. The
+collection factory accepts an explicit path and embedding function so tests use
+isolated storage without opening the developer's `data/chromadb`.
 
 The current system performs semantic retrieval and exposes sources. The structured coach passes derived theory themes to the LLM, not the retrieved passages themselves. The current description is therefore **retrieval-assisted coaching**, not fully grounded RAG.
 

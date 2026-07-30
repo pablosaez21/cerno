@@ -697,6 +697,39 @@ player-color projection, and full-game viewer data. Frontend unit and browser
 coverage requires the common report structure after PGN submission and retains
 the Lichess scenarios.
 
+### DEC-035 — Phase 3 uses manifest filters plus a calibrated evidence gate
+
+**Status:** Accepted and implemented
+
+**Problem:** The previous nearest-neighbour call always returned documents,
+including opening chapters for unsupported middlegame, endgame, and irrelevant
+queries. The ignored local index also contained unexplained chunks and no
+pipeline/hash metadata.
+
+**Decision:** Make the source manifest authoritative, build bounded
+`python-chess` chunks with content hashes and version metadata, and reconcile
+source-local stale IDs plus manifest orphans. Retrieval returns the typed
+statuses `evidence_found` and `insufficient_evidence`. Available phase/category
+filters run before a dense L2 cutoff calibrated on the versioned golden set.
+Existing interfaces receive the prior list shape, with abstention represented
+as an empty list.
+
+**Rationale:** The corpus is currently opening-only. Filtering can prove that
+an unsupported phase has no evidence, while a measured distance gate handles
+irrelevant queries with no phase terms. This solves the observed failure
+without inventing sources or adding unmeasured retrieval machinery.
+
+**Impact:** The calibrated `rag-v1` cutoff is `1.3739006519317627`. Baseline
+Recall@1/Recall@3/MRR/abstention precision of `0.80/1.00/0.90/0.00` become
+`1.00/1.00/1.00/1.00` on the 12-case golden set. The same dataset was used for
+calibration and evaluation, so expansion and a later holdout set remain
+necessary. Prompt, generation, agent, MCP, frontend, hybrid search, and
+reranking behavior are unchanged.
+
+**Evidence:** Versioned baseline, calibration, and final reports live under
+`evals/results/`; technical retrieval tests use only temporary Chroma
+directories.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
@@ -713,7 +746,11 @@ resolved. The Phase 1 working tree now collects 33 cases.
 
 `docs/rag_validation.md` records 358 chunks from 14 successful studies. The later local audit observed 360 chunks and 15 study IDs because two unexpected `lVCUmd79` chunks remain, while `6XvaoT1n` is absent.
 
-**Resolution:** Treat the local volume as drifted, not as the intended manifest. Phase 3 owns reconciliation.
+**Resolution:** The versioned manifest is now authoritative. The read-only
+Phase 3 inventory confirmed the drift. The subsequent manifest rebuild replaced
+all legacy source chunks and removed the two `lVCUmd79` orphans. A final
+reconciliation reported no orphan, incomplete, duplicate-hash, or
+version-mismatch chunks.
 
 ### 3.3 RAG local versus production
 
@@ -749,7 +786,7 @@ The proposed `prompts/`, `evals/`, source manifest, and MCP server files do not 
 
 ### OQ-001 — Production RAG inventory
 
-**Status:** Open
+**Status:** Retrieval threshold resolved for `rag-v1`; advanced techniques remain open
 
 Verify authorized production counts, source IDs, metadata completeness, model version, and volume persistence.
 
@@ -809,7 +846,9 @@ remain pending until the first push.
 
 **Status:** Open
 
-No relevance threshold, hybrid weighting, reranker, HyDE, ColBERT, or GraphRAG choice is approved without evaluation results.
+The current dense L2 threshold is calibrated and versioned. No hybrid
+weighting, reranker, HyDE, ColBERT, or GraphRAG choice is approved without new
+evaluation evidence.
 
 ## 5. Decision review
 

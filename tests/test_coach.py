@@ -5,11 +5,29 @@ import pytest
 from app.schemas.game import Game, Player
 from app.services.coach import (
     AnalyzedPlayerGame,
+    collect_theory_results,
     detect_best_phase,
     persist_coach_result,
     remove_source_references,
 )
 from app.services.weakness import project_analysis_for_player
+
+
+def test_theory_collection_passes_diagnosed_phase_to_retrieval():
+    with patch("app.services.coach.search_theory", return_value=[]) as search:
+        assert (
+            collect_theory_results(
+                ["king safety principles"],
+                phase="middlegame",
+            )
+            == []
+        )
+
+    search.assert_called_once_with(
+        "king safety principles",
+        n_results=2,
+        phase="middlegame",
+    )
 
 
 def test_analyze_user_returns_structured_coaching_response(client):

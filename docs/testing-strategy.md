@@ -218,7 +218,6 @@ Unit-test:
 - deletion plan for stale chunks;
 - retrieval-result schema;
 - `insufficient_evidence`;
-- citation validation;
 - query/filter construction.
 
 Semantic quality belongs to the evaluation suite, not only unit tests.
@@ -381,7 +380,7 @@ database to `head`.
 
 Use a temporary directory and a small deterministic embedding function where semantic model behavior is not under test.
 
-**Phase 2B status:** Implemented and passing locally: 4 cases.
+**Phase 3 status:** Implemented with 8 real temporary-Chroma cases.
 
 Technical integration cases:
 
@@ -399,11 +398,12 @@ Technical integration cases:
 
 A separate evaluation run should use the production embedding configuration.
 
-The current Phase 2B cases verify an empty collection, real upsert, metadata and
-distance persistence, unambiguous retrieval, idempotent replacement of an
-existing ID, reopening the on-disk collection, and a controlled initialization
-error. Source reconciliation and stale-chunk deletion are not current product
-contracts and remain Phase 3 work; Phase 2B does not invent them.
+The current cases verify an empty collection, real upsert, metadata and
+distance persistence, unambiguous retrieval, idempotent source replacement,
+stale deletion, manifest reconciliation and orphan cleanup, phase filters,
+typed abstention, reopening the on-disk collection, and controlled
+initialization failure. The semantic golden set runs separately with the
+production embedding through `python scripts/quality.py rag-eval`.
 
 ## 9. API contract testing
 

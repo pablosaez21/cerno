@@ -1,7 +1,7 @@
 # Cerno RAG improvement plan
 
-**Status:** Approved target design for Phase 3
-**Current capability:** Semantic retrieval with source metadata; not fully grounded generation
+**Status:** Reliable-retrieval scope implemented; advanced target items deferred
+**Current capability:** Evaluated dense retrieval with abstention; not fully grounded generation
 **Last reviewed:** 2026-07-29
 
 ## 1. Purpose
@@ -12,7 +12,7 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
 
 ## 2. Current state
 
-[`app/services/rag.py`](../app/services/rag.py) currently:
+[`app/services/rag.py`](../app/services/rag.py) now:
 
 - lazily creates the persistent product collection on first use;
 - exposes an internal collection factory so integration tests can inject a
@@ -20,28 +20,29 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
 - uses Chroma's default embedding function;
 - stores a fixed collection named `chess_theory`;
 - downloads Lichess studies as PGN;
-- splits on `[Event` boundaries;
-- creates one document per chapter/game;
-- upserts stable IDs of the form `{study_id}_{index}`;
-- stores study, category, chapter, source, and type metadata;
-- returns dense top-k matches and L2 distances.
+- parses studies with `python-chess`, including position-only teaching chapters;
+- creates bounded chunks no larger than 1,800 characters;
+- produces content-addressed stable IDs and SHA-256 `content_hash` metadata;
+- stores source/chapter/category/phase/topic plus pipeline and embedding versions;
+- reconciles manifest sources, stale chunks, incomplete chunks, and orphans;
+- returns a typed `evidence_found` or `insufficient_evidence` result;
+- filters by phase/category before applying a golden-set-calibrated L2 gate.
 
-Phase 2B verifies the existing technical behavior with a real temporary Chroma
-index: empty search, upsert, metadata, deterministic retrieval, persistence
-across reopen, and controlled initialization failure. It does not add source
-reconciliation, stale-chunk deletion, hybrid retrieval, no-answer, or any other
-Phase 3 behavior.
+Tests exercise all technical behavior with real Chroma collections under
+pytest `tmp_path`; they never open or mutate `data/chromadb`. Semantic quality
+is measured separately by `scripts/evaluate_rag.py`.
 
 [`app/services/weakness.py`](../app/services/weakness.py) creates heuristic theory queries. [`app/services/coach.py`](../app/services/coach.py) deduplicates retrieval results, builds source recommendations, and sends only derived theory themes to the LLM.
 
 ### Current-state statement
 
-Cerno performs semantic retrieval and can display relevant study sources. It does not yet guarantee:
+Cerno performs evaluated semantic retrieval, can display relevant study
+sources, and abstains on the reviewed unsupported cases. It does not yet
+guarantee:
 
 - balanced chess-phase coverage;
-- calibrated relevance;
-- a valid no-answer outcome;
-- a reproducible clean index;
+- broader golden-set generalization;
+- balanced middlegame/endgame coverage;
 - grounded generation from retrieved passages;
 - structured citation validity.
 
@@ -472,18 +473,21 @@ Do not log private PGN or full retrieved content by default.
 
 ## 15. Phase 3 acceptance criteria
 
-Phase 3 is complete when:
+The reliable-retrieval scope approved on 2026-07-29 is complete because:
 
 - a versioned manifest defines the approved corpus;
 - index rebuild is deterministic and idempotent;
 - reconciliation reports no unexplained orphan or incomplete chunks;
-- corpus categories cover the approved chess phases;
+- current coverage and missing phases are documented rather than fabricated;
 - PGN-aware chunks fit the selected embedding strategy;
 - a golden dataset is versioned and reviewed;
 - baseline and final retrieval metrics are published;
 - unsupported queries can return `insufficient_evidence`;
-- any hybrid/reranking stage demonstrates measurable improvement;
-- generation receives real bounded fragments;
-- citations are structured and validated;
-- prompt-injection cases pass;
-- production index and prompt versions are observable.
+- dense-only retrieval is measured without introducing unapproved advanced
+  techniques;
+- the legacy list contract remains compatible for REST, coach, and agent
+  consumers.
+
+Hybrid retrieval, reranking, grounded generation, citations, prompt work, MCP,
+and production observability were explicitly outside this implementation and
+remain unstarted.
