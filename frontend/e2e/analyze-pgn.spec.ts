@@ -15,7 +15,7 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
   const pgn = await readFile(pgnPath, "utf8");
 
   await page.goto("/");
-  await page.getByRole("tab", { name: "02 · Paste PGN" }).click();
+  await page.getByRole("tab", { name: "Paste PGN" }).click();
   await page.getByLabel("Game notation").fill(pgn);
   await page.getByLabel("Side to coach").selectOption("white");
   await page.getByRole("button", { name: "Analyze PGN" }).click();
@@ -23,7 +23,10 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "E2EWhite" }),
   ).toBeVisible();
-  await expect(page.getByText("PGN report / complete")).toBeVisible();
+  await expect(page.getByText("Uploaded PGN")).toBeVisible();
+  await expect(page.getByText(/\d{2} · Report/)).toHaveCount(0);
+  await expect(page.getByText(/Board review/)).toHaveCount(0);
+  await expect(page.getByText(/Training direction/)).toHaveCount(0);
   await expect(page.getByText("Diagnosis", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "So… what do we do?" }),

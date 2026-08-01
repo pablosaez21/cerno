@@ -38,14 +38,14 @@ describe("AnalysisWorkspace PGN flow", () => {
     const { container } = render(<AnalysisWorkspace />);
 
     expect(
-      screen.getByRole("tab", { name: "01 · Lichess player" }),
+      screen.getByRole("tab", { name: "Lichess player" }),
     ).toHaveAttribute("aria-selected", "true");
-    const pgnTab = screen.getByRole("tab", { name: "02 · Paste PGN" });
+    const pgnTab = screen.getByRole("tab", { name: "Paste PGN" });
     pgnTab.focus();
     await user.keyboard("{Enter}");
 
     expect(pgnTab).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("02 · Paste PGN");
+    expect(screen.getByRole("tabpanel")).toHaveAccessibleName("Paste PGN");
     expect((await runAxe(container)).violations).toEqual([]);
   });
 
@@ -59,7 +59,7 @@ describe("AnalysisWorkspace PGN flow", () => {
     );
     render(<AnalysisWorkspace />);
 
-    await user.click(screen.getByRole("tab", { name: "02 · Paste PGN" }));
+    await user.click(screen.getByRole("tab", { name: "Paste PGN" }));
     await user.click(screen.getByLabelText("Game notation"));
     await user.paste(sourcePgn);
     await user.selectOptions(screen.getByLabelText("Side to coach"), "white");
@@ -70,7 +70,7 @@ describe("AnalysisWorkspace PGN flow", () => {
     expect(
       await screen.findByRole("heading", { name: "FixtureWhite" }),
     ).toBeVisible();
-    expect(screen.getByText("PGN report / complete")).toBeVisible();
+    expect(screen.getByText("Uploaded PGN")).toBeVisible();
     expect(
       screen.getByText(coachAnalysisFixture.coach_advice),
     ).toBeVisible();
@@ -95,7 +95,7 @@ describe("AnalysisWorkspace PGN flow", () => {
     );
     render(<AnalysisWorkspace />);
 
-    await user.click(screen.getByRole("tab", { name: "02 · Paste PGN" }));
+    await user.click(screen.getByRole("tab", { name: "Paste PGN" }));
     const notation = screen.getByLabelText("Game notation");
     await user.click(notation);
     await user.paste(sourcePgn);
@@ -117,14 +117,14 @@ describe("AnalysisWorkspace PGN flow", () => {
   it("does not mutate a result merely by switching input modes", async () => {
     const user = userEvent.setup();
     render(<AnalysisWorkspace />);
-    await user.click(screen.getByRole("tab", { name: "02 · Paste PGN" }));
+    await user.click(screen.getByRole("tab", { name: "Paste PGN" }));
     await user.click(screen.getByLabelText("Game notation"));
     await user.paste(sourcePgn);
     await user.selectOptions(screen.getByLabelText("Side to coach"), "white");
     await user.click(screen.getByRole("button", { name: "Analyze PGN" }));
     await screen.findByRole("heading", { name: "FixtureWhite" });
 
-    await user.click(screen.getByRole("tab", { name: "01 · Lichess player" }));
+    await user.click(screen.getByRole("tab", { name: "Lichess player" }));
 
     expect(screen.getByLabelText("Lichess username")).toBeVisible();
     expect(screen.getByRole("heading", { name: "FixtureWhite" })).toBeVisible();

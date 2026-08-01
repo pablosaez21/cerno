@@ -132,8 +132,7 @@ export function GameViewer({
     >
       <header className="grid border-b border-[var(--line-strong)] md:grid-cols-[1fr_auto]">
         <div className="p-4 sm:p-5">
-          <p className="eyebrow !text-[var(--accent)]">Game review / position board</p>
-          <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-2">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
             <h3 className="display-type text-3xl text-[var(--text-strong)] sm:text-4xl">
               {metadata.event || "Imported game"}
             </h3>

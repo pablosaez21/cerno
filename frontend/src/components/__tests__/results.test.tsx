@@ -83,8 +83,13 @@ describe("analysis result contracts", () => {
       />,
     );
 
-    expect(screen.getByText("PGN report / complete")).toBeVisible();
     expect(screen.getByText("Uploaded PGN")).toBeVisible();
+    expect(screen.queryByText(/\d{2} · Report/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Board review/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Training direction/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Game review / position board"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "View profile" }),
     ).not.toBeInTheDocument();
@@ -119,23 +124,23 @@ describe("analysis result contracts", () => {
     render(<CoachResults result={groundedCoachAnalysisFixture} />);
 
     expect(screen.getByText("Theory evidence · 2 sources")).toBeVisible();
+    const startingStudy = screen.getByLabelText("Recommended starting study");
     expect(
-      screen.getByRole("heading", {
-        name: "I would personally start with “Pawn Endings”.",
-      }),
+      within(startingStudy).getByRole("heading", { name: "Pawn Endings" }),
     ).toBeVisible();
-    expect(screen.getByText("Interactive study range")).toBeVisible();
-    expect(screen.getByText("S1")).toBeVisible();
-    expect(screen.getByText("S2")).toBeVisible();
-    expect(screen.getByText("Pawn Endings")).toBeVisible();
+    expect(
+      within(startingStudy).getByRole("link", {
+        name: "Open recommended study",
+      }),
+    ).toHaveAttribute("href", "https://example.test/pawn-endings");
+    expect(screen.getByText("More interactive studies")).toBeVisible();
     expect(screen.getByText("King Safety")).toBeVisible();
     expect(screen.getByText(/Wikibooks contributors/)).toHaveTextContent(
-      "CC BY-SA 4.0",
+      "Pawn Endgames",
     );
     const studyLinks = screen.getAllByRole("link", { name: "Open study" });
-    expect(studyLinks).toHaveLength(2);
+    expect(studyLinks).toHaveLength(1);
     expect(studyLinks.map((link) => link.getAttribute("href"))).toEqual([
-      "https://example.test/pawn-endings",
       "https://lichess.org/study/king-safety",
     ]);
     expect(

@@ -5,7 +5,7 @@ test("recovers after an invalid PGN", async ({ page }) => {
   const browserErrors = captureBrowserErrors(page);
 
   await page.goto("/");
-  await page.getByRole("tab", { name: "02 · Paste PGN" }).click();
+  await page.getByRole("tab", { name: "Paste PGN" }).click();
   const notation = page.getByLabel("Game notation");
   await notation.fill("this is not a valid PGN");
   await page.getByLabel("Side to coach").selectOption("white");

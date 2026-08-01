@@ -23,14 +23,10 @@ export function LichessGameReview({ games }: { games: CoachGameAnalysis[] }) {
     <section>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow !text-[var(--accent)]">06 · Board review</p>
-          <h3 className="display-type mt-2 text-4xl text-[var(--text-strong)] sm:text-5xl">
+          <h3 className="display-type text-4xl text-[var(--text-strong)] sm:text-5xl">
             Interactive board
           </h3>
         </div>
-        <p className="max-w-md text-xs leading-5 text-[var(--muted)]">
-          Positions come from the engine FEN data and fall back to replaying the original PGN.
-        </p>
       </div>
 
       {games.length > 1 ? (

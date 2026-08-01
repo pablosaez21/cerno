@@ -91,8 +91,7 @@ export function AnalysisWorkspace() {
       <section className="wide-shell pb-14 pt-9 sm:pb-14 sm:pt-11">
         <div className="grid items-end gap-8 border-b border-[var(--line-strong)] pb-9 lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)] lg:pb-12">
           <div>
-            <p className="section-kicker">Chess analysis desk / 01</p>
-            <h1 className="display-type mt-7 max-w-5xl text-[clamp(3.4rem,6.8vw,6.6rem)] text-[var(--text-strong)]">
+            <h1 className="display-type max-w-5xl text-[clamp(3.4rem,6.8vw,6.6rem)] text-[var(--text-strong)]">
               Read the position.
               <span className="block italic text-[var(--accent-strong)]">
                 Train the decision.
@@ -112,14 +111,10 @@ export function AnalysisWorkspace() {
         <div id="analyze" className="scroll-mt-5 pt-8 sm:pt-10">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="eyebrow">Analysis input</p>
-              <h2 className="display-type mt-2 text-4xl text-[var(--text-strong)] sm:text-5xl">
+              <h2 className="display-type text-4xl text-[var(--text-strong)] sm:text-5xl">
                 Select your source
               </h2>
             </div>
-            <p className="font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.1em] text-[var(--muted)]">
-              Current cap · 3 games / depth 10
-            </p>
           </div>
 
           <div className="grid border border-[var(--line-strong)] bg-[var(--surface)] lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
@@ -135,7 +130,7 @@ export function AnalysisWorkspace() {
                   id="analysis-tab-lichess"
                   controls="analysis-panel-lichess"
                 >
-                  01 · Lichess player
+                  Lichess player
                 </ModeButton>
                 <ModeButton
                   active={mode === "pgn"}
@@ -143,7 +138,7 @@ export function AnalysisWorkspace() {
                   id="analysis-tab-pgn"
                   controls="analysis-panel-pgn"
                 >
-                  02 · Paste PGN
+                  Paste PGN
                 </ModeButton>
               </div>
 
