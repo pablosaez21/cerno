@@ -422,6 +422,8 @@ See [prompt-engineering-plan.md](./prompt-engineering-plan.md).
 
 ## 9. Phase 5 — Agent hardening
 
+**Status:** Minimal portfolio scope implemented locally on 2026-07-30.
+
 ### Objective
 
 Retain the structured coach as the primary product flow while making the experimental agent bounded and reusable.
@@ -446,6 +448,21 @@ Retain the structured coach as the primary product flow while making the experim
 - Timeouts and cancellation have tests.
 - Tool execution is observable without logging secrets.
 - The role of `/agent/chat` relative to the structured coach is documented.
+
+### Implementation evidence
+
+- The endpoint remains experimental, has no frontend consumer, and is disabled
+  unless `ENABLE_EXPERIMENTAL_AGENT=true`.
+- The existing three tools use Pydantic arguments and typed, bounded results.
+- The English prompt treats user, PGN, game, and retrieved content as
+  untrusted data.
+- Six model iterations and a 90-second total timeout bound execution.
+- Invalid arguments, unknown tools, and tool failures return sanitized
+  structured errors.
+- Focused tests use injected fake model responses and mocked tools; they make
+  no OpenAI, Lichess, Stockfish, or Chroma request.
+- No persistence, frontend, MCP, LangGraph, authentication, rate limiting, or
+  new observability system was introduced.
 
 ## 10. Phase 6 — MCP implementation
 

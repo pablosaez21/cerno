@@ -189,7 +189,8 @@ Check saved analysis
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | No | OpenAI API key. `/coach/analyze-user` has a fallback when empty; `/agent/chat` returns a controlled 503 without it. Never commit a real key. |
+| `OPENAI_API_KEY` | No | OpenAI API key. The structured coach has a fallback; the explicitly enabled experimental agent requires a key. Never commit a real key. |
+| `ENABLE_EXPERIMENTAL_AGENT` | No | Defaults to `false`. Set to `true` only for a controlled portfolio demonstration of `/agent/chat`. |
 | `OPENAI_MODEL` | No | Model used for coach advice and training-plan generation. Default: `gpt-4o-mini`. |
 | `DATABASE_URL` | Yes | Railway PostgreSQL connection URL. Use `${{Postgres.DATABASE_URL}}`, not localhost. |
 | `CHROMA_PATH` | Yes | ChromaDB persistence path. Production recommendation: `/data/chromadb`. |

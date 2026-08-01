@@ -284,7 +284,7 @@ This means the opening was comparatively accurate, the middlegame was the weakes
 | `POST` | `/theory/search` | Search the ChromaDB knowledge base |
 | `POST` | `/coach/analyze-user` | Run the structured coaching flow |
 | `POST` | `/coach/analyze-pgn` | Run the same coach flow for an uploaded PGN and selected player color |
-| `POST` | `/agent/chat` | Conversational tool-calling endpoint |
+| `POST` | `/agent/chat` | Disabled-by-default experimental tool-calling endpoint |
 | `GET` | `/users/{username}/analyses` | Retrieve persisted analyses |
 | `GET` | `/users/{username}/weakness-profile` | Retrieve the persisted weakness profile |
 
@@ -359,7 +359,8 @@ The tests mock external boundaries and do not require:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | Optional for `/coach/analyze-user` because it has a fallback. Required for `/agent/chat`. | Empty |
+| `OPENAI_API_KEY` | Optional for the structured coach because it has a fallback. Required when the experimental agent is enabled. | Empty |
+| `ENABLE_EXPERIMENTAL_AGENT` | Explicitly enables `/agent/chat`; keep disabled for public deployments. | `false` |
 | `OPENAI_MODEL` | Model used for training-plan generation | `gpt-4o-mini` |
 | `DATABASE_URL` | PostgreSQL connection URL. Railway can provide `${{Postgres.DATABASE_URL}}`; `postgresql://` is normalized for SQLAlchemy. | Local `cerno` database |
 | `CHROMA_PATH` | ChromaDB persistence directory | `data/chromadb` |

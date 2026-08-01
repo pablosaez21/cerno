@@ -847,6 +847,37 @@ metrics. Tests use fake clients and make no real OpenAI request. The agent,
 MCP, corpus, embeddings, retrieval policy, prompts outside the production
 coach, and later phases are unchanged.
 
+### DEC-039 — Keep the experimental agent as a disabled bounded demonstration
+
+**Status:** Accepted and implemented
+
+**Problem:** `/agent/chat` had no frontend or internal production consumer, but
+was publicly mounted, required a paid provider, used an unbounded tool loop,
+accepted unvalidated JSON arguments, returned untyped data, and instructed the
+model in Spanish.
+
+**Decision:** Keep the three existing tools as a small portfolio demonstration,
+not as a second product flow. Disable the endpoint by default behind
+`ENABLE_EXPERIMENTAL_AGENT`. When explicitly enabled, use English instructions
+and responses, Pydantic tool arguments/results, six model iterations, a
+90-second total timeout, compact Stockfish results, and sanitized structured
+tool errors. Keep the structured coach as the primary product flow.
+
+**Rationale:** Removing the unused endpoint would be simpler, but a bounded
+function-calling example has portfolio value. A local dispatcher is sufficient;
+LangGraph, persistence, authentication, rate limiting, MCP, and a generic tool
+framework would add complexity without current product evidence.
+
+**Impact:** Public deployments incur no agent-model spend unless the feature is
+explicitly enabled. Existing `/agent/index-study` and `/agent/search-theory`
+routes are unchanged apart from English controlled errors. No frontend,
+database, coach, RAG, or MCP contract changes.
+
+**Evidence:** Focused tests inject model responses and mock every external tool.
+They cover the disabled state, typed response, three-tool execution, compact
+Stockfish output, argument/tool failures, six-iteration termination, and total
+timeout without real OpenAI calls.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit

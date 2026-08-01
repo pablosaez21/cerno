@@ -188,7 +188,18 @@ The target design is specified in [rag-improvement-plan.md](./rag-improvement-pl
 
 ### 3.7 OpenAI agent
 
-[`app/services/agent.py`](../app/services/agent.py) defines `fetch_games`, `analyze_game`, and `search_theory` as OpenAI function-calling tools. The backend executes selected functions in an unbounded loop.
+[`app/services/agent.py`](../app/services/agent.py) defines `fetch_games`,
+`analyze_game`, and `search_theory` as typed OpenAI function-calling tools. The
+agent is an experimental portfolio demonstration and is not called by the
+frontend or structured coach. `/agent/chat` is disabled by default and returns
+a controlled `503` unless `ENABLE_EXPERIMENTAL_AGENT=true`.
+
+When explicitly enabled, the English-only agent has a maximum of six model
+iterations and a 90-second total timeout. Pydantic validates tool arguments and
+typed results before they become tool messages. Invalid arguments, unknown
+tools, and service failures become sanitized structured errors. Stockfish
+results include only the summary, phase weaknesses, and ten largest critical
+moments rather than the full move/FEN payload.
 
 This is provider-specific internal function calling. It is not MCP:
 

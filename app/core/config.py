@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://cerno:cerno@localhost:5432/cerno"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
+    enable_experimental_agent: bool = False
     stockfish_path: str | None = None
     chroma_path: str = "data/chromadb"
     lichess_api_base_url: str = "https://lichess.org"
