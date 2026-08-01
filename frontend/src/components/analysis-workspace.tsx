@@ -18,7 +18,7 @@ const lichessSteps = [
   "Evaluating positions with Stockfish",
   "Detecting patterns and weaknesses",
   "Matching relevant theory",
-  "Building the training plan",
+  "Preparing the coaching report",
 ];
 
 const pgnSteps = [
@@ -26,14 +26,14 @@ const pgnSteps = [
   "Evaluating each move with Stockfish",
   "Detecting patterns and weaknesses",
   "Matching relevant theory",
-  "Building the training plan",
+  "Preparing the coaching report",
 ];
 
 const outputSteps = [
   "Position reconstruction",
   "Stockfish evaluation",
-  "Critical-moment detection",
-  "Phase performance summary",
+  "Weakness diagnosis",
+  "Educational study matching",
 ];
 
 type Mode = "lichess" | "pgn";
@@ -117,7 +117,7 @@ export function AnalysisWorkspace() {
                 Select your source
               </h2>
             </div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+            <p className="font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.1em] text-[var(--muted)]">
               Current cap · 3 games / depth 10
             </p>
           </div>

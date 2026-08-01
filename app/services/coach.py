@@ -401,7 +401,7 @@ def resolve_player_color(game: Game, username: str) -> str | None:
 
 def collect_theory_results(
     queries: list[str],
-    n_results: int = 2,
+    n_results: int = 3,
     *,
     phase: str | None = None,
 ) -> list[dict]:
@@ -418,9 +418,10 @@ def collect_theory_results(
             result = evidence.model_dump()
             metadata = result.get("metadata", {})
             source_key = (
-                metadata.get("source_id") or metadata.get("study_id"),
-                metadata.get("chapter"),
-                metadata.get("content_hash") or metadata.get("source"),
+                metadata.get("source_id")
+                or metadata.get("study_id")
+                or metadata.get("source")
+                or metadata.get("content_hash")
             )
             if source_key in seen_sources:
                 continue

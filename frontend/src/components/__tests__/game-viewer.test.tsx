@@ -73,6 +73,11 @@ describe("GameViewer navigation", () => {
 
   it("jumps to an exact critical ply", async () => {
     const user = userEvent.setup();
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
     render(<GameViewer result={pgnAnalysisFixture} sourcePgn={sourcePgn} />);
 
     await user.click(screen.getByRole("button", { name: "Go to start" }));
@@ -85,6 +90,11 @@ describe("GameViewer navigation", () => {
       "data-position",
       pgnMovesFixture[4].fen_after,
     );
+    expect(screen.getByLabelText("Selected board position")).toHaveFocus();
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "start",
+    });
   });
 });
 

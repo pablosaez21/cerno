@@ -28,7 +28,7 @@ vi.mock("react-chessboard", () => ({
 }));
 
 describe("analysis result contracts", () => {
-  it("keeps global game moments in the viewer and personal moments in coaching", () => {
+  it("keeps critical moments only as board navigation", () => {
     render(<CoachResults result={coachAnalysisBlackFixture} />);
 
     const viewer = screen.getByRole("region", { name: "Game viewer" });
@@ -47,13 +47,10 @@ describe("analysis result contracts", () => {
       within(viewer).getByLabelText("Board viewed from black's side"),
     ).toBeVisible();
 
-    const personalHeading = screen.getByRole("heading", {
-      name: "Critical moments",
-    });
-    const personalSection = personalHeading.closest("section");
-    expect(personalSection).not.toBeNull();
-    expect(within(personalSection!).getByText(/3\. Nxe5/)).toBeVisible();
-    expect(within(personalSection!).queryByText(/Qxe5/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Critical moments" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText("Critical moments")).toHaveLength(1);
   });
 
   it("renders an accessible PGN result and board controls", async () => {
@@ -92,39 +89,58 @@ describe("analysis result contracts", () => {
       screen.queryByRole("link", { name: "View profile" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Review the board" }),
+      screen.getByRole("heading", { name: "Interactive board" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Phase performance" }),
+      screen.getByRole("heading", { name: "Diagnosis" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Critical moments" }),
+      screen.getByRole("heading", { name: "Weaknesses" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Strengths")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Detected patterns" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Train with intent." }),
+      screen.getByRole("heading", { name: "So… what do we do?" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { name: "Sources" }),
-    ).toBeVisible();
+      screen.queryByRole("heading", { name: "Phase performance" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Critical moments" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Sources" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders grounding, recommendation citations and source attribution", () => {
     render(<CoachResults result={groundedCoachAnalysisFixture} />);
 
-    expect(screen.getByText("Corpus-grounded coaching")).toBeVisible();
-    expect(screen.getByText("Theory evidence")).toBeVisible();
-    expect(screen.getByText("S1 · Pawn Endings")).toBeVisible();
+    expect(screen.getByText("Theory evidence · 2 sources")).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        name: "I would personally start with “Pawn Endings”.",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("Interactive study range")).toBeVisible();
+    expect(screen.getByText("S1")).toBeVisible();
+    expect(screen.getByText("S2")).toBeVisible();
+    expect(screen.getByText("Pawn Endings")).toBeVisible();
+    expect(screen.getByText("King Safety")).toBeVisible();
     expect(screen.getByText(/Wikibooks contributors/)).toHaveTextContent(
       "CC BY-SA 4.0",
     );
-    expect(screen.getByRole("link", { name: "Open source" })).toHaveAttribute(
-      "href",
+    const studyLinks = screen.getAllByRole("link", { name: "Open study" });
+    expect(studyLinks).toHaveLength(2);
+    expect(studyLinks.map((link) => link.getAttribute("href"))).toEqual([
       "https://example.test/pawn-endings",
-    );
-    expect(screen.getByRole("link", { name: "Attribution" })).toHaveAttribute(
-      "href",
-      "https://example.test/pawn-endings-history",
-    );
+      "https://lichess.org/study/king-safety",
+    ]);
+    expect(
+      screen.getAllByRole("link", { name: "Author profile" })[0],
+    ).toHaveAttribute("href", "https://example.test/pawn-endings-history");
     expect(screen.getByRole("link", { name: "License" })).toHaveAttribute(
       "href",
       "https://creativecommons.org/licenses/by-sa/4.0/",
@@ -135,11 +151,11 @@ describe("analysis result contracts", () => {
     render(<CoachResults result={coachAnalysisBlackFixture} />);
 
     expect(screen.getByText("Game-analysis evidence only")).toBeVisible();
-    expect(screen.getByText("Game-analysis evidence")).toBeVisible();
+    expect(screen.getByText("Review forcing replies")).toBeVisible();
     expect(
-      screen.getByText(/No relevant theory source was available/),
+      screen.getByText(/No relevant interactive study was found/),
     ).toBeVisible();
-    expect(screen.queryByText("Theory evidence")).not.toBeInTheDocument();
+    expect(screen.queryByText("Practice opposition")).not.toBeInTheDocument();
   });
 
   it("switches between analyzed games and updates player orientation", async () => {

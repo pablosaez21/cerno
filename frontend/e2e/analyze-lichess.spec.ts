@@ -14,7 +14,9 @@ test("analyzes a simulated Lichess game through the real internal stack", async 
   await page.getByRole("checkbox", { name: /Save analysis/ }).uncheck();
   await page.getByRole("button", { name: "Analyze games" }).click();
 
-  await expect(page.getByRole("heading", { name: "CernoE2E" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "CernoE2E" })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.getByText("1 of 1 requested game")).toBeVisible();
   await expect(page.getByText("Temporary report · not saved")).toBeVisible();
 

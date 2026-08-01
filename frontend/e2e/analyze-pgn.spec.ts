@@ -26,11 +26,21 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
   await expect(page.getByText("PGN report / complete")).toBeVisible();
   await expect(page.getByText("Diagnosis", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Train with intent." }),
+    page.getByRole("heading", { name: "So… what do we do?" }),
   ).toBeVisible();
   await expect(
-    page.locator("ol").filter({ hasText: "Day 1" }).getByRole("listitem").first(),
+    page
+      .locator('section[aria-labelledby="training-direction-title"] ol')
+      .getByRole("listitem")
+      .first(),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Phase performance" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Critical moments" }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/^(?:Day|Week) \d+:/)).toHaveCount(0);
   const viewer = page.getByRole("region", { name: "Game viewer" });
   await expect(viewer).toBeVisible();
   await expect(viewer.getByText("5 / 6", { exact: true })).toBeVisible();
@@ -46,6 +56,7 @@ test("analyzes a PGN with the real backend and Stockfish", async ({ page }) => {
     .getByRole("button", { name: /Qxe5\+.*Blunder.*pawns/ })
     .click();
   await expect(viewer.getByText("5 / 6", { exact: true })).toBeVisible();
+  await expect(viewer.getByLabel("Selected board position")).toBeFocused();
 
   const board = viewer.getByLabel("Board viewed from white's side");
   for (const viewport of [

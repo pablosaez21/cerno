@@ -74,9 +74,10 @@ describe("AnalysisWorkspace PGN flow", () => {
     expect(
       screen.getByText(coachAnalysisFixture.coach_advice),
     ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Coach reading" })).toBeVisible();
     expect(screen.getByText("Diagnosis", { exact: true })).toBeVisible();
     expect(
-      screen.getByText(coachAnalysisFixture.training_plan.week_plan[0]),
+      screen.getByText(coachAnalysisFixture.actionable_recommendations[0].actions[0]),
     ).toBeVisible();
     expect(screen.getByRole("region", { name: "Game viewer" })).toBeVisible();
   });
@@ -158,6 +159,16 @@ describe("AnalysisWorkspace Lichess flow", () => {
       save: true,
     });
     expect(screen.getByText("Pause before forcing captures and verify every opponent reply.")).toBeVisible();
+    for (const heading of [
+      "Coach reading",
+      "Diagnosis",
+      "Weaknesses",
+      "Detected patterns",
+      "Interactive board",
+      "So… what do we do?",
+    ]) {
+      expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+    }
     expect((await runAxe(container)).violations).toEqual([]);
   });
 

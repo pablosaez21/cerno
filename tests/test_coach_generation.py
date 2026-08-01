@@ -170,6 +170,38 @@ def test_theoretical_recommendation_without_citation_is_rejected():
     assert result.metadata.reason == "validation_error"
 
 
+def test_first_theory_recommendation_must_choose_one_starting_source():
+    payload = valid_output().model_dump()
+    payload["recommendations"][1]["source_ids"] = ["S1", "S2"]
+    context = prompt_context().model_copy(
+        update={
+            "sources": [
+                *prompt_context().sources,
+                prompt_context()
+                .sources[0]
+                .model_copy(
+                    update={
+                        "citation_id": "S2",
+                        "source_id": "source-2",
+                        "title": "Rook Endings",
+                    }
+                ),
+            ]
+        }
+    )
+
+    result = asyncio.run(generate_coach_output(context, client=FakeClient(payload)))
+
+    assert result.metadata.mode == "fallback"
+    assert result.metadata.reason == "validation_error"
+    theory = [
+        recommendation
+        for recommendation in result.output.recommendations
+        if recommendation.evidence_type == "theory"
+    ]
+    assert theory[0].source_ids == ["S1"]
+
+
 def test_insufficient_evidence_keeps_game_coaching_without_citations():
     context = prompt_context(with_source=False)
     payload = valid_output().model_dump()
@@ -246,3 +278,6 @@ def test_no_api_key_fallback_is_grounded_when_sources_exist():
         if recommendation.evidence_type == "theory"
     ]
     assert theory and theory[0].source_ids == ["S1"]
+    assert "42. Kf3" in result.output.coaching_summary
+    assert "late king activity" in result.output.coaching_summary
+    assert theory[0].title == "Start with Pawn Endings"

@@ -150,7 +150,7 @@ export function PlayerProfile({ username }: { username: string }) {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <p className="p-4 text-sm font-semibold sm:px-5">{item.title}</p>
-                <span className="mr-4 font-mono text-[10px] font-bold uppercase text-[var(--muted)]">
+                <span className="mr-4 font-mono text-[11px] font-bold uppercase leading-5 text-[var(--muted)]">
                   {item.priority}
                 </span>
               </article>
@@ -187,7 +187,7 @@ export function PlayerProfile({ username }: { username: string }) {
                     {analysis.opening_name || "Game"}{" "}
                     {analysis.opponent ? `vs ${analysis.opponent}` : ""}
                   </p>
-                  <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--muted)]">
+                  <p className="mt-1 font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.04em] text-[var(--muted)]">
                     {analysis.color_played ? titleCase(analysis.color_played) : "Color unavailable"}
                     {" · "}
                     {analysis.result || "Result unavailable"}

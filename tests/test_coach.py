@@ -40,9 +40,56 @@ def test_theory_collection_passes_diagnosed_phase_to_retrieval():
 
     search.assert_called_once_with(
         "king safety principles",
-        n_results=2,
+        n_results=3,
         phase="middlegame",
     )
+
+
+def test_theory_collection_returns_distinct_studies():
+    shared = {
+        "text": "Educational study content.",
+        "distance": 0.25,
+    }
+    documents = [
+        TheoryEvidence(
+            **shared,
+            metadata={
+                "source_id": "study-1",
+                "study_id": "study-1",
+                "chapter": "Chapter one",
+                "source": "https://lichess.org/study/study-1",
+            },
+        ),
+        TheoryEvidence(
+            **shared,
+            metadata={
+                "source_id": "study-1",
+                "study_id": "study-1",
+                "chapter": "Chapter two",
+                "source": "https://lichess.org/study/study-1",
+            },
+        ),
+        TheoryEvidence(
+            **shared,
+            metadata={
+                "source_id": "study-2",
+                "study_id": "study-2",
+                "chapter": "A different study",
+                "source": "https://lichess.org/study/study-2",
+            },
+        ),
+    ]
+
+    with patch(
+        "app.services.coach.retrieve_theory",
+        return_value=retrieval_result(documents),
+    ):
+        results = collect_theory_results(["middlegame planning"])
+
+    assert [item["metadata"]["source_id"] for item in results] == [
+        "study-1",
+        "study-2",
+    ]
 
 
 def test_analyze_user_returns_structured_coaching_response(client):

@@ -38,7 +38,7 @@ export function LoadingPipeline({ steps }: { steps: string[] }) {
                   : "border-[var(--line)] text-[var(--muted)]"
               }`}
             >
-              <span className="mb-3 flex items-center justify-between font-mono text-[10px]">
+              <span className="mb-3 flex items-center justify-between font-mono text-[11px] leading-5">
                 {String(index + 1).padStart(2, "0")}
                 {complete ? (
                   <Check size={14} className="text-[var(--accent)]" aria-hidden="true" />

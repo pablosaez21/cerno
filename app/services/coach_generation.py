@@ -168,7 +168,7 @@ def validate_grounded_output(
     allowed_engine_evidence = {
         evidence.evidence_id for evidence in context.engine_evidence
     }
-    theoretical_recommendations = 0
+    theoretical_recommendations: list[GeneratedCoachRecommendation] = []
 
     for recommendation in output.recommendations:
         unknown_sources = set(recommendation.source_ids) - allowed_sources
@@ -184,7 +184,7 @@ def validate_grounded_output(
                 "Generated output cites engine evidence IDs that were not supplied."
             )
         if recommendation.evidence_type == "theory":
-            theoretical_recommendations += 1
+            theoretical_recommendations.append(recommendation)
             if context.retrieval_status == "insufficient_evidence":
                 raise ValueError(
                     "Theory recommendations are forbidden without RAG evidence."
@@ -193,6 +193,13 @@ def validate_grounded_output(
     if context.retrieval_status == "evidence_found" and not theoretical_recommendations:
         raise ValueError(
             "Evidence-found output must include a cited theory recommendation."
+        )
+    if (
+        theoretical_recommendations
+        and len(theoretical_recommendations[0].source_ids) != 1
+    ):
+        raise ValueError(
+            "The first theory recommendation must select exactly one starting source."
         )
 
     visible_text = " ".join(
@@ -253,14 +260,34 @@ def build_fallback_output(context: CoachPromptInput) -> GeneratedCoachOutput:
     main = str(context.analysis.get("main_weakness") or "middlegame")
     secondary = _optional_text(context.analysis.get("secondary_weakness"))
     patterns = [str(item) for item in context.analysis.get("detected_patterns", [])]
+    recommended_focus = [
+        str(item) for item in context.analysis.get("recommended_focus", [])
+    ]
     best_phase = detect_best_phase(context.analysis.get("phase_stats", {}))
-    weakness_text = f"your biggest evaluation losses occur in the {main}"
+    games_analyzed = int(context.analysis.get("games_analyzed") or 0)
+    weakness_text = f"your clearest training priority is the {main}"
     if secondary:
-        weakness_text += f", with additional pressure in the {secondary}"
+        weakness_text += f", with the {secondary} as a secondary concern"
 
-    summary = f"The game analysis shows that {weakness_text}."
+    sample_label = (
+        f"this {games_analyzed}-game sample"
+        if games_analyzed
+        else "the analyzed sample"
+    )
+    summary = f"After reviewing {sample_label}, {weakness_text}."
+    if context.engine_evidence:
+        moment = context.engine_evidence[0]
+        loss = f"{moment.cpl / 100:.2f}".rstrip("0").rstrip(".")
+        summary += (
+            f" The clearest turning point was {moment.move_number}. {moment.move}, "
+            f"recorded as a {moment.classification} with a {loss}-pawn loss."
+        )
     if patterns:
-        summary += f" The recurring pattern is {', '.join(patterns[:2])}."
+        summary += f" That fits the recurring pattern of {', '.join(patterns[:2])}."
+    if recommended_focus:
+        summary += f" Start by making {recommended_focus[0]} a repeatable habit."
+    else:
+        summary += " Start by slowing down at the critical positions and comparing candidate moves."
     if context.retrieval_status == "insufficient_evidence":
         summary += (
             " No relevant theory source was available, so these recommendations "
@@ -297,12 +324,14 @@ def build_fallback_output(context: CoachPromptInput) -> GeneratedCoachOutput:
     ]
     if context.sources:
         source = context.sources[0]
+        study_focus = source.chapter or source.category or main
         recommendations.append(
             GeneratedCoachRecommendation(
-                title=f"Connect the review to {source.title}",
+                title=f"Start with {source.title}",
                 explanation=(
-                    "The supplied theory source covers the diagnosed training "
-                    "area and can be compared with the critical game positions."
+                    f"I would begin here because its focus on {study_focus} directly "
+                    f"supports the diagnosed {main} weakness and gives you a concrete "
+                    "reference for the critical positions."
                 ),
                 actions=[
                     "Read the supplied section and write down two ideas that apply "

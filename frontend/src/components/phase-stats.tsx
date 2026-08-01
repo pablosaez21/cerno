@@ -71,7 +71,7 @@ function Metric({
 }) {
   return (
     <div>
-      <div className="flex min-h-5 items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--muted)]">
+      <div className="flex min-h-5 items-center gap-1.5 font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.04em] text-[var(--muted)]">
         <span>{label}</span>
         {info ? <MetricInfo info={info} /> : null}
       </div>

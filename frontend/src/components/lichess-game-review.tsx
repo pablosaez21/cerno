@@ -23,9 +23,9 @@ export function LichessGameReview({ games }: { games: CoachGameAnalysis[] }) {
     <section>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="eyebrow !text-[var(--accent)]">02 · Analyzed games</p>
+          <p className="eyebrow !text-[var(--accent)]">06 · Board review</p>
           <h3 className="display-type mt-2 text-4xl text-[var(--text-strong)] sm:text-5xl">
-            Review the board
+            Interactive board
           </h3>
         </div>
         <p className="max-w-md text-xs leading-5 text-[var(--muted)]">
@@ -52,7 +52,7 @@ export function LichessGameReview({ games }: { games: CoachGameAnalysis[] }) {
               </span>
               <span>
                 <span className="block text-sm font-semibold">vs {game.opponent}</span>
-                <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--muted)]">
+                <span className="mt-1 block font-mono text-[11px] uppercase leading-5 tracking-[0.06em] text-[var(--muted)]">
                   {titleCase(game.player_color)} · {titleCase(game.result)}
                 </span>
               </span>

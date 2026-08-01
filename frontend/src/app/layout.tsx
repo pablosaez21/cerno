@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Newsreader } from "next/font/google";
+import { Martian_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const bodyFont = IBM_Plex_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const groteskFont = localFont({
+  src: "./fonts/MartianGrotesk.woff2",
+  variable: "--font-grotesk",
+  display: "swap",
+  weight: "100 1000",
+  style: "normal",
 });
 
-const displayFont = Newsreader({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const monoFont = IBM_Plex_Mono({
+const monoFont = Martian_Mono({
   variable: "--font-mono-face",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "variable",
+  axes: ["wdth"],
 });
 
 export const metadata: Metadata = {
@@ -34,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}
+      className={`${groteskFont.variable} ${monoFont.variable}`}
     >
       <body>{children}</body>
     </html>

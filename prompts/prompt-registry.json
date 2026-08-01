@@ -2,7 +2,7 @@
   "prompts": [
     {
       "name": "cerno.coach.grounded_training",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "schema_version": "2.0.0",
       "implementation": "app/prompts/coach.py",
       "production_flow": "structured coach",

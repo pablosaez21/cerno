@@ -1,7 +1,7 @@
 # Cerno decision log
 
 **Status:** Living architecture decision record
-**Last reviewed:** 2026-07-29
+**Last reviewed:** 2026-08-01
 
 ## 1. How to use this log
 
@@ -915,6 +915,39 @@ than being relabelled.
 `evals/results/rag_lichess_calibration.json` and
 `evals/results/rag_lichess_final.json`. Reconciliation is clean and the second
 index run is idempotent.
+
+### DEC-041 — One grounded coach call selects a starting study
+
+**Status:** Accepted and implemented
+
+**Problem:** The report repeated the weakest phase, exposed an unreliable
+strengths section, and showed only the source attached to an individual
+recommendation even when retrieval had found several useful studies. Critical
+moment navigation also changed the position without returning the viewport to
+the board.
+
+**Decision:** Keep one grounded structured-output call. Prompt version `2.1.0`
+makes the summary connect concrete player evidence to a practical habit and
+requires the first theory recommendation to select exactly one supplied study
+as Cerno's personal starting point. Retrieve up to five distinct studies,
+present them as a range in the report, and keep the response schema compatible.
+The frontend hides the weakly evidenced strengths field and makes critical
+moment selection focus and scroll to the board.
+
+**Rationale:** The model already receives the diagnosis, engine moments, and
+retrieved studies. A second call would repeat the same context while adding
+latency and cost. Keeping the selection as a validated cited recommendation
+also prevents invented study references.
+
+**Impact:** Lichess and PGN retain the same REST contract and composition. The
+compatibility `strengths` field remains available to existing consumers but is
+not displayed in the current report. If retrieval yields fewer distinct valid
+studies, Cerno shows only the available evidence rather than inventing range.
+
+**Evidence:** Prompt contract evaluation remains `1.0` across all seven
+deterministic metrics. Backend tests cover distinct-study collection,
+personalized fallback evidence, and single-source starting selection. Frontend
+tests cover the study range, hidden strengths, and board focus/scroll.
 
 ## 3. Verified discrepancies
 

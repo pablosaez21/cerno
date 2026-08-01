@@ -2,7 +2,7 @@
 
 **Status:** Current-state reference and approved target architecture
 **Audience:** Contributors, reviewers, and technical interviewers
-**Last reviewed:** 2026-07-30
+**Last reviewed:** 2026-08-01
 
 ## 1. Purpose
 
@@ -48,6 +48,13 @@ The frontend is implemented in [`frontend/src`](../frontend/src):
 - `react-chessboard` renders the board.
 - [`api.ts`](../frontend/src/lib/api.ts) calls the REST API.
 - [`types.ts`](../frontend/src/lib/types.ts) manually mirrors backend response contracts.
+
+Both analysis inputs render the same seven-part coaching composition: report
+status, coach reading, diagnosis, weaknesses, detected patterns, interactive
+board, and training direction. The final section exposes distinct retrieved
+studies and highlights the single study selected by the grounded coach as the
+best starting point. Critical moments remain board navigation and return focus
+and viewport to the selected position.
 
 The frontend uses TypeScript strict mode. Vitest and React Testing Library cover
 deterministic helpers, the API client, forms, result states, the player profile,
@@ -112,8 +119,9 @@ All plies are required by the board viewer. Since Phase 1, every move exposes
 7. searches ChromaDB;
 8. passes bounded retrieved chunks and source metadata to the grounded coach
    generator;
-9. validates a structured coaching summary, strengths, weaknesses, actionable
-   recommendations, and source references, or uses a deterministic fallback;
+9. validates a player-specific coaching summary, weaknesses, actionable
+   recommendations, a single cited starting study, and source references, or
+   uses a deterministic fallback;
 10. derives the existing training-plan fields from that validated result;
 11. optionally persists the player-specific result.
 

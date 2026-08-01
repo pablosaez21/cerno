@@ -1,5 +1,13 @@
 # Prompt changelog
 
+## cerno.coach.grounded_training 2.1.0 -- 2026-08-01
+
+- Made the coaching summary connect concrete player evidence to a practical habit
+  instead of repeating the weakest phase.
+- Required the first theory recommendation to select exactly one supplied study as
+  Cerno's personal starting point and explain why it should come first.
+- Kept the existing structured output schema and single provider call.
+
 ## cerno.coach.grounded_training 2.0.0 -- 2026-07-30
 
 - Replaced inline free-form JSON instructions with a versioned developer prompt.

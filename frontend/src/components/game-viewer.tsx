@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useMemo, useState } from "react";
+import { KeyboardEvent, useMemo, useRef, useState } from "react";
 import {
   ChevronFirst,
   ChevronLast,
@@ -48,6 +48,7 @@ export function GameViewer({
   const [orientation, setOrientation] = useState<Orientation>(
     initialOrientation ?? metadata.orientation,
   );
+  const boardReviewRef = useRef<HTMLDivElement>(null);
   const selectedMove = currentPly > 0 ? result.moves[currentPly - 1] : undefined;
   const playedSquares = getPlayedSquares(selectedMove);
   const position = positions[currentPly] ?? positions.at(-1) ?? "start";
@@ -94,6 +95,15 @@ export function GameViewer({
 
   function selectPly(nextPly: number) {
     setCurrentPly(Math.max(0, Math.min(nextPly, result.moves.length)));
+  }
+
+  function openCriticalMoment(ply: number) {
+    selectPly(ply);
+    boardReviewRef.current?.focus({ preventScroll: true });
+    boardReviewRef.current?.scrollIntoView?.({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   function handleKeyboard(event: KeyboardEvent<HTMLDivElement>) {
@@ -147,7 +157,12 @@ export function GameViewer({
         </button>
       </header>
 
-      <div className="grid xl:grid-cols-[minmax(420px,1.12fr)_minmax(340px,0.88fr)]">
+      <div
+        ref={boardReviewRef}
+        tabIndex={-1}
+        aria-label="Selected board position"
+        className="grid scroll-mt-4 xl:grid-cols-[minmax(420px,1.12fr)_minmax(340px,0.88fr)]"
+      >
         <div className="bg-[var(--night-deep)] p-3 sm:p-5 xl:border-r xl:border-[var(--line-strong)]">
           <div
             className="mx-auto w-full max-w-[680px]"
@@ -184,7 +199,7 @@ export function GameViewer({
               </ViewerButton>
             </div>
           </div>
-          <p className="mt-3 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
+          <p className="mt-3 font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.06em] text-[var(--muted)]">
             Use ← → to review the game · blue marks the played move
           </p>
         </div>
@@ -195,7 +210,7 @@ export function GameViewer({
           <div className="min-h-0 border-t border-[var(--line-strong)]">
             <div className="flex items-center justify-between border-b border-[var(--line-strong)] bg-[var(--night-deep)] px-4 py-3">
               <p className="eyebrow">Move list</p>
-              <span className="font-mono text-[10px] text-[var(--accent)]">
+              <span className="font-mono text-[11px] leading-5 text-[var(--accent)]">
                 {result.total_moves} plies
               </span>
             </div>
@@ -239,7 +254,7 @@ export function GameViewer({
                   key={`${moment.move_number}-${moment.move_uci}-${index}`}
                   type="button"
                   disabled={ply === null}
-                  onClick={() => ply !== null && selectPly(ply)}
+                  onClick={() => ply !== null && openCriticalMoment(ply)}
                   className={`grid min-h-24 grid-cols-[42px_1fr] gap-3 border-b border-[var(--line-strong)] p-4 text-left sm:border-r ${
                     ply === currentPly
                       ? "bg-[var(--accent-soft)]"
@@ -311,7 +326,7 @@ function PositionReport({ move, currentPly }: { move?: PgnMove; currentPly: numb
         The played move changes the evaluation by{" "}
         {formatPawnValue(move.cpl)}{" "}pawns from the moving side&apos;s perspective.
       </p>
-      <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--muted)]">
+      <p className="mt-4 font-mono text-[11px] font-semibold uppercase leading-5 tracking-[0.06em] text-[var(--muted)]">
         The current analysis contract does not include a recommended variation.
       </p>
     </article>
@@ -321,7 +336,7 @@ function PositionReport({ move, currentPly }: { move?: PgnMove; currentPly: numb
 function EngineMetric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className={`border-r border-[var(--line-strong)] p-3 last:border-r-0 ${accent ? "bg-[var(--accent-soft)]" : ""}`}>
-      <dt className="font-mono text-[9px] font-bold uppercase tracking-[0.06em] text-[var(--muted)]">
+      <dt className="font-mono text-[11px] font-bold uppercase leading-5 tracking-[0.06em] text-[var(--muted)]">
         {label}
       </dt>
       <dd className="mt-1 font-mono text-lg font-bold text-[var(--text-strong)] sm:text-xl">{value}</dd>

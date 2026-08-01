@@ -2,7 +2,7 @@
 
 **Status:** Phase 4 implemented locally
 **Current capability:** Versioned grounded Structured Outputs coach with deterministic fallback
-**Last reviewed:** 2026-07-30
+**Last reviewed:** 2026-08-01
 
 ## 1. Purpose
 
@@ -41,6 +41,13 @@ message and the serializer for dynamic data. The model receives:
 The current configured `gpt-4o-mini` call uses the installed OpenAI SDK's
 `chat.completions.parse` Pydantic Structured Outputs integration. The existing
 model, temperature `0.3`, and provider remain unchanged.
+
+Prompt version `2.1.0` makes the summary connect the largest recorded decision,
+recurring pattern, and practical habit instead of restating only the weakest
+phase. Within that same provider call, the first theory recommendation must
+select exactly one supplied study as Cerno's starting point and explain why it
+fits the diagnosis. The frontend may still present the remaining retrieved
+studies as alternatives; no second model call is required.
 
 ### 2.2 Experimental agent
 
@@ -166,6 +173,10 @@ class GeneratedCoachOutput(BaseModel):
 Both models reject extra fields and bound string/list sizes. The legacy
 training plan and coach advice are derived from this validated output so
 existing consumers continue to work.
+
+The `strengths` compatibility field remains in the response schema, but the
+current analysis report intentionally presents weaknesses only. This avoids
+turning weak positive evidence from a small game sample into a product claim.
 
 ### 6.2 Validation rules
 

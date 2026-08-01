@@ -1,7 +1,7 @@
 # Cerno professionalization plan
 
 **Status:** Approved implementation sequence
-**Last reviewed:** 2026-07-29
+**Last reviewed:** 2026-08-01
 
 ## 1. Objective
 
@@ -411,7 +411,7 @@ Make prompt behavior explicit, versioned, schema-validated, evaluable, and resis
 
 ### Implementation evidence
 
-- `cerno.coach.grounded_training` version `2.0.0` is implemented as code in
+- `cerno.coach.grounded_training` version `2.1.0` is implemented as code in
   `app/prompts/coach.py` and registered in `prompts/prompt-registry.json`.
 - The production coach uses Pydantic Structured Outputs and validates supplied
   engine/source references before exposing the result.
