@@ -379,6 +379,11 @@ def chunk_study_pgn(
     language: str = "en",
     provider: str = "lichess-study",
     study_title: str | None = None,
+    author: str | None = None,
+    attribution_url: str | None = None,
+    content_license: str | None = None,
+    license_url: str | None = None,
+    included_chapters: set[str] | None = None,
 ) -> list[dict]:
     """Parse a study PGN and create bounded, reproducible teaching chunks."""
     active_phase = phase or phase_for_category(category)
@@ -407,6 +412,9 @@ def chunk_study_pgn(
             or f"Chapter {chapter_index + 1}"
         )
         chapter_id = f"{study_id}:{chapter_index}"
+        if included_chapters and chapter not in included_chapters:
+            chapter_index += 1
+            continue
         context = (
             f"{active_title}. {chapter}. "
             f"Category: {category.replace('_', ' ')}. "
@@ -444,27 +452,41 @@ def chunk_study_pgn(
         for chunk_index, text in enumerate(text_chunks):
             content_hash = hash_content(text)
             chunk_id = f"{study_id}:{chapter_index}:{chunk_index}:{content_hash[:12]}"
+            metadata = {
+                "source_id": study_id,
+                "provider": provider,
+                "study_id": study_id,
+                "study_title": active_title,
+                "chapter_id": chapter_id,
+                "chapter": chapter,
+                "category": category,
+                "phase": active_phase,
+                "topic": active_topic,
+                "language": language,
+                "source": source_url,
+                "type": "lichess_study",
+                "pipeline_version": PIPELINE_VERSION,
+                "embedding_version": EMBEDDING_VERSION,
+                "content_hash": content_hash,
+            }
+            optional_metadata = {
+                "author": author,
+                "attribution_url": attribution_url,
+                "content_license": content_license,
+                "license_url": license_url,
+            }
+            metadata.update(
+                {
+                    key: value
+                    for key, value in optional_metadata.items()
+                    if value is not None
+                }
+            )
             chunks.append(
                 {
                     "id": chunk_id,
                     "text": text,
-                    "metadata": {
-                        "source_id": study_id,
-                        "provider": provider,
-                        "study_id": study_id,
-                        "study_title": active_title,
-                        "chapter_id": chapter_id,
-                        "chapter": chapter,
-                        "category": category,
-                        "phase": active_phase,
-                        "topic": active_topic,
-                        "language": language,
-                        "source": source_url,
-                        "type": "lichess_study",
-                        "pipeline_version": PIPELINE_VERSION,
-                        "embedding_version": EMBEDDING_VERSION,
-                        "content_hash": content_hash,
-                    },
+                    "metadata": metadata,
                 }
             )
         chapter_index += 1
@@ -672,6 +694,11 @@ def chunks_for_source(source_text: str, source: RagSource) -> list[dict]:
         language=source.language,
         provider=source.provider,
         study_title=source.title,
+        author=source.author,
+        attribution_url=source.attribution_url,
+        content_license=source.content_license,
+        license_url=source.license_url,
+        included_chapters=set(source.included_chapters),
     )
 
 

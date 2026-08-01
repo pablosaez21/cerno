@@ -36,6 +36,7 @@ class RagSource(BaseModel):
     content_license: str | None = None
     license_url: str | None = None
     excluded_sections: list[str] = Field(default_factory=list)
+    included_chapters: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_provider_fields(self) -> "RagSource":

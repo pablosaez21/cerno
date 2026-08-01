@@ -16,10 +16,38 @@ from app.services.rag import (
     fetch_wikimedia_page,
     get_collection,
     hash_content,
+    load_manifest,
     retrieve_theory,
     search_theory,
     upsert_chunks,
 )
+
+HISTORICAL_LICHESS_SOURCE_IDS = {
+    "ygVnJzbX",
+    "NfMygq6x",
+    "vyS3PnUA",
+    "6XvaoT1n",
+    "qVA8CAKj",
+    "M17xhXZI",
+    "uK53IvBH",
+    "allfhhua",
+    "Utd758xx",
+    "KjivNw7F",
+    "efGLGZOM",
+    "h4GuSZh3",
+    "pgfDEvmk",
+    "yzy5Hln3",
+    "oBsew7N6",
+}
+
+EDUCATIONAL_EXPANSION_BY_CATEGORY = {
+    "middlegame_strategy": {"kjBSgqoA", "dYFcDtRq"},
+    "pawn_structures": {"B5upGe9A"},
+    "king_safety": {"WfPHnXa1"},
+    "pawn_endgames": {"EOqdyQeN"},
+    "rook_endgames": {"bnboDhFM"},
+    "minor_piece_endgames": {"xtDSXkyi"},
+}
 
 
 def wikimedia_source() -> RagSource:
@@ -54,6 +82,25 @@ def test_product_collection_is_created_lazily_and_cached():
 
     create_collection.assert_called_once()
     get_collection.cache_clear()
+
+
+def test_manifest_preserves_historical_studies_and_expands_educational_coverage():
+    manifest = load_manifest()
+    sources = {source.id: source for source in manifest.sources}
+
+    assert HISTORICAL_LICHESS_SOURCE_IDS <= sources.keys()
+    assert all(source.provider == "lichess-study" for source in sources.values())
+
+    for category, source_ids in EDUCATIONAL_EXPANSION_BY_CATEGORY.items():
+        assert source_ids <= sources.keys()
+        for source_id in source_ids:
+            source = sources[source_id]
+            assert source.enabled is True
+            assert source.category == category
+            assert source.author
+            assert source.source_url == f"https://lichess.org/study/{source_id}"
+            assert source.attribution_url
+            assert source.content_license == "Unspecified"
 
 
 def test_upsert_chunks_uses_explicit_collection():
@@ -183,6 +230,38 @@ def test_position_only_pgn_chapter_keeps_teaching_comment():
     assert len(chunks) == 1
     assert "Notes: Control e4, e5, d4 and d5." in chunks[0]["text"]
     assert "%csl" not in chunks[0]["text"]
+
+
+def test_lichess_chunking_filters_chapters_and_preserves_attribution():
+    pgn = """[Event "Included lesson"]
+[ChapterName "Included lesson"]
+
+1. e4 {Improve the least active piece.} e5 *
+
+[Event "Excluded lesson"]
+[ChapterName "Excluded lesson"]
+
+1. d4 {This belongs to a different category.} d5 *
+"""
+
+    chunks = chunk_study_pgn(
+        pgn,
+        "fixture",
+        "middlegame_strategy",
+        phase="middlegame",
+        study_title="Planning course",
+        author="Course author",
+        attribution_url="https://lichess.org/@/CourseAuthor",
+        content_license="Unspecified",
+        included_chapters={"Included lesson"},
+    )
+
+    assert {chunk["metadata"]["chapter"] for chunk in chunks} == {"Included lesson"}
+    assert chunks[0]["metadata"]["author"] == "Course author"
+    assert (
+        chunks[0]["metadata"]["attribution_url"] == "https://lichess.org/@/CourseAuthor"
+    )
+    assert chunks[0]["metadata"]["content_license"] == "Unspecified"
 
 
 def test_wikimedia_chunking_is_bounded_attributed_and_excludes_unsafe_sections():

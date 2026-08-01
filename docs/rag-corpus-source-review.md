@@ -1,74 +1,92 @@
 # RAG corpus source review
 
-**Review date:** 2026-07-30  
-**Scope:** licensed middlegame and endgame material for `rag-v1`
+**Review date:** 2026-08-01
+**Scope:** restore the historical Lichess corpus and add reviewed educational
+middlegame and endgame studies to `rag-v1`
 
 ## Selection rules
 
-The review required a named provenance, an explicit reuse license, a stable
-automatable endpoint, human-authored teaching value, and compatibility with the
-current bounded-text/metadata pipeline. Public visibility or exportability
-alone was not treated as permission to redistribute.
+The manifest preserves every historical Lichess study that can be verified in
+the repository. New studies were selected for human teaching comments,
+chapter-based organization, stable public PGN export, named authorship, useful
+coverage, and compatibility with the existing `python-chess` ingestion path.
+Simple game collections, engine-only variations, generated prose, copied books,
+and bulk datasets without explanations were not added.
 
-Wikibooks states that its text is generally available under
-[CC BY-SA 4.0 and the GFDL](https://en.wikibooks.org/wiki/Wikibooks:Copyrights).
-The selected pages are downloaded through the
-[official MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page)
-at a pinned revision. Cerno stores the revision, collective author, permanent
-source URL, history URL, and CC BY-SA license with every resulting chunk.
-Tables, figures, reference sections, superscript citations, and block quotes
-are excluded from ingestion. The explicit quotation-heavy introduction of the
-pawn-structure page is also excluded.
+Public availability and exportability do not establish an open-content license.
+The selected studies therefore retain the author's name, profile, canonical
+study URL, and `content_license: Unspecified` on every chunk. Cerno does not
+describe this material as public domain or openly licensed. This is an explicit
+portfolio-project corpus decision; a public redistribution policy would require
+a separate permissions review.
 
-## Incorporated sources
+## Historical corpus retained
 
-All six sources are attributed to **Wikibooks contributors**, use **CC BY-SA
-4.0**, and are classified as English because the source prose is English.
+The manifest retains all 15 historical Lichess source IDs present in versioned
+project history. Fourteen are enabled and produce 387 opening chunks. Study
+`6XvaoT1n` remains disabled because the public PGN export currently returns HTTP
+403. The ignored historical Chroma volume is not versioned, so Git cannot prove
+or reconstruct any additional source IDs that may once have existed only in a
+developer's local index.
 
-| Source | Pinned revision | Phase / category | Coverage | Chunks |
-| --- | ---: | --- | --- | ---: |
-| [Chess Strategy](https://en.wikibooks.org/w/index.php?title=Chess_Strategy&oldid=4632732) | 4632732 | middlegame / `middlegame_strategy` | positional evaluation and forming plans | 1 |
-| [Pawn Structure](https://en.wikibooks.org/w/index.php?title=Chess_Strategy/Pawn_structure&oldid=4567221) | 4567221 | middlegame / `pawn_structures` | doubled, isolated, hanging, backward, and passed pawns | 14 |
-| [The Positions of the Kings](https://en.wikibooks.org/w/index.php?title=Chess_Strategy/The_positions_of_the_kings&oldid=4598380) | 4598380 | middlegame / `king_safety` | castling, pawn shield, pawn storms, and open lines | 10 |
-| [Pawn Endings](https://en.wikibooks.org/w/index.php?title=Chess/The_Endgame/Pawn_Endings&oldid=4242584) | 4242584 | endgame / `pawn_endgames` | opposition, rule of the square, and passed pawns | 9 |
-| [Rook and Pawn Endings](https://en.wikibooks.org/w/index.php?title=Chess/The_Endgame/Rook_and_Pawn_Endings&oldid=2064888) | 2064888 | endgame / `rook_endgames` | one, two, and three-pawn rook endings | 4 |
-| [Minor Piece Endings](https://en.wikibooks.org/w/index.php?title=Chess/The_Endgame/Minor_Piece_endings&oldid=4627782) | 4627782 | endgame / `minor_piece_endgames` | two-bishop and bishop-and-knight basic mates | 5 |
+## Educational studies incorporated
 
-The pages are relatively small, reviewable teaching chapters rather than a
-bulk dump. Revision pinning prevents upstream edits from changing chunk IDs
-without a manifest review. If Cerno intentionally adopts a later revision, the
-manifest must be updated and evaluation repeated.
+| Study | Author | Public chapters | Indexed chapters / chunks | Phase / category | Teaching value |
+| --- | --- | ---: | ---: | --- | --- |
+| [Talk to your pieces! Developing plans I](https://lichess.org/study/kjBSgqoA) | [NoseKnowsAll](https://lichess.org/@/NoseKnowsAll) | 18 | 18 / 23 | middlegame / `middlegame_strategy` | Forming plans by identifying and improving inactive pieces, coordination, weaknesses, and prophylaxis. |
+| [Pawns aren't people! Developing plans II](https://lichess.org/study/dYFcDtRq) | [NoseKnowsAll](https://lichess.org/@/NoseKnowsAll) | 17 | 10 / 13 | middlegame / `middlegame_strategy` | Dynamic play, activity over material, pawn breaks, outposts, opposite-side castling, and practical exercises. Seven opening-specific chapters are intentionally excluded. |
+| [Intermediate: (Soltis) Pawn Structures](https://lichess.org/study/B5upGe9A) | [jomega](https://lichess.org/@/jomega) | 18 | 18 / 19 | middlegame / `pawn_structures` | Named structures with defining features and plans: Isolani, hanging pawns, pawn chains, Maróczy Bind, Hedgehog, and others. |
+| [Intermediate: King Safety](https://lichess.org/study/WfPHnXa1) | [jomega](https://lichess.org/@/jomega) | 1 | 1 / 2 | middlegame / `king_safety` | Focused introduction to a king held in the center and a compromised kingside. |
+| [King and Pawn vs King](https://lichess.org/study/EOqdyQeN) | [njswift](https://lichess.org/@/njswift) | about 37 | 32 producing chunks / 32 | endgame / `pawn_endgames` | Rule of the square, key squares, near/distant/diagonal opposition, rook-pawn exceptions, and exercises. |
+| [Rook Endgames You Must Know!](https://lichess.org/study/bnboDhFM) | [NoseKnowsAll](https://lichess.org/@/NoseKnowsAll) | 28 | 28 / 32 | endgame / `rook_endgames` | Philidor, Lucena, Vancura, active-rook technique, connected passed pawns, and exercises. |
+| [More Endgames You Must Know!](https://lichess.org/study/xtDSXkyi) | [NoseKnowsAll](https://lichess.org/@/NoseKnowsAll) | 22 | 14 / 15 | endgame / `minor_piece_endgames` | Knight-versus-pawn circuits and fortresses, bishop-versus-pawn play, wrong-colour bishops, and opposite-colour bishops. Non-minor-piece chapters are excluded. |
 
-## Investigated but not incorporated
+All seven exports returned HTTP 200 during the 2026-08-01 audit. Lichess's
+study PGN endpoint is automatable, and each manifest entry records a canonical
+study URL and author profile. Upstream authors can still edit, restrict, or
+delete their studies, so reproducibility depends on the manifest plus a
+successful rebuild at that point in time.
 
-| Candidate | Finding | Decision |
+## Sources replaced or not incorporated
+
+The six Wikibooks sources added during the previous corpus expansion are
+removed from the active manifest. Their broad categories are replaced as
+follows:
+
+| Removed source | Lost coverage | Lichess replacement |
 | --- | --- | --- |
-| Public [Lichess studies](https://lichess.org/study) | Structured PGN and easy automation, but a study being public does not provide an explicit reuse license for its author's annotations. | Rejected for licensing uncertainty. Existing historical sources remain unchanged; no new study was added. |
-| [Lichess open databases](https://database.lichess.org/) | Stable bulk access and clear open-data terms for games/puzzles, but raw games do not provide human strategic explanations. | Rejected for teaching quality and fit. |
-| [InterwebAlchemy Lichess puzzle PGN dataset](https://huggingface.co/datasets/InterwebAlchemy/pgn-lichess-puzzle-dataset) | CC0 and structured PGN, but reconstructed engine/puzzle data emphasizes tactics rather than human-authored middlegame plans or endgame instruction. | Rejected as automatically derived and off-target. |
-| [Easy2Hard-Bench chess data](https://papers.nips.cc/paper_files/paper/2024/file/4e6f22305275966513990f53cec908e0-Paper-Datasets_and_Benchmarks_Track.pdf) | Open benchmark annotations and chess tags, but designed for puzzle difficulty evaluation rather than reusable explanatory theory. | Rejected for product fit and automatic annotation risk. |
-| [Chess endgame records at CentAUR](https://centaur.reading.ac.uk/34268/) | PGN/annotated-PGN research material with named provenance, but no sufficiently clear redistribution license was found and the corpus focuses on record positions, not basic instruction. | Rejected for license and scope. |
-| Project Gutenberg chess books | Stable public-domain distribution, but determining EU rights and extracting a small, current, accurately attributed teaching subset would add avoidable legal and parsing complexity. | Rejected for this phase. |
+| Chess Strategy | one generic evaluation/planning passage | `kjBSgqoA` and `dYFcDtRq`, with worked annotated positions and exercises |
+| Pawn Structure | doubled, isolated, hanging, backward, and passed-pawn overview | `B5upGe9A`; strong named-structure coverage, but no general backward/doubled-pawn chapter |
+| The Positions of the Kings | castling, pawn shields, pawn storms, and open files | `WfPHnXa1`; narrower coverage of central and compromised kings |
+| Pawn Endings | opposition, rule of the square, and passed pawns | `EOqdyQeN`; deeper king-and-pawn fundamentals, but not a broad multi-pawn survey |
+| Rook and Pawn Endings | brief one/two/three-pawn overview | `bnboDhFM`; substantially deeper named theoretical positions and practical exercises |
+| Minor Piece Endings | two-bishop and bishop-and-knight mating technique | `xtDSXkyi`; richer bishop/knight-versus-pawn material, but no basic mating course |
 
-No copied commercial books, scraped unlicensed pages, or automatically
-generated teaching prose were added.
+Other reviewed candidates remain excluded:
+
+| Candidate | Decision |
+| --- | --- |
+| Lichess open game and puzzle databases | Not educational prose; raw games and tactical puzzles do not explain strategic plans. |
+| Automatically reconstructed puzzle PGN datasets | Engine/puzzle-derived and off-target for human educational retrieval. |
+| Copied commercial books or unattributed web pages | Provenance and reuse risk are unacceptable. |
+| Bulk annotated game collections | Not added unless their annotations form a coherent teaching course rather than a game dump. |
 
 ## Coverage and remaining risks
 
-The enabled index moves from 14 sources/387 opening chunks to 20 sources/430
-chunks: 387 opening, 25 middlegame, and 18 endgame chunks. Coverage now includes
-all requested categories, but it remains shallow compared with openings.
+The enabled index changes from 20 sources/430 chunks (including six Wikibooks
+sources) to 21 Lichess studies/523 chunks: 387 opening, 57 middlegame, and 79
+endgame chunks. It now offers substantially deeper educational material in all
+requested phases while remaining a small curated corpus.
 
-Known risks:
+Known limitations:
 
-- source prose and human-readable metadata are English; Cerno currently
-  supports English retrieval queries only;
-- multilingual retrieval and query translation are outside the current scope;
-- the rook chapter is concise and old, so it covers practical basics but not a
-  comprehensive catalogue of theoretical positions;
-- the basic minor-piece source covers mating material, not the full family of
-  bishop-versus-knight or same/opposite-coloured bishop endings;
-- CC BY-SA obligations travel with redistributed chunks, so attribution and
-  license metadata must not be stripped by future interfaces;
-- upstream pages may disappear even though permanent revision URLs make the
-  selected content reproducible while Wikimedia retains revision history.
+- king-safety coverage is narrow and should abstain on detailed pawn-storm or
+  open-file methods not explained by the selected chapter;
+- removing Wikibooks loses explicit doubled/backward-pawn and basic mating
+  lessons; the golden dataset no longer labels those questions as answerable;
+- all source prose and retrieval queries are English-only;
+- licenses for the Lichess annotations are unspecified, so attribution must be
+  retained and wider redistribution still needs a permissions decision;
+- public study exports are mutable and may disappear or become restricted;
+- `6XvaoT1n` remains unavailable rather than being silently replaced or indexed
+  from an unverifiable copy.

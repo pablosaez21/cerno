@@ -151,12 +151,13 @@ identical response contract.
 
 [`app/services/rag.py`](../app/services/rag.py) lazily creates the product's
 persistent ChromaDB collection using the default embedding function. It
-downloads only manifest-approved sources. Lichess study PGN is parsed with
-`python-chess`; pinned Wikibooks revisions are retrieved through the official
-MediaWiki API and reduced to licensed teaching prose. Both paths create bounded
-content-addressed chunks and record source, chapter, category, phase, topic,
-content hash, and pipeline/embedding versions. Wikimedia chunks additionally
-retain revision, collective author, attribution URL, and content license.
+downloads only manifest-approved sources. The active corpus is Lichess-only:
+study PGN is parsed with `python-chess` into bounded content-addressed chunks
+that record source, chapter, category, phase, topic, author, attribution URL,
+content-license status, content hash, and pipeline/embedding versions. Optional
+chapter allowlists keep mixed-topic studies inside their declared category.
+The existing pinned-Wikimedia adapter remains tested but has no active manifest
+source.
 Source reindexing is idempotent and removes stale chunks; the separate
 reconciliation command reports drift and deletes only orphaned or
 manifest-obsolete content when `--apply` is explicit.

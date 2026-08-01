@@ -1,0 +1,583 @@
+{
+  "dataset": "evals/rag_calibration_queries.jsonl",
+  "method": "highest balanced accuracy; then classification accuracy, abstention precision, answer recall, and lowest-distance tie-break",
+  "recommended": {
+    "threshold": 0.893064558506012,
+    "classification_accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "answer_recall": 1.0,
+    "abstention_precision": 1.0
+  },
+  "observations": [
+    {
+      "id": "cal-opening-principles-en",
+      "query": "Which opening principles help me develop pieces and control the center?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "opening_principles"
+      ],
+      "expected_chapters": [],
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5369994044303894,
+      "top_candidate": {
+        "source_id": "ygVnJzbX",
+        "category": "opening_principles",
+        "phase": "opening",
+        "chapter": "Principle 7\ufe0f\u20e3: Bring your pieces to the center",
+        "distance": 0.5369994044303894
+      }
+    },
+    {
+      "id": "cal-london-plans-en",
+      "query": "What are the main plans in the London System opening?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "opening_repertoire"
+      ],
+      "expected_chapters": [
+        "The Main Ideas"
+      ],
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.893064558506012,
+      "top_candidate": {
+        "source_id": "KjivNw7F",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "The Main Ideas",
+        "distance": 0.893064558506012
+      }
+    },
+    {
+      "id": "cal-improve-piece-en",
+      "query": "How can I form a middlegame plan by improving my least active piece?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Talk to your pieces",
+        "Introduction"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.6826303005218506,
+      "top_candidate": {
+        "source_id": "kjBSgqoA",
+        "category": "middlegame_strategy",
+        "phase": "middlegame",
+        "chapter": "Talk to your pieces",
+        "distance": 0.6826303005218506
+      }
+    },
+    {
+      "id": "cal-dynamic-activity-en",
+      "query": "Why can piece activity matter more than winning a pawn in a dynamic middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Pawns aren't people!",
+        "Introduction",
+        "To take or not to take?"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7136572003364563,
+      "top_candidate": {
+        "source_id": "dYFcDtRq",
+        "category": "middlegame_strategy",
+        "phase": "middlegame",
+        "chapter": "Pawns aren't people!",
+        "distance": 0.7136572003364563
+      }
+    },
+    {
+      "id": "cal-isolani-en",
+      "query": "What are the characteristic plans in an Isolani pawn structure?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Queen's Gambit \u2013 Isolani"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.712270200252533,
+      "top_candidate": {
+        "source_id": "B5upGe9A",
+        "category": "pawn_structures",
+        "phase": "middlegame",
+        "chapter": "Queen's Gambit \u2013 Isolani",
+        "distance": 0.712270200252533
+      }
+    },
+    {
+      "id": "cal-hanging-pawns-en",
+      "query": "What defines the Queen's Gambit hanging pawns structure?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Queen's Gambit \u2013 hanging pawns"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7471979856491089,
+      "top_candidate": {
+        "source_id": "B5upGe9A",
+        "category": "pawn_structures",
+        "phase": "middlegame",
+        "chapter": "Queen's Gambit \u2013 hanging pawns",
+        "distance": 0.7471979856491089
+      }
+    },
+    {
+      "id": "cal-king-safety-en",
+      "query": "What two common situations can make a king unsafe in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7129785418510437,
+      "top_candidate": {
+        "source_id": "WfPHnXa1",
+        "category": "king_safety",
+        "phase": "middlegame",
+        "chapter": "Introduction",
+        "distance": 0.7129785418510437
+      }
+    },
+    {
+      "id": "cal-compromised-kingside-en",
+      "query": "Why is a compromised kingside dangerous for the king in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.7014192342758179,
+      "top_candidate": {
+        "source_id": "WfPHnXa1",
+        "category": "king_safety",
+        "phase": "middlegame",
+        "chapter": "Introduction",
+        "distance": 0.7014192342758179
+      }
+    },
+    {
+      "id": "cal-opposition-en",
+      "query": "How does distant opposition work in a king and pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "The distant opposition",
+        "Anticipating the near opposition from afar"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5659834146499634,
+      "top_candidate": {
+        "source_id": "EOqdyQeN",
+        "category": "pawn_endgames",
+        "phase": "endgame",
+        "chapter": "The distant opposition",
+        "distance": 0.5659834146499634
+      }
+    },
+    {
+      "id": "cal-square-en",
+      "query": "How does the rule of the square show whether a king catches a pawn?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "The rule of the square"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.558663010597229,
+      "top_candidate": {
+        "source_id": "EOqdyQeN",
+        "category": "pawn_endgames",
+        "phase": "endgame",
+        "chapter": "The rule of the square",
+        "distance": 0.558663010597229
+      }
+    },
+    {
+      "id": "cal-lucena-en",
+      "query": "How do you build a bridge in the Lucena rook ending?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "The Lucena position: Building the \"bridge\"",
+        "Exercise 6: Reaching the Lucena"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.6363599896430969,
+      "top_candidate": {
+        "source_id": "bnboDhFM",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "Exercise 6: Reaching the Lucena",
+        "distance": 0.6363599896430969
+      }
+    },
+    {
+      "id": "cal-philidor-en",
+      "query": "How does the Philidor position draw a rook and pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "The Philidor position",
+        "Exercise 1: Reaching the Philidor"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 0.5027391910552979,
+      "top_candidate": {
+        "source_id": "bnboDhFM",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "The Philidor position",
+        "distance": 0.5027391910552979
+      }
+    },
+    {
+      "id": "cal-wrong-bishop-en",
+      "query": "Why can the wrong-colored bishop fail to promote a rook pawn?",
+      "language": "en",
+      "should_answer": true,
+      "expected_categories": [
+        "minor_piece_endgames"
+      ],
+      "expected_chapters": [
+        "The wrong-color bishop"
+      ],
+      "expected_phase": "endgame",
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 0.7114708423614502,
+      "top_candidate": {
+        "source_id": "xtDSXkyi",
+        "category": "minor_piece_endgames",
+        "phase": "endgame",
+        "chapter": "The wrong-color bishop",
+        "distance": 0.7114708423614502
+      }
+    },
+    {
+      "id": "cal-irrelevant-cooking-en",
+      "query": "How do I make a juicy Spanish omelette?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.5948245525360107,
+      "top_candidate": {
+        "source_id": "Utd758xx",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "COZIO Variation",
+        "distance": 1.5948245525360107
+      }
+    },
+    {
+      "id": "cal-irrelevant-database-en",
+      "query": "How can I tune PostgreSQL autovacuum for a large database?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.660007357597351,
+      "top_candidate": {
+        "source_id": "kjBSgqoA",
+        "category": "middlegame_strategy",
+        "phase": "middlegame",
+        "chapter": "Kasparov's coordination",
+        "distance": 1.660007357597351
+      }
+    },
+    {
+      "id": "cal-no-coverage-clock-en",
+      "query": "What increment setting should a digital chess clock use for an arbiter exam?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 1.2534035444259644,
+      "top_candidate": {
+        "source_id": "bnboDhFM",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "Introduction",
+        "distance": 1.2534035444259644
+      }
+    },
+    {
+      "id": "cal-no-coverage-variant-en",
+      "query": "Which alliance strategy works in four-player chess?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": null,
+      "inferred_phase": null,
+      "filters_applied": {},
+      "filter_status": "evidence_found",
+      "top_distance": 0.9266524314880371,
+      "top_candidate": {
+        "source_id": "KjivNw7F",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "Introduction",
+        "distance": 0.9266524314880371
+      }
+    },
+    {
+      "id": "cal-no-coverage-tablebase-en",
+      "query": "How is retrograde analysis implemented inside a seven-piece tablebase?",
+      "language": "en",
+      "should_answer": false,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "filter_status": "evidence_found",
+      "top_distance": 1.3992536067962646,
+      "top_candidate": {
+        "source_id": "bnboDhFM",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "The Lucena position: Building the \\\"bridge\\\"",
+        "distance": 1.3992536067962646
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "threshold": 0.5027391910552979,
+      "classification_accuracy": 0.3333,
+      "balanced_accuracy": 0.5385,
+      "answer_recall": 0.0769,
+      "abstention_precision": 0.2941
+    },
+    {
+      "threshold": 0.5369994044303894,
+      "classification_accuracy": 0.3889,
+      "balanced_accuracy": 0.5769,
+      "answer_recall": 0.1538,
+      "abstention_precision": 0.3125
+    },
+    {
+      "threshold": 0.558663010597229,
+      "classification_accuracy": 0.4444,
+      "balanced_accuracy": 0.6154,
+      "answer_recall": 0.2308,
+      "abstention_precision": 0.3333
+    },
+    {
+      "threshold": 0.5659834146499634,
+      "classification_accuracy": 0.5,
+      "balanced_accuracy": 0.6538,
+      "answer_recall": 0.3077,
+      "abstention_precision": 0.3571
+    },
+    {
+      "threshold": 0.6363599896430969,
+      "classification_accuracy": 0.5556,
+      "balanced_accuracy": 0.6923,
+      "answer_recall": 0.3846,
+      "abstention_precision": 0.3846
+    },
+    {
+      "threshold": 0.6826303005218506,
+      "classification_accuracy": 0.6111,
+      "balanced_accuracy": 0.7308,
+      "answer_recall": 0.4615,
+      "abstention_precision": 0.4167
+    },
+    {
+      "threshold": 0.7014192342758179,
+      "classification_accuracy": 0.6667,
+      "balanced_accuracy": 0.7692,
+      "answer_recall": 0.5385,
+      "abstention_precision": 0.4545
+    },
+    {
+      "threshold": 0.7114708423614502,
+      "classification_accuracy": 0.7222,
+      "balanced_accuracy": 0.8077,
+      "answer_recall": 0.6154,
+      "abstention_precision": 0.5
+    },
+    {
+      "threshold": 0.712270200252533,
+      "classification_accuracy": 0.7778,
+      "balanced_accuracy": 0.8462,
+      "answer_recall": 0.6923,
+      "abstention_precision": 0.5556
+    },
+    {
+      "threshold": 0.7129785418510437,
+      "classification_accuracy": 0.8333,
+      "balanced_accuracy": 0.8846,
+      "answer_recall": 0.7692,
+      "abstention_precision": 0.625
+    },
+    {
+      "threshold": 0.7136572003364563,
+      "classification_accuracy": 0.8889,
+      "balanced_accuracy": 0.9231,
+      "answer_recall": 0.8462,
+      "abstention_precision": 0.7143
+    },
+    {
+      "threshold": 0.7471979856491089,
+      "classification_accuracy": 0.9444,
+      "balanced_accuracy": 0.9615,
+      "answer_recall": 0.9231,
+      "abstention_precision": 0.8333
+    },
+    {
+      "threshold": 0.893064558506012,
+      "classification_accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 0.9266524314880371,
+      "classification_accuracy": 0.9444,
+      "balanced_accuracy": 0.9,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.2534035444259644,
+      "classification_accuracy": 0.8889,
+      "balanced_accuracy": 0.8,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.3992536067962646,
+      "classification_accuracy": 0.8333,
+      "balanced_accuracy": 0.7,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.5948245525360107,
+      "classification_accuracy": 0.7778,
+      "balanced_accuracy": 0.6,
+      "answer_recall": 1.0,
+      "abstention_precision": 1.0
+    },
+    {
+      "threshold": 1.660007357597351,
+      "classification_accuracy": 0.7222,
+      "balanced_accuracy": 0.5,
+      "answer_recall": 1.0,
+      "abstention_precision": 0.0
+    }
+  ]
+}

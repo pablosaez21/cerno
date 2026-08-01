@@ -1,0 +1,468 @@
+{
+  "mode": "final",
+  "dataset": "evals/rag_evaluation_queries.jsonl",
+  "cases": 17,
+  "answerable_cases": 13,
+  "unanswerable_cases": 4,
+  "max_distance": 0.893064558506012,
+  "metrics": {
+    "recall_at_1": 1.0,
+    "recall_at_3": 1.0,
+    "mrr": 1.0,
+    "abstention_precision": 1.0,
+    "abstentions": 4
+  },
+  "results": [
+    {
+      "id": "eval-opening-centre-en",
+      "query": "Why should I develop my pieces and fight for the center at the start of a game?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "opening_principles"
+      ],
+      "expected_chapters": [],
+      "retrieved_category": "opening_principles",
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "retrieved_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.7970615029335022,
+      "top_source": "vyS3PnUA",
+      "top_category": "opening_principles"
+    },
+    {
+      "id": "eval-ruy-lopez-en",
+      "query": "What are the main ideas of the Ruy Lopez opening?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "opening_repertoire"
+      ],
+      "expected_chapters": [],
+      "retrieved_category": "opening_repertoire",
+      "expected_phase": "opening",
+      "inferred_phase": "opening",
+      "retrieved_phase": "opening",
+      "filters_applied": {
+        "phase": "opening"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6629467606544495,
+      "top_source": "Utd758xx",
+      "top_category": "opening_repertoire"
+    },
+    {
+      "id": "eval-piece-question-en",
+      "query": "How do I find a middlegame plan by improving my worst-placed piece?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Talk to your pieces",
+        "Introduction"
+      ],
+      "retrieved_category": "middlegame_strategy",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.676395833492279,
+      "top_source": "kjBSgqoA",
+      "top_category": "middlegame_strategy"
+    },
+    {
+      "id": "eval-pawns-not-people-en",
+      "query": "Why can active pieces be more valuable than extra pawns in a dynamic middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "middlegame_strategy"
+      ],
+      "expected_chapters": [
+        "Pawns aren't people!",
+        "Introduction",
+        "To take or not to take?",
+        "Revisiting Kasparov's coordination"
+      ],
+      "retrieved_category": "middlegame_strategy",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.8187748193740845,
+      "top_source": "dYFcDtRq",
+      "top_category": "middlegame_strategy"
+    },
+    {
+      "id": "eval-maroczy-bind-en",
+      "query": "What defines the Maroczy Bind pawn structure and what plans follow from it?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "Sicilian \u2013 Mar\u00f3czy bind"
+      ],
+      "retrieved_category": "pawn_structures",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.5451882481575012,
+      "top_source": "B5upGe9A",
+      "top_category": "pawn_structures"
+    },
+    {
+      "id": "eval-d5-chain-en",
+      "query": "What are the typical plans for both sides in a closed d5 pawn chain?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_structures"
+      ],
+      "expected_chapters": [
+        "d5 chain"
+      ],
+      "retrieved_category": "pawn_structures",
+      "expected_phase": "middlegame",
+      "inferred_phase": null,
+      "retrieved_phase": "middlegame",
+      "filters_applied": {},
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.8479777574539185,
+      "top_source": "B5upGe9A",
+      "top_category": "pawn_structures"
+    },
+    {
+      "id": "eval-king-centre-en",
+      "query": "Why is a king held in the center a strategic danger in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "retrieved_category": "king_safety",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6773349046707153,
+      "top_source": "WfPHnXa1",
+      "top_category": "king_safety"
+    },
+    {
+      "id": "eval-kingside-damage-en",
+      "query": "What makes damage to the kingside pawn cover a king-safety concern in the middlegame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "king_safety"
+      ],
+      "expected_chapters": [
+        "Introduction"
+      ],
+      "retrieved_category": "king_safety",
+      "expected_phase": "middlegame",
+      "inferred_phase": "middlegame",
+      "retrieved_phase": "middlegame",
+      "filters_applied": {
+        "phase": "middlegame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6582097411155701,
+      "top_source": "WfPHnXa1",
+      "top_category": "king_safety"
+    },
+    {
+      "id": "eval-key-squares-en",
+      "query": "How do key squares determine whether a king and pawn can promote in an endgame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "Key squares",
+        "Using the key squares of an f4 pawn",
+        "Using the key squares of an f5 pawn",
+        "The key squares of an f6 pawn"
+      ],
+      "retrieved_category": "pawn_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.45272067189216614,
+      "top_source": "EOqdyQeN",
+      "top_category": "pawn_endgames"
+    },
+    {
+      "id": "eval-rook-pawn-exception-en",
+      "query": "Why is a rook pawn an important exception in a king and pawn endgame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "pawn_endgames"
+      ],
+      "expected_chapters": [
+        "The rook pawn",
+        "Entombing the attacking king on the rook file"
+      ],
+      "retrieved_category": "pawn_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6763365268707275,
+      "top_source": "EOqdyQeN",
+      "top_category": "pawn_endgames"
+    },
+    {
+      "id": "eval-vancura-en",
+      "query": "How does the Vancura position defend a rook and rook-pawn ending?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "The Vancura position",
+        "Failing to reach the Vancura position",
+        "A trick in the Vancura"
+      ],
+      "retrieved_category": "rook_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.4607703387737274,
+      "top_source": "bnboDhFM",
+      "top_category": "rook_endgames"
+    },
+    {
+      "id": "eval-connected-rook-pawns-en",
+      "query": "When are two connected passed pawns enough to win a rook ending?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "rook_endgames"
+      ],
+      "expected_chapters": [
+        "When two connected pawns are enough",
+        "When two connected pawns are not enough",
+        "Escorting two connected passed pawns"
+      ],
+      "retrieved_category": "rook_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6515276432037354,
+      "top_source": "bnboDhFM",
+      "top_category": "rook_endgames"
+    },
+    {
+      "id": "eval-knight-rook-pawn-en",
+      "query": "What circuit should a knight use to stop a rook pawn in an endgame?",
+      "language": "en",
+      "should_answer": true,
+      "status": "evidence_found",
+      "first_relevant_rank": 1,
+      "expected_categories": [
+        "minor_piece_endgames"
+      ],
+      "expected_chapters": [
+        "The correct circuit: knight against rook pawn",
+        "Exercise 3: Reaching the correct circuit"
+      ],
+      "retrieved_category": "minor_piece_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": null,
+      "best_rejected_candidate": null,
+      "top_distance": 0.6154983043670654,
+      "top_source": "xtDSXkyi",
+      "top_category": "minor_piece_endgames"
+    },
+    {
+      "id": "eval-irrelevant-travel-en",
+      "query": "Which overnight train connects Madrid and Lisbon?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "general_openings",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "uK53IvBH",
+        "category": "general_openings",
+        "phase": "opening",
+        "chapter": "- Pyrenees Gambit",
+        "distance": 1.389336347579956
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-irrelevant-css-en",
+      "query": "How do CSS container queries differ from media queries?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "opening_repertoire",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "Utd758xx",
+        "category": "opening_repertoire",
+        "phase": "opening",
+        "chapter": "OPEN Ruy Lopez",
+        "distance": 1.7555956840515137
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-no-coverage-composition-en",
+      "query": "How is the artistic originality of a composed checkmate problem judged?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "opening_principles",
+      "expected_phase": null,
+      "inferred_phase": null,
+      "retrieved_phase": "opening",
+      "filters_applied": {},
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "NfMygq6x",
+        "category": "opening_principles",
+        "phase": "opening",
+        "chapter": "Checkmating Patterns",
+        "distance": 1.1066064834594727
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    },
+    {
+      "id": "eval-no-coverage-tablebase-en",
+      "query": "Which compression algorithm does a seven-piece Syzygy tablebase use?",
+      "language": "en",
+      "should_answer": false,
+      "status": "insufficient_evidence",
+      "first_relevant_rank": null,
+      "expected_categories": [],
+      "expected_chapters": [],
+      "retrieved_category": "rook_endgames",
+      "expected_phase": "endgame",
+      "inferred_phase": "endgame",
+      "retrieved_phase": "endgame",
+      "filters_applied": {
+        "phase": "endgame"
+      },
+      "rejection_reason": "best_candidate_exceeds_max_distance",
+      "best_rejected_candidate": {
+        "source_id": "bnboDhFM",
+        "category": "rook_endgames",
+        "phase": "endgame",
+        "chapter": "A tricky stalemate",
+        "distance": 1.53469979763031
+      },
+      "top_distance": null,
+      "top_source": null,
+      "top_category": null
+    }
+  ]
+}

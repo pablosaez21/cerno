@@ -334,8 +334,9 @@ Detailed requirements are in [testing-strategy.md](./testing-strategy.md).
 
 ## 7. Phase 3 — Reliable, evaluable retrieval
 
-**Status:** Completed and finally adjusted for the English-only product scope
-on 2026-07-30.
+**Status:** Completed, adjusted for the English-only product scope on
+2026-07-30, and expanded with the approved Lichess educational corpus on
+2026-08-01.
 
 ### Objective
 
@@ -360,8 +361,10 @@ are English-only. Multilingual retrieval and translation are outside this
 phase.
 
 The implementation brief explicitly excludes hybrid search, reranking, RRF,
-HyDE, GraphRAG, ColBERT, grounding/citations, prompt changes, MCP, and new
-unverified sources. Those items are not silently treated as completed.
+HyDE, GraphRAG, ColBERT, grounding/citations, prompt changes, and MCP. The later
+approved corpus expansion retains the same retrieval architecture and adds only
+reviewed public Lichess studies with named attribution and explicit
+`Unspecified` license metadata.
 
 ### Acceptance criteria
 

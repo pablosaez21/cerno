@@ -19,13 +19,14 @@ Prompt consumption and output schemas are specified in [prompt-engineering-plan.
   temporary path and deterministic embedding without touching the local index;
 - uses Chroma's default embedding function;
 - stores a fixed collection named `chess_theory`;
-- downloads manifest-approved Lichess PGN and pinned licensed Wikibooks pages;
+- downloads manifest-approved public Lichess study PGN;
 - parses studies with `python-chess`, including position-only teaching chapters;
-- extracts bounded Wikibooks teaching prose while retaining revision, author,
-  attribution, and license metadata;
+- supports chapter allowlists for studies that contain material outside their
+  declared category;
 - creates bounded chunks no larger than 1,800 characters;
 - produces content-addressed stable IDs and SHA-256 `content_hash` metadata;
-- stores source/chapter/category/phase/topic plus pipeline and embedding versions;
+- stores source/chapter/category/phase/topic, author, attribution and licensing
+  status, plus pipeline and embedding versions;
 - reconciles manifest sources, stale chunks, incomplete chunks, and orphans;
 - returns a typed `evidence_found` or `insufficient_evidence` result;
 - filters by phase/category before applying a golden-set-calibrated L2 gate.
@@ -43,13 +44,13 @@ threshold remain the Phase 3 implementation.
 
 ### Current-state statement
 
-Cerno performs evaluated semantic retrieval, can display relevant study
-sources, and abstains on the reviewed unsupported cases. It does not yet
+Cerno performs evaluated semantic retrieval across opening, middlegame, and
+endgame educational studies, can display relevant sources, and abstains on the
+reviewed unsupported cases. It does not yet
 guarantee:
 
-- deep or balanced chess-phase coverage;
+- comprehensive or balanced chess-phase coverage;
 - broader golden-set generalization beyond the reviewed English cases;
-- comprehensive middlegame/endgame coverage;
 - broader grounded-generation evaluation beyond the reviewed Phase 4 fixtures.
 
 Cerno currently supports English retrieval queries only, and the indexed

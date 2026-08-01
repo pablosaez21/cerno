@@ -878,6 +878,44 @@ They cover the disabled state, typed response, three-tool execution, compact
 Stockfish output, argument/tool failures, six-iteration termination, and total
 timeout without real OpenAI calls.
 
+### DEC-040 — Restore and expand the public Lichess educational corpus
+
+**Status:** Accepted and implemented; supersedes DEC-036 only for active corpus
+selection
+
+**Problem:** The Wikibooks expansion displaced the project's intended use of
+public Lichess educational studies. It also provided shallow middlegame and
+endgame coverage compared with structured, chapter-based studies whose PGN
+comments can be shown as educational evidence.
+
+**Decision:** Retain all 15 historical Lichess IDs verifiable in repository
+history, with the inaccessible `6XvaoT1n` disabled, remove the six Wikibooks
+entries from the active manifest, and add seven reviewed studies covering
+middlegame planning, pawn structures, king safety, pawn endings, rook endings,
+and minor-piece endings. Store author, profile, canonical study URL, and
+`content_license: Unspecified`. Use chapter allowlists where a study mixes
+categories. Do not claim an open license merely because a study is public.
+
+**Rationale:** The selected studies contain human explanations, plans,
+mistakes, and exercises in the same structured PGN format as the original
+project corpus. They provide greater educational value without a new ingestion
+architecture. The user explicitly approved public-study use for this portfolio
+project while acknowledging that no explicit license was found.
+
+**Impact:** The active index becomes Lichess-only and grows from 20 enabled
+sources/430 chunks to 21 enabled sources/523 chunks: 387 opening, 57
+middlegame, and 79 endgame chunks. Separate calibration retains the existing
+`0.893064558506012` cutoff. The revised held-out set scores `1.0000` for
+Recall@1, Recall@3, MRR, and abstention precision. Detailed king-safety,
+doubled/backward-pawn, and basic mating questions remain unsupported rather
+than being relabelled.
+
+**Evidence:** Source and replacement review is in
+`docs/rag-corpus-source-review.md`; calibration and held-out reports are in
+`evals/results/rag_lichess_calibration.json` and
+`evals/results/rag_lichess_final.json`. Reconciliation is clean and the second
+index run is idempotent.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
