@@ -949,6 +949,37 @@ deterministic metrics. Backend tests cover distinct-study collection,
 personalized fallback evidence, and single-source starting selection. Frontend
 tests cover the study range, hidden strengths, and board focus/scroll.
 
+### DEC-042 — The first MCP surface is local, compact, and read-only
+
+**Status:** Accepted and implemented
+
+**Problem:** The target MCP design left the stable SDK version, final player
+selector, output size, and initial public surface open. Exposing full engine
+payloads or persistence would add transport cost and a second security surface
+without improving the portfolio demonstration.
+
+**Decision:** Pin the official Python SDK at `mcp==1.28.1` and publish exactly
+`analyze_pgn`, `analyze_lichess_player`, and `search_chess_theory` over local
+`stdio`. `analyze_pgn` accepts an optional explicit `player_color` and is
+neutral when omitted. Tool outputs are compact typed summaries: they omit full
+move/FEN payloads and expose no resource fallback. All tools are read-only,
+non-persistent, bounded, English-only, and disconnected from OpenAI generation.
+
+**Rationale:** These three operations demonstrate useful protocol discovery
+and calls while reusing Cerno's actual services. Compact results fit ordinary
+tool responses, and the player selector preserves DEC-018 without guessing.
+Local `stdio` avoids prematurely introducing remote security infrastructure.
+
+**Impact:** MCP adds no network listener, HTTP/SSE transport, authentication,
+resource, prompt, indexing, profile, or saved-analysis capability. Remote MCP
+remains a Phase 7 question. The separate experimental OpenAI agent remains
+unchanged in purpose and does not call MCP.
+
+**Evidence:** `tests/test_mcp.py` starts the real server with the official
+client, snapshots the three discovered schemas, executes all tools with mocked
+external boundaries, and verifies limits, sanitized failures, timeout,
+cancellation, abstention, and absence of OpenAI/persistence calls.
+
 ## 3. Verified discrepancies
 
 ### 3.1 Test count: working tree versus commit
@@ -981,7 +1012,8 @@ The local index is stored under ignored `data/`. No evidence in this documentati
 
 The brief's candidate `analyze_pgn` output refers to player errors, but its input does not define the player.
 
-**Resolution:** DEC-018 defines player-neutral default behavior; exact schema remains a Phase 6 decision.
+**Resolution:** DEC-018 defines player-neutral default behavior. DEC-042
+implements optional `player_color`; omission returns neutral full-game output.
 
 ### 3.5 MCP security appears in two phases
 
@@ -1000,9 +1032,9 @@ The brief uses `TrainingRecommendation` as an example Pydantic output name, whil
 
 The proposed `prompts/`, `evals/`, source manifest, and MCP server files do not currently exist.
 
-**Resolution:** Phase 4 now owns `app/prompts/`, `prompts/`, and the coach
-evaluation dataset under `evals/`. MCP server files still do not exist and
-remain a later-phase target.
+**Resolution:** Phase 4 owns `app/prompts/`, `prompts/`, and the coach
+evaluation dataset under `evals/`. Phase 6 now owns `app/mcp_server.py` and
+`app/schemas/mcp.py` without adding a separate application layer.
 
 ## 4. Open verification items
 
@@ -1039,21 +1071,23 @@ fallback regardless.
 
 ### OQ-005 — MCP SDK/version
 
-**Status:** Open
+**Status:** Resolved by DEC-042
 
-Select the current stable official SDK and pin it when Phase 6 begins. Do not freeze a version in advance.
+The official Python MCP SDK is pinned at `mcp==1.28.1`.
 
 ### OQ-006 — MCP PGN player selector
 
-**Status:** Open
+**Status:** Resolved by DEC-018 and DEC-042
 
-Choose exact input: `player_color`, header player name, or a typed selector. It must never guess.
+The tool accepts optional typed `player_color`. It never infers player identity;
+omission is neutral.
 
 ### OQ-007 — MCP result size
 
-**Status:** Open
+**Status:** Resolved for the local release by DEC-042
 
-Measure full-game payload sizes and decide whether large results remain tool output or use resources/references.
+The first release returns bounded summaries and omits full moves/FEN. It does
+not publish resources.
 
 ### OQ-008 — Background jobs
 

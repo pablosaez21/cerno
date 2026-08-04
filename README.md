@@ -9,16 +9,19 @@ Cerno is an AI-assisted chess coach for Lichess players. It retrieves recent gam
 - Stockfish-powered chess analysis with critical move detection.
 - RAG knowledge base with 21 curated Lichess studies and 523 indexed chunks
   across openings, middlegames, pawn structures, king safety, and endgames.
+- Protocol-compliant local MCP server with three typed, read-only tools over
+  `stdio`.
 - PostgreSQL persistence for users, analyses, critical moves and weakness profiles.
 - Docker Compose setup for local development.
 - Unit tests with mocked external boundaries: OpenAI, Lichess, Stockfish, ChromaDB and PostgreSQL.
-  
+
 ## Stack
 
 - Python and FastAPI
 - Lichess API
 - `python-chess` and Stockfish
 - ChromaDB for semantic retrieval
+- Official Python MCP SDK
 - OpenAI with a deterministic fallback plan
 - PostgreSQL
 - SQLAlchemy 2.0 and Alembic
@@ -42,6 +45,7 @@ The public deployment runs on Railway with separate frontend, backend, PostgreSQ
 ```mermaid
 flowchart TD
     U[User] --> API[FastAPI]
+    H[Compatible MCP host] --> MCP[Local stdio MCP server]
 
     API --> Games[Games Router]
     API --> Theory[Theory Router]
@@ -59,6 +63,10 @@ flowchart TD
     Coach --> Chroma
     Coach --> LLM[OpenAI / fallback]
     Coach --> PG[(PostgreSQL)]
+
+    MCP --> Lichess
+    MCP --> Stockfish
+    MCP --> Chroma
 
     Agent --> Tools[Tool Calling]
     Tools --> Lichess
@@ -170,6 +178,26 @@ uvicorn app.main:app --reload
 ```
 
 The Windows development environment uses `engines/stockfish.exe`. The Docker image installs and uses the Linux Stockfish package.
+
+## Local MCP Server
+
+Cerno exposes exactly three local, read-only MCP tools:
+
+- `analyze_pgn`
+- `analyze_lichess_player`
+- `search_chess_theory`
+
+They reuse the application services, never persist results, never call OpenAI,
+and cannot modify the RAG index. Start the server from the repository root:
+
+```powershell
+venv\Scripts\python.exe -m app.mcp_server
+```
+
+The process uses MCP protocol messages on standard input/output, so an idle
+terminal is expected when it is started directly. See
+[docs/mcp-local-server.md](docs/mcp-local-server.md) for the Codex client
+configuration, tool schemas, examples, limits, and local validation procedure.
 
 ## Running Frontend Separately
 
@@ -379,6 +407,7 @@ The tests mock external boundaries and do not require:
 - Chess-engine analysis
 - Retrieval-augmented generation
 - LLM tool calling
+- MCP tool discovery and typed local `stdio` integration
 - Vector database usage
 - Relational persistence and migrations
 - Dockerized development
@@ -395,6 +424,8 @@ The tests mock external boundaries and do not require:
 - Retrieval and the production structured coach currently support English
   only.
 - The conversational agent is less structured than the main coach endpoint.
+- MCP is local-only: there is no remote transport, authentication, shared job
+  queue, or concurrency control in this phase.
 
 ## Roadmap
 

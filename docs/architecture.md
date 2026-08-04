@@ -8,7 +8,8 @@
 
 This document describes how Cerno works today, the correctness constraints that
 must be preserved, and the target architecture for its professionalization.
-The structured coach now has grounded generation; MCP does not exist yet.
+The structured coach has grounded generation, and Cerno exposes a bounded local
+MCP adapter over the existing application services.
 
 Implementation sequencing and acceptance criteria are defined in [professionalization-plan.md](./professionalization-plan.md). Specialist designs live in the testing, RAG, prompt, and MCP documents.
 
@@ -22,6 +23,7 @@ Cerno is a chess analysis and training application with:
 - Lichess game retrieval;
 - ChromaDB semantic retrieval;
 - optional OpenAI generation;
+- a local `stdio` MCP server;
 - PostgreSQL persistence;
 - Docker Compose for local orchestration.
 
@@ -29,6 +31,10 @@ Cerno is a chess analysis and training application with:
 flowchart LR
     User["User"] --> UI["Next.js frontend"]
     UI --> REST["FastAPI REST API"]
+    Host["Compatible local MCP host"] --> MCP["stdio MCP adapter"]
+    MCP --> Lichess
+    MCP --> Stockfish
+    MCP --> Chroma
     REST --> Lichess["Lichess API"]
     REST --> Stockfish["Stockfish"]
     REST --> Chroma["ChromaDB"]
@@ -210,15 +216,40 @@ tools, and service failures become sanitized structured errors. Stockfish
 results include only the summary, phase weaknesses, and ten largest critical
 moments rather than the full move/FEN payload.
 
-This is provider-specific internal function calling. It is not MCP:
+This remains provider-specific internal function calling rather than MCP. The
+agent has its own OpenAI-facing tool loop and does not call, host, or proxy the
+separate MCP server described below.
 
-- there is no MCP initialization;
-- there is no tool discovery endpoint;
-- there is no JSON-RPC MCP server;
-- there is no `stdio` or Streamable HTTP transport;
-- there are no MCP resources, client tests, or Inspector evidence.
+### 3.8 Local MCP server
 
-### 3.8 Persistence
+[`app/mcp_server.py`](../app/mcp_server.py) is a thin local adapter implemented
+with the official Python MCP SDK. It publishes Pydantic-derived discovery
+schemas and exactly three read-only tools over `stdio`:
+
+- `analyze_pgn` for neutral or explicitly color-scoped PGN analysis;
+- `analyze_lichess_player` for at most three recent public games;
+- `search_chess_theory` for bounded English-only retrieval with explicit
+  insufficient evidence.
+
+The analysis tools delegate to the existing coach, Stockfish, Lichess,
+weakness, and RAG services. The only service-level switch added for this
+adapter disables LLM generation while preserving the REST default. MCP calls
+are always non-persistent, do not connect to the OpenAI generator, do not
+expose the move/FEN viewer payload, and cannot mutate or reindex ChromaDB.
+
+[`app/schemas/mcp.py`](../app/schemas/mcp.py) defines compact tool output
+envelopes and sanitized stable errors. PGN size, engine depth, game count,
+result count, and execution time are bounded in the adapter. Retrieved study
+fragments are explicitly marked untrusted.
+
+There is no network listener, HTTP/SSE transport, authentication, resources,
+or MCP prompts in this release. A real official `ClientSession` test starts
+the server as a subprocess and verifies initialization, discovery, and schemas;
+protocol call tests cover all tools, timeouts, cancellation, and error mapping.
+Operational configuration is documented in
+[`mcp-local-server.md`](./mcp-local-server.md).
+
+### 3.9 Persistence
 
 [`app/db/models.py`](../app/db/models.py) defines PostgreSQL models for:
 
@@ -235,7 +266,7 @@ Alembic migration `0002_timestamp_columns_not_null` aligns the database with the
 ORM's non-null timestamp contract. It fills any historical null timestamp before
 applying the constraint.
 
-### 3.9 Local infrastructure
+### 3.10 Local infrastructure
 
 Docker Compose runs:
 
@@ -268,7 +299,7 @@ creates and removes its temporary Chroma directory even when Playwright fails.
 No E2E path uses Railway, a developer database, the developer Chroma index, or
 external credentials.
 
-### 3.10 Automated quality boundary
+### 3.11 Automated quality boundary
 
 Phase 2A adds deterministic constraints around the current architecture:
 
@@ -423,7 +454,8 @@ Tests should be able to replace an adapter without replacing the application log
 
 - **REST:** remains the web application's interface.
 - **OpenAI agent:** may continue to call shared services directly; it is not required to call Cerno through MCP.
-- **MCP:** becomes a thin external adapter after the shared services are stable.
+- **MCP:** is a thin local external adapter over the shared services; any remote
+  transport remains a later, separately secured phase.
 
 ### 5.4 Cross-cutting capabilities
 

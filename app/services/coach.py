@@ -115,6 +115,8 @@ async def analyze_user(
     depth: int = 12,
     save: bool = False,
     db: Session | None = None,
+    *,
+    generate_with_llm: bool = True,
 ) -> dict:
     limit = settings.clamp_games_limit(limit)
     depth = settings.clamp_stockfish_depth(depth)
@@ -130,6 +132,7 @@ async def analyze_user(
         depth=depth,
         save=save,
         db=db,
+        generate_with_llm=generate_with_llm,
     )
 
 
@@ -137,6 +140,8 @@ async def analyze_pgn_for_player(
     pgn: str,
     player_color: str,
     depth: int = 12,
+    *,
+    generate_with_llm: bool = True,
 ) -> dict:
     """Run an uploaded PGN through the same structured coach pipeline."""
     if player_color not in {"white", "black"}:
@@ -154,6 +159,7 @@ async def analyze_pgn_for_player(
         save=False,
         db=None,
         player_color_override=player_color,
+        generate_with_llm=generate_with_llm,
     )
 
 
@@ -199,6 +205,7 @@ async def analyze_player_games(
     save: bool,
     db: Session | None,
     player_color_override: str | None = None,
+    generate_with_llm: bool = True,
 ) -> dict:
     """Build one coach report from games whose player ownership is known."""
     if player_color_override is not None and len(games) != 1:
@@ -259,8 +266,10 @@ async def analyze_player_games(
     )
     theory_recommendations = build_theory_recommendations(theory_results)
     sources = build_source_attributions(prompt_context.sources)
-    generated_training = await generate_training_plan(
-        prompt_context,
+    generated_training = (
+        await generate_training_plan(prompt_context)
+        if generate_with_llm
+        else fallback_generation(prompt_context, reason="no_api_key")
     )
     generation_result = normalize_generation_result(
         generated_training,

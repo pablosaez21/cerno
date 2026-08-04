@@ -1,8 +1,9 @@
 # Cerno testing strategy
 
-**Status:** Phase 2A/2B complete; Phase 2C implemented and locally verified
-**Implementation phase:** Phase 2C awaits its first hosted frontend/E2E run
-**Last reviewed:** 2026-07-29
+**Status:** Automated backend, integration, frontend, E2E, and MCP boundaries
+implemented and locally verified
+**Implementation phase:** Phase 6 local MCP verification complete
+**Last reviewed:** 2026-08-04
 
 ## 1. Quality objective
 
@@ -18,10 +19,12 @@ The strategy follows four rules:
 ## 2. Current state
 
 The committed pre-Phase-1 baseline contained 21 collected backend cases. Phase
-2A established 33 deterministic backend cases. Phase 2B added real integrations;
-after the Phase 2C Lichess configuration and PGN coaching regressions there are
-41 fast cases and 18 real integration cases, for 59 backend cases. The backend,
-frontend, and backend-integration jobs are green in GitHub Actions.
+2A established 33 deterministic backend cases, and later phases expanded the
+behavior and integration boundaries. The Phase 6 local full run collects 126
+backend cases: 101 fast and 25 integration cases. The frontend has 67
+unit/component cases and four Chromium E2E scenarios. The last cited hosted
+backend, frontend, and backend-integration jobs were green; the current Phase 6
+change has complete local workflow evidence and awaits its own hosted run.
 
 Phase 2A adds the automated quality foundation without claiming the remaining
 Phase 2 integration and browser coverage:
@@ -61,6 +64,15 @@ basic automated accessibility checks, measured frontend coverage, and four
 Chromium scenarios against the production Next build, FastAPI, and real
 Stockfish. The Lichess browser flow replaces only the outbound HTTP provider.
 
+Phase 6 adds 11 focused MCP cases using the official Python SDK client. A real
+`stdio` subprocess completes initialization and tool discovery; protocol
+sessions then execute every tool while Lichess, Stockfish, OpenAI, persistence,
+and ChromaDB are replaced at their external boundaries. These cases cover
+published input/output schemas, compact payloads, invalid and oversized input,
+retrieval abstention, sanitized dependency failures, server timeouts, MCP
+cancellation, and the absence of OpenAI and persistence calls. No test modifies
+the developer's Chroma index.
+
 Identified limitations:
 
 - the expanded `frontend` and new `frontend-e2e` jobs need their first hosted
@@ -74,6 +86,9 @@ Identified limitations:
 - E2E protects the live PGN and coach payloads behaviorally, but a complete
   OpenAPI snapshot/generated-client drift gate remains incremental work;
 - OpenAI orchestration is largely replaced rather than exercised;
+- the MCP conformance smoke test uses the official client rather than a second
+  independent host implementation; Codex configuration is documented for
+  manual compatibility checks;
 - no mutation testing;
 - jsdom accessibility checks do not measure rendered color contrast.
 

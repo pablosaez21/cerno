@@ -1,8 +1,8 @@
 # Cerno MCP integration plan
 
-**Status:** Approved target design for Phase 6
-**Current capability:** No MCP server exists
-**Last reviewed:** 2026-07-28
+**Status:** Local `stdio` scope implemented; remote scope not started
+**Current capability:** Three typed, read-only MCP tools over local `stdio`
+**Last reviewed:** 2026-08-04
 
 ## 1. Purpose
 
@@ -16,19 +16,19 @@ Cerno currently has:
 
 - REST endpoints;
 - shared service functions with varying degrees of coupling;
-- an OpenAI-specific function-calling agent.
+- a separate OpenAI-specific function-calling agent;
+- the official Python MCP SDK pinned at `mcp==1.28.1`;
+- a local MCP server with initialization, tool discovery, typed calls, and
+  controlled errors;
+- official-client tests, including a real `stdio` subprocess smoke test.
 
-Cerno does not currently have:
+Cerno deliberately does not have:
 
-- an MCP SDK dependency;
-- an MCP server;
-- MCP initialization or capability negotiation;
-- `tools/list`;
-- `tools/call`;
+- remote MCP transport;
+- HTTP, SSE, or Streamable HTTP MCP;
+- MCP authentication or authorization;
 - MCP resources or prompts;
-- `stdio` or Streamable HTTP transport;
-- an MCP client test;
-- MCP Inspector evidence.
+- indexing, persistence, profile mutation, or administration tools.
 
 The JSON tool definitions in [`app/services/agent.py`](../app/services/agent.py) are internal OpenAI function calling and must continue to be described that way.
 
@@ -92,108 +92,36 @@ It does not own:
 - persistence logic;
 - prompt construction.
 
-## 6. Initial tools
+## 6. Implemented tools
 
-Final JSON Schemas are approved during implementation after application contracts stabilize.
+The first release publishes exactly three tools. All inputs and outputs use
+Pydantic-derived JSON Schemas, and all successful calls use a typed
+`status/data/error` envelope.
 
 ### 6.1 `analyze_pgn`
 
-Purpose: analyze an explicitly supplied PGN without implicit persistence.
+- Input: PGN up to 100,000 characters, optional `player_color`, and depth 1-10.
+- Without a color: neutral full-game metrics with no player attribution.
+- With a color: shared player projection, weaknesses, patterns, retrieval, and
+  deterministic recommendations.
+- Output: compact metrics, three phase summaries, at most ten critical moments,
+  four recommendations, and three studies.
+- Excluded from output: full move lists, FEN, and generation internals.
 
-Candidate input:
+### 6.2 `analyze_lichess_player`
 
-```json
-{
-  "pgn": "string",
-  "depth": 8,
-  "player_color": "white | black | null",
-  "language": "en"
-}
-```
+- Input: public username and `games_limit` from 1 to 3.
+- Delegates to the shared Lichess coach flow with `save=false`, no database
+  session, and LLM generation disabled.
+- Output uses the same compact player-analysis schema as color-scoped PGN.
 
-Contract rule:
+### 6.3 `search_chess_theory`
 
-- without `player_color`, return full-game engine analysis and do not label errors as belonging to a specific player;
-- with `player_color`, add a player-specific projection while preserving full plies;
-- `save` is absent or false in the initial tool.
-
-Candidate output:
-
-- full move list;
-- FEN before/after;
-- evaluations and classifications;
-- optional player projection;
-- phase statistics;
-- personal critical moments only when color is known;
-- structured warnings;
-- analysis/schema version.
-
-This clarification resolves an ambiguity in the master brief: a standalone PGN does not identify "the player" by itself. The exact public field name remains subject to Phase 6 schema review.
-
-### 6.2 `search_chess_theory`
-
-Purpose: retrieve cited chess theory from the approved index.
-
-Candidate input:
-
-```json
-{
-  "query": "string",
-  "phase": "opening | middlegame | endgame | null",
-  "category": "string | null",
-  "top_k": 3,
-  "language": "en"
-}
-```
-
-Candidate output:
-
-- `evidence_found` or `insufficient_evidence`;
-- bounded passages;
-- source IDs and public URLs;
-- phase/category metadata;
-- scores with documented meaning;
-- retrieval/index version.
-
-### 6.3 `analyze_lichess_user`
-
-Purpose: analyze recent public games through shared Lichess and coach services.
-
-Candidate input:
-
-```json
-{
-  "username": "string",
-  "limit": 3,
-  "depth": 8,
-  "language": "en",
-  "save": false
-}
-```
-
-Rules:
-
-- `save=false` by default;
-- limits are clamped by application policy;
-- rate-limit errors remain structured;
-- only the user's plies drive the profile;
-- full games remain available in the analysis response where size limits allow;
-- large results may require a bounded summary plus resource/reference strategy.
-
-### 6.4 `get_player_weakness_profile`
-
-Purpose: read an existing persisted profile.
-
-Candidate input:
-
-- username or future internal player identifier.
-
-Rules:
-
-- read-only;
-- authorization required if the approved data policy treats profiles as private;
-- absence returns a structured not-found result;
-- no implicit analysis is triggered.
+- Input: English query, optional phase/category filters, and at most three
+  results.
+- Delegates to the calibrated retrieval service without changing the index.
+- Output preserves `evidence_found` or `insufficient_evidence`, bounded study
+  fragments and source metadata, and marks every passage as untrusted.
 
 ## 7. Excluded initial tools
 
@@ -368,7 +296,7 @@ Using the official SDK:
 - authorization failures return the correct status;
 - concurrent sessions respect limits.
 
-### 14.4 MCP Inspector
+### 14.4 MCP Inspector or compatible host
 
 Record a manual verification:
 
@@ -379,7 +307,7 @@ Record a manual verification:
 - error call;
 - date and environment.
 
-Inspector evidence supplements automated tests.
+Inspector or compatible-host evidence supplements automated tests.
 
 ## 15. Documentation deliverables
 
@@ -410,18 +338,19 @@ After remote Phase 7 acceptance:
 
 Do not claim that the internal agent uses MCP unless its actual call path is deliberately changed and verified.
 
-## 17. Open decisions for Phase 6
+## 17. Resolved local-scope decisions
 
-- Exact SDK stable version and pin.
-- Final `analyze_pgn` player-context field.
-- Maximum PGN/result size.
-- Whether large full-game outputs become resources.
-- Public/private policy for player profiles.
-- Whether language belongs in engine tools or only generation tools.
-- Whether Streamable HTTP is mounted in the existing ASGI process or a separate service.
-- Tested host compatibility list.
+- SDK: official Python package pinned at `mcp==1.28.1`.
+- Player selector: optional `player_color`; omission is neutral.
+- PGN input: at most 100,000 characters.
+- Result strategy: compact structured content; no resources and no viewer
+  move/FEN payload.
+- Language: English-only theory queries and human-readable results.
+- Persisted profiles: not exposed.
+- Transport: local `stdio` only.
 
-These decisions require implementation-time verification and decision-log updates.
+Remote transport placement, authorization, and host compatibility beyond the
+documented local client remain later decisions.
 
 ## 18. Phase 6 acceptance criteria
 
@@ -435,6 +364,18 @@ Phase 6 is complete when:
 - standalone PGN output makes no unsupported player attribution;
 - schemas and structured errors are tested;
 - timeout and cancellation behavior is tested;
-- MCP Inspector verification is documented;
+- official-client and compatible-host verification are documented;
 - sample client/configuration exists;
-- any Streamable HTTP implementation remains non-production until Phase 7 gates pass.
+- no Streamable HTTP implementation exists before Phase 7 security gates.
+
+### Implementation evidence
+
+- [`app/mcp_server.py`](../app/mcp_server.py) owns protocol registration,
+  bounds, timeouts, compact mapping, and sanitized errors only.
+- [`app/schemas/mcp.py`](../app/schemas/mcp.py) owns the typed tool outputs.
+- [`tests/test_mcp.py`](../tests/test_mcp.py) uses the official client, starts a
+  real `stdio` subprocess for discovery, calls all tools through protocol
+  sessions, and covers invalid inputs, dependency failures, timeout,
+  cancellation, abstention, and write/generation absence.
+- [`mcp-local-server.md`](./mcp-local-server.md) records startup, Codex
+  configuration, contracts, examples, and local limitations.

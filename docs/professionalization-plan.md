@@ -1,7 +1,7 @@
 # Cerno professionalization plan
 
 **Status:** Approved implementation sequence
-**Last reviewed:** 2026-08-01
+**Last reviewed:** 2026-08-04
 
 ## 1. Objective
 
@@ -469,20 +469,20 @@ Retain the structured coach as the primary product flow while making the experim
 
 ## 10. Phase 6 — MCP implementation
 
+**Status:** Complete as of 2026-08-04
+
 ### Objective
 
 Expose stable Cerno capabilities to external MCP hosts without duplicating application logic.
 
 ### Scope
 
-1. shared services are MCP-ready;
-2. local `stdio` server;
-3. initial read/computation tools;
-4. official client smoke tests;
-5. schema and error tests;
-6. MCP Inspector verification;
-7. optional resources after tools are stable;
-8. Streamable HTTP implementation for controlled environments.
+1. thin local `stdio` adapter over shared services;
+2. exactly three read/computation tools;
+3. typed, compact discovery schemas and result envelopes;
+4. official client smoke tests and protocol calls;
+5. bounded inputs, timeouts, cancellation, and sanitized errors;
+6. compatible-host configuration and manual validation guidance.
 
 ### Acceptance criteria
 
@@ -492,8 +492,29 @@ Expose stable Cerno capabilities to external MCP hosts without duplicating appli
 - Analysis is non-persistent by default.
 - Invalid input, timeout, cancellation, and adapter errors are tested.
 - A local `stdio` configuration and usage guide exist.
-- Inspector evidence is recorded.
-- Streamable HTTP is not declared production-ready until Phase 7 security gates pass.
+- Compatible official-client evidence is recorded.
+- No Streamable HTTP or remote infrastructure is introduced.
+
+### Implementation evidence
+
+- `analyze_pgn`, `analyze_lichess_player`, and `search_chess_theory` are the
+  complete discovered tool set.
+- Player-specific analysis delegates to the existing coach path with generation
+  disabled; neutral PGN delegates directly to Stockfish; theory delegates to
+  the existing calibrated retrieval service.
+- MCP never saves, calls OpenAI, connects to a repository, or exposes indexing.
+- The official client initializes a real `stdio` subprocess and publishes
+  Pydantic-derived input/output schemas.
+- Protocol tests cover all tools, invalid and oversized input, Lichess and
+  Stockfish failures, timeout, cancellation, abstention, secret-safe errors,
+  and absence of OpenAI/persistence calls.
+- Startup, Codex configuration, examples, exact limits, and local constraints
+  are documented in [mcp-local-server.md](./mcp-local-server.md).
+- The complete local workflow passes: 126 backend tests at 87.07% combined
+  coverage, 67 frontend tests, four Chromium E2E cases, Ruff, mypy, workflow
+  validation, TypeScript, and both production frontend builds.
+- Phase 7 has not started: there is no remote transport, authentication,
+  authorization, rate limiting, or observability platform.
 
 See [mcp-integration-plan.md](./mcp-integration-plan.md).
 
