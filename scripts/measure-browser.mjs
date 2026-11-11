@@ -4,7 +4,8 @@
 import { chromium } from "@playwright/test";
 
 const [user, games = "100", base = "http://localhost:4173"] = process.argv.slice(2);
-const browser = await chromium.launch();
+// HEADED=1 uses the real GPU for Maia-3 (headless Chromium only has a software WebGPU adapter).
+const browser = await chromium.launch({ headless: !process.env.HEADED, args: ["--enable-unsafe-webgpu"] });
 const page = await (await browser.newContext()).newPage();
 page.on("pageerror", (e) => console.error("pageerror", e.message));
 await page.goto(`${base}/lab`);
