@@ -36,4 +36,4 @@ node scripts/measure-browser.mjs <chesscom-user> [games]   # needs the static se
 
 ## License
 
-GPL-3.0-or-later, because it ships Stockfish (GPLv3). Opening names: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0).
+AGPL-3.0-or-later. It ships Stockfish (GPLv3) and the Maia-3 model (AGPLv3). Opening names: [lichess-org/chess-openings](https://github.com/lichess-org/chess-openings) (CC0).
