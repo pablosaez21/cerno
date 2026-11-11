@@ -1,0 +1,25 @@
+/* Lab styling only: functional, no design. */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+body {
+  margin: 0;
+}
+table {
+  border-collapse: collapse;
+}
+th,
+td {
+  border: 1px solid #8884;
+  padding: 2px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+button {
+  cursor: pointer;
+}
+code {
+  font-size: 12px;
+}
