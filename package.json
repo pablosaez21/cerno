@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "predev": "node scripts/copy-engine.mjs",
-    "prebuild": "node scripts/copy-engine.mjs",
+    "predev": "node scripts/copy-engine.mjs && node scripts/copy-maia.mjs",
+    "prebuild": "node scripts/copy-engine.mjs && node scripts/copy-maia.mjs",
     "bench": "tsx scripts/bench.ts"
   },
   "dependencies": {
@@ -30,6 +30,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "6.0.4",
     "@vitest/coverage-v8": "4.1.10",
+    "esbuild": "0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "fake-indexeddb": "^6.2.8",

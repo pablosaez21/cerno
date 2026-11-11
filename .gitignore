@@ -44,3 +44,6 @@ next-env.d.ts
 
 # engine copied at build time
 /public/engine/
+/public/ort/
+/public/models/
+/public/maia-worker.js
