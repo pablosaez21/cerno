@@ -1,6 +1,7 @@
 // Puts the onnxruntime-web runtime in public/ort and the Maia-3 models in
 // public/models. Models come from MAIA_MODEL_DIR (local export) or from
-// MAIA_MODEL_BASE_URL; each file is checked against its pinned SHA-256.
+// MAIA_MODEL_BASE_URL (default: the GitHub release of this repo); each file is
+// checked against its pinned SHA-256. Only the 5M model is published.
 // A missing model is not fatal: the report is built without level fields.
 import crypto from "node:crypto";
 import { build } from "esbuild";
@@ -33,12 +34,17 @@ for (const [name, hash] of Object.entries(MODELS)) {
   if (fs.existsSync(dest) && sha(fs.readFileSync(dest)) === hash) continue;
   let buf;
   if (process.env.MAIA_MODEL_DIR && fs.existsSync(path.join(process.env.MAIA_MODEL_DIR, name))) buf = fs.readFileSync(path.join(process.env.MAIA_MODEL_DIR, name));
-  else if (process.env.MAIA_MODEL_BASE_URL) {
-    const res = await fetch(`${process.env.MAIA_MODEL_BASE_URL}/${name}`);
-    if (res.ok) buf = Buffer.from(await res.arrayBuffer());
+  else {
+    const base = process.env.MAIA_MODEL_BASE_URL ?? "https://github.com/pablosaez21/cerno/releases/download/maia3-onnx-v1";
+    const res = await fetch(`${base}/${name}`).catch(() => undefined);
+    if (res?.ok) buf = Buffer.from(await res.arrayBuffer());
   }
   if (!buf) {
-    console.warn(`maia: ${name} not available, the app will run without level metrics`);
+    console.warn(
+      name === "maia3-5m.onnx"
+        ? `maia: ${name} not available, reports will be built without level metrics`
+        : `maia: ${name} not available (optional, only for the /lab benchmark)`,
+    );
     continue;
   }
   if (sha(buf) !== hash) throw new Error(`maia: ${name} has the wrong SHA-256`);
