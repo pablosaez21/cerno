@@ -30,14 +30,14 @@
 
 Each judged move gets one main category, decided in this order:
 
-1. **tactics**: the engine lines show, within 10 plies, a forced mate in 5 or fewer, or a net material swing of 2 or more pawns that the player allowed or missed.
+1. **tactics**: the engine lines show, within 10 plies (followed to the end of any exchange in progress), a forced mate in 5 or fewer, or a net material swing of 1 pawn or more that the player allowed or missed, or the opponent's first reply takes a piece the move left undefended.
 2. **openings**: the move is in the opening phase. A move played in the same position in two or more games and judged bad each time is also "openings" when it is in the opening, even if it is tactical: it is a repertoire problem. It keeps its tactic tag.
 3. **endgames**: endgame phase, without tactical evidence.
 4. **strategy**: everything else: middlegame errors with no short-term tactical refutation. The engine does not say why; Cerno does not invent it.
 
 `CategoryStats`: `winLossShare` (share of all win % lost in judged moves), `winLoss`, `errorsPer100` (mistakes + blunders per 100 player moves), `counts` per judgement, `decidedGames` (lost games, and draws after reaching 85%, whose decisive move is in this category).
 
-Phases: endgame starts as Lichess `Divider` says (6 or fewer queens, rooks, bishops and knights in total). The opening lasts while the game stays in the Lichess chess-openings dataset, plus 6 plies, never past ply 30.
+Phases: endgame starts as Lichess `Divider` says (6 or fewer queens, rooks, bishops and knights in total). The opening lasts while the game stays in the Lichess chess-openings dataset plus 6 plies, at least until ply 20 (move 10) and never past ply 30.
 
 ## Tags
 
@@ -45,10 +45,10 @@ Phases: endgame starts as Lichess `Divider` says (6 or fewer queens, rooks, bish
 
 | Tag | Rule |
 | --- | --- |
-| `hanging_piece` | The opponent's first reply captures a non-pawn piece that the move left undefended, and the opponent wins 2+ pawns of material. |
-| `allowed_tactic` | The opponent wins 2+ pawns of material by force, not by a simple capture of an undefended piece. |
-| `missed_capture` | The best move captures an undefended piece (or one worth more than the capturer) and wins 2+ pawns; the move played does not. |
-| `missed_tactic` | The best line wins 2+ pawns by force, not by a simple capture; the move played does not. |
+| `hanging_piece` | The opponent's first reply captures a non-pawn piece that the move left undefended, and the opponent ends up 2+ pawns ahead. |
+| `allowed_tactic` | The opponent wins 1+ pawn of material by force, not by a simple capture of an undefended piece. |
+| `missed_capture` | The best move captures an undefended piece (or one worth more than the capturer) and wins material; the move played does not. |
+| `missed_tactic` | The best line wins 1+ pawn by force, not by a simple capture; the move played does not. |
 | `allowed_mate` | After the move, the opponent mates in 5 or fewer. |
 | `missed_mate` | A mate in 5 or fewer was available and the move played loses it. |
 
@@ -67,7 +67,7 @@ Game patterns (`games[].patterns`): `drift` (lost with no blunder from ≥ 40% a
 - `impact` = `winLoss` / games analysed: win % lost per game. Findings are sorted by it.
 - `evidence`: every supporting position, worst first. Never empty.
 
-Minimum sample: 3 occurrences in 3 different games. Exceptions: a repeated mistake needs the same position and move in 2 games; an opening line needs 5 games with that family and colour and either 8+ points lost per game in the opening or an average of 42% or less when leaving it. Time trouble is a finding only when the error rate in time trouble is 1.5 times the normal rate.
+Minimum sample: 3 occurrences in 3 different games. Exceptions: a repeated mistake needs the same position and move in 2 games; an opening line needs 5 games with that family and colour and either 8+ points lost per game in errors of the openings category or an average of 42% or less when leaving it. Time trouble is a finding only when the error rate in time trouble is 1.5 times the normal rate.
 
 ## Recommendations
 

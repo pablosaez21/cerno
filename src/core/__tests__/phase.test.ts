@@ -14,8 +14,9 @@ describe("opening detection", () => {
     expect(o.bookPlies).toBe(6);
   });
 
-  it("caps the opening phase", () => {
-    expect(openingEndPly(4)).toBe(10);
+  it("lasts at least 10 moves, book + 6 plies after that, and is capped", () => {
+    expect(openingEndPly(4)).toBe(20);
+    expect(openingEndPly(18)).toBe(24);
     expect(openingEndPly(40)).toBe(OPENING_CAP_PLIES);
   });
 
@@ -47,9 +48,9 @@ describe("endgame detection (Lichess Divider)", () => {
   });
 
   it("assigns opening, middlegame and endgame per ply", () => {
-    const { startFen, plies } = parseGameMoves({ pgn: pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. h4 h5 5. a4 a5 6. b3 b6 7. c3 c6") });
+    const { startFen, plies } = parseGameMoves({ pgn: pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. h4 h5 5. a4 a5 6. b3 b6 7. c3 Rb8 8. d3 Ra8 9. g3 g6 10. Ke2 Ke7 11. Ke1 Ke8") });
     const phases = phasesOf(startFen, plies, openingOf(plies).bookPlies);
-    expect(phases.slice(0, 12).every((p) => p === "opening")).toBe(true);
-    expect(phases[12]).toBe("middlegame");
+    expect(phases.slice(0, 20).every((p) => p === "opening")).toBe(true);
+    expect(phases[20]).toBe("middlegame");
   });
 });

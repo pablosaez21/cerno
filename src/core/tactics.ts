@@ -16,8 +16,14 @@ import type { Color, Score } from "./types";
 export const TACTIC_HORIZON = 10;
 /** A forced mate counts as short-term tactics up to this many moves. */
 export const SHORT_MATE = 5;
-/** Net material (pawns) that makes a swing tactical. */
-export const MATERIAL_SWING = 2;
+/**
+ * Net material (pawns) that makes a swing tactical. A pawn won or lost by a
+ * forced sequence counts: on a blind review of 30 real errors, 5 of 16
+ * disagreements were one-pawn tactics that a threshold of 2 left as strategy.
+ */
+export const MATERIAL_SWING = 1;
+/** Extra plies followed past the horizon while an exchange is still going on. */
+const EXCHANGE_TAIL = 4;
 
 export type TacticTag =
   | "hanging_piece" // the move leaves a piece en prise and the opponent takes it
@@ -65,10 +71,12 @@ function isCapture(pos: Chess, move: Move): boolean {
  * the horizon that is not in the middle of a capture sequence.
  */
 export function settledBalance(fen: string, line: string[], color: Color, horizon = TACTIC_HORIZON): { balance: number; plies: number } {
-  const { positions, moves } = playLine(fen, line.slice(0, horizon));
-  let j = positions.length - 1;
-  // Step back while the next move of the line is a capture (exchange in progress).
-  while (j > 0 && moves[j] && isCapture(positions[j], moves[j])) j--;
+  const { positions, moves } = playLine(fen, line.slice(0, horizon + EXCHANGE_TAIL));
+  // Follow the line to the horizon, then on through any exchange in progress.
+  let j = Math.min(horizon, moves.length);
+  while (j < moves.length && j < horizon + EXCHANGE_TAIL && isCapture(positions[j], moves[j])) j++;
+  // Still mid-exchange (or the line stopped there): step back to a quiet point.
+  while (j > 0 && j < moves.length && isCapture(positions[j], moves[j])) j--;
   return { balance: materialBalance(positions[j], color), plies: j };
 }
 
@@ -185,9 +193,13 @@ export function tacticEvidence(input: TacticInput): TacticEvidence | undefined {
   const gBest = settledBalance(fenBefore, bestLine, color).balance - before;
   const gPlayed = settledBalance(fenBefore, playedLine, color, TACTIC_HORIZON + 1).balance - before;
 
+  const afterPos = playLine(fenBefore, [played]).positions.at(-1)!;
+  const hanging = isHangingCapture(afterPos, refutation[0], played, pos);
+  // A piece left en prise and taken at once is evidence on its own, even if
+  // the best line also loses material later on.
+  if (hanging && gPlayed <= -2) return { tag: "hanging_piece", motifs: [], material: -gPlayed, line: refutation };
   if (gPlayed <= -MATERIAL_SWING && gBest - gPlayed >= MATERIAL_SWING) {
-    const afterPos = playLine(fenBefore, [played]).positions.at(-1)!;
-    const tag: TacticTag = isHangingCapture(afterPos, refutation[0], played, pos) ? "hanging_piece" : "allowed_tactic";
+    const tag: TacticTag = hanging ? "hanging_piece" : "allowed_tactic";
     const motifs: Motif[] = tag === "allowed_tactic" && findFork(fenOf(afterPos), refutation, opp) ? ["fork"] : [];
     return { tag, motifs, material: -gPlayed, line: refutation };
   }

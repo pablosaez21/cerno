@@ -14,6 +14,12 @@ export type Phase = "opening" | "middlegame" | "endgame";
 
 /** Plies after leaving the book that still count as opening. */
 export const OPENING_MARGIN_PLIES = 6;
+/**
+ * The opening lasts at least this long (move 10 for both sides). A blind review
+ * of 30 real errors put moves 6 to 9 in the opening when the player left the
+ * book early.
+ */
+export const OPENING_MIN_PLIES = 20;
 /** Opening never extends past this ply (move 15 for both sides). */
 export const OPENING_CAP_PLIES = 30;
 
@@ -45,7 +51,7 @@ export function openingOf(plies: Pick<PlyRecord, "fenAfter">[]): OpeningInfo {
 
 /** Last ply that belongs to the opening phase. */
 export function openingEndPly(bookPlies: number): number {
-  return Math.min(bookPlies + OPENING_MARGIN_PLIES, OPENING_CAP_PLIES);
+  return Math.min(Math.max(bookPlies + OPENING_MARGIN_PLIES, OPENING_MIN_PLIES), OPENING_CAP_PLIES);
 }
 
 function majorsAndMinors(pos: Chess): number {

@@ -102,7 +102,44 @@ describe("tactic evidence", () => {
   });
 });
 
+describe("tactic evidence, cases from the blind review", () => {
+  it("a pawn won by force is tactics", () => {
+    // Black's e5 pawn is attacked by knight and rook, defended by the bishop: Nxe5 Bxe5 Rxe5+ wins it.
+    const ev = tacticEvidence({
+      fenBefore: "4k3/ppp2ppp/3b4/4p3/8/5N2/PPP2PPP/4RK2 w - - 0 1",
+      played: "a2a3",
+      color: "white",
+      bestLine: ["f3e5", "d6e5", "e1e5"],
+      bestScore: { cp: 120 },
+      refutation: ["f7f6", "b2b3"],
+      afterScore: { cp: 0 },
+    });
+    expect(ev).toBeDefined();
+  });
+
+  it("a hanging piece counts even when the best line also loses material later", () => {
+    const ev = tacticEvidence({
+      fenBefore: "3q2k1/ppp2ppp/8/8/8/2N5/PPP2PPP/6K1 w - - 0 1",
+      played: "c3d5",
+      color: "white",
+      // Contrived best line that also drops a piece after the horizon starts.
+      bestLine: ["c3e4", "d8d1", "g1f2", "d1c2", "e4d2", "c2d2"],
+      bestScore: { cp: -50 },
+      refutation: ["d8d5", "a2a3"],
+      afterScore: { cp: -400 },
+    });
+    expect(ev?.tag).toBe("hanging_piece");
+  });
+});
+
 describe("helpers", () => {
+  it("does not read the balance in the middle of an exchange cut by the horizon", () => {
+    // Queen trade on d3 starts at ply 2 with a horizon of 2: the recapture must be counted.
+    const fen = "3qk3/8/8/8/8/3Q4/8/3RK3 b - - 0 1";
+    const r = settledBalance(fen, ["d8d3", "d1d3"], "white", 1);
+    expect(r.balance).toBe(5);
+  });
+
   it("settled balance waits for the exchange to end", () => {
     // 1.Nxd5 Qxd5: balance after the sequence, not in the middle.
     const r = settledBalance("3q2k1/ppp2ppp/8/3p4/8/2N5/PPP2PPP/6K1 w - - 0 1", ["c3d5", "d8d5", "a2a3"], "white");

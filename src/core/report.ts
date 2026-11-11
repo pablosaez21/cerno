@@ -89,6 +89,8 @@ export interface OpeningRow {
   /** Judged moves in the opening phase, and the win % they lost. */
   openingErrors: number;
   openingWinLoss: number;
+  /** Same, only for moves whose category is "openings" (tactics excluded). */
+  openingCategoryWinLoss: number;
   /** Most frequent full names within the family. */
   names: { eco?: string; name: string; games: number }[];
   gameIds: string[];
@@ -341,6 +343,7 @@ export function buildReport(
         avgBookExitMove: round(sum(gs, (g) => Math.ceil(g.opening.bookPlies / 2)) / gs.length, 1),
         openingErrors: oms.length,
         openingWinLoss: round(sum(oms, (m) => m.loss), 1),
+        openingCategoryWinLoss: round(sum(oms.filter((m) => m.category === "openings"), (m) => m.loss), 1),
         names: [...names.values()].sort((a, b) => b.games - a.games).slice(0, 5),
         gameIds: gs.map((g) => g.game.id),
       };
@@ -403,13 +406,13 @@ export function buildReport(
   // Opening lines that go badly.
   for (const row of openings) {
     if (row.family === "?" || row.games < MIN_SAMPLE.openingGames) continue;
-    const weakLoss = row.openingWinLoss / row.games >= OPENING_WEAK_LOSS_PER_GAME;
+    const weakLoss = row.openingCategoryWinLoss / row.games >= OPENING_WEAK_LOSS_PER_GAME;
     const weakExit = row.avgWinAfterOpening !== undefined && row.avgWinAfterOpening <= OPENING_WEAK_EXIT;
     if (!weakLoss && !weakExit) continue;
     const gs = row.gameIds.map((id) => byId.get(id)!);
-    const oms = gs.flatMap((g) => g.moves.filter((m) => m.judgement && m.phase === "opening"));
+    const oms = gs.flatMap((g) => g.moves.filter((m) => m.judgement && m.category === "openings"));
     const exitDeficit = sum(gs, (g) => Math.max(0, 50 - (g.winAfterOpening ?? 50)));
-    const winLoss = Math.max(row.openingWinLoss, exitDeficit);
+    const winLoss = Math.max(row.openingCategoryWinLoss, exitDeficit);
     const evidence = oms.length
       ? [...oms].sort((a, b) => b.loss - a.loss).map(ref)
       : gs.map((g) => ({ gameId: g.game.id, ply: g.openingEnd }));
