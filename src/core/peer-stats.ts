@@ -14,6 +14,30 @@ export const MIN_CLASS_DECISIONS = 150;
 export const MIN_CLASS_GAMES = 20;
 /** Minimum blitz games in scope to compute a profile at all. */
 export const MIN_PROFILE_GAMES = 30;
+/**
+ * The game bootstrap under-states the spread of the gap: on 300 synthetic players
+ * per setting (V1, scripts/peers/simulate.ts) the null SD across players was 1.10
+ * to 1.29 times the bootstrap SD (median 1.16 over classes with >= 900 decisions),
+ * and the overall test gave p < 0.05 for 7.3% of null players. Bootstrap deviations
+ * around the point gap are widened, per class, by max(1, measured ratio) before SD,
+ * intervals and grades (one global 1.15 over-widened endgame and cost power:
+ * 0.72 instead of 0.81 on a planted -300 endgame gap). Unmeasured classes use 1.15.
+ */
+export const SD_INFLATION: Record<string, number> = {
+  all: 1.16,
+  "phase:opening": 1.13,
+  "phase:middlegame": 1.1,
+  "phase:endgame": 1,
+  "standing:ahead": 1,
+  "standing:level": 1.29,
+  "standing:behind": 1,
+  "demand:forcing": 1.12,
+  "demand:pawn": 1.16,
+  "demand:piece": 1.17,
+  "choice:one_good": 1,
+  "choice:several_good": 1.16,
+};
+export const SD_INFLATION_DEFAULT = 1.15;
 /** 80% power at two-sided 0.05: 0.84 + 1.96. */
 export const POWER_FACTOR = 2.8;
 
@@ -220,13 +244,17 @@ export function classStat(def: ClassDef, decisions: Decision[], gameIds: string[
     sGaps.push(eloShift(totalsOf(P.s, idx)).shift - eloShift(totalsOf(R.s, idx)).shift);
   }
   if (skipped > 0.05 * boot.length) return { ...base, insufficient: true };
-  const sd = std(gaps);
   const gap = ep.shift - er.shift;
+  const styleGap = eloShift(totalsOf(P.s)).shift - eloShift(totalsOf(R.s)).shift;
+  const factor = SD_INFLATION[def.id] ?? SD_INFLATION_DEFAULT;
+  const widen = (xs: number[], centre: number) => xs.map((x) => centre + factor * (x - centre));
+  const wide = widen(gaps, gap);
+  const sd = std(wide);
   const z = sd > 0 ? gap / sd : 0;
   const p = 2 * (1 - normalCdf(Math.abs(z)));
-  const sorted = [...gaps].sort((a, b) => a - b);
-  const sSorted = [...sGaps].sort((a, b) => a - b);
-  const styleGap = eloShift(totalsOf(P.s)).shift - eloShift(totalsOf(R.s)).shift;
+  const sorted = [...wide].sort((a, b) => a - b);
+  const sWide = widen(sGaps, styleGap);
+  const sSorted = [...sWide].sort((a, b) => a - b);
   return {
     ...base,
     player: Math.round(ep.shift),
@@ -241,7 +269,7 @@ export function classStat(def: ClassDef, decisions: Decision[], gameIds: string[
     direction: gap < 0 ? "weaker" : "stronger",
     detectableGap: Math.round(POWER_FACTOR * sd),
     gamesToConfirm: gamesToConfirm(G, z),
-    style: { gap: Math.round(styleGap), sd: Math.round(std(sGaps)), ci95: [Math.round(percentile(sSorted, 2.5)), Math.round(percentile(sSorted, 97.5))] },
+    style: { gap: Math.round(styleGap), sd: Math.round(std(sWide)), ci95: [Math.round(percentile(sSorted, 2.5)), Math.round(percentile(sSorted, 97.5))] },
   };
 }
 

@@ -281,9 +281,10 @@ function EvidencePanel({ refPos, error, game }: { refPos: EvidenceRef; error?: E
       </p>
       {error.peer && (
         <p>
-          Jugadores de blitz de Lichess con Elo {error.peer.eloSelf}: harían esta jugada {(error.peer.pPlayed * 100).toFixed(1)}% de las veces; harían una jugada buena{" "}
-          {(error.peer.pGood * 100).toFixed(1)}% (sin evaluar {(error.peer.pUnevaluated * 100).toFixed(1)}%) → <b>{error.peer.level ?? "sin etiqueta de nivel"}</b>, pérdida evitable{" "}
-          {error.peer.avoidableLoss}
+          Jugadores de blitz de Lichess con Elo {error.peer.eloSelf}, según Maia-3: harían esta jugada {(error.peer.pPlayed * 100).toFixed(1)}% de las veces; encontrarían una jugada
+          buena {(error.peer.pGood * 100).toFixed(0)}% (con +200: {(error.peer.pGoodNext * 100).toFixed(0)}%, con +400: {(error.peer.pGoodPlus400 * 100).toFixed(0)}%; evaluado{" "}
+          {(error.peer.pEvaluated * 100).toFixed(0)}% de la probabilidad) → <b>{error.peer.level ?? "sin etiqueta de nivel"}</b>
+          {error.peer.nextLevel && " · next_level"} · pérdida evitable {error.peer.avoidableLoss} · la evitan los de +200: {error.peer.nextLevelLoss}
         </p>
       )}
       {error.outOfScope && <p>Fuera del alcance de Maia: {error.outOfScope}</p>}
@@ -311,40 +312,11 @@ function LevelSection({ report }: { report: Report }) {
     <>
       <h2>Comparación con jugadores de blitz de Lichess del mismo Elo (Maia-3)</h2>
       <p>
-        Modelo {lv.model} · Elo de Lichess = Elo de la partida + {lv.eloOffset} · errores (errores y graves) {lv.scope.errors}, dentro del alcance {lv.scope.inScope}, fuera{" "}
+        Modelo {lv.model} ({lv.mode === "full" ? "todas las jugadas de los dos bandos" : "modo reducido: solo tus errores, sin WebGPU"}) · Elo de Lichess = Elo de la partida + {lv.eloOffset}
+        {lv.opponentsTotalShift !== undefined && ` (comprobación con tus rivales: ${lv.opponentsTotalShift}${lv.offsetWarning ? ", AVISO: la escala no encaja" : ""})`} · errores (errores y graves) {lv.scope.errors}, dentro del alcance {lv.scope.inScope}, fuera{" "}
         {(lv.scope.outOfScopeShare * 100).toFixed(1)}% {JSON.stringify(lv.scope.outOfScope)}
       </p>
-      <h3>Por fase: pérdida real frente a la esperada a ese Elo, en las mismas posiciones (muestra)</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>fase</th>
-            <th>muestra (partidas)</th>
-            <th>real /100 jug.</th>
-            <th>esperada /100 jug.</th>
-            <th>cociente [IC 95%]</th>
-            <th>hallazgo</th>
-            <th>cobertura</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(lv.phases).map(([ph, c]) => (
-            <tr key={ph}>
-              <td>{ph}</td>
-              <td>
-                {c.sample} ({c.games})
-              </td>
-              <td>{c.realLossPer100}</td>
-              <td>{c.expectedLossPer100}</td>
-              <td>
-                {c.ratio} [{c.ratioCi95[0]}, {c.ratioCi95[1]}]
-              </td>
-              <td>{c.finding ?? "ninguno (el intervalo cruza 1)"}</td>
-              <td>{c.meanCoverage}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {report.profile && <ProfileSection report={report} />}
       {alt && (
         <>
           <h3>Top 3: orden actual (pérdida bruta) frente a orden por pérdida evitable</h3>
@@ -374,6 +346,68 @@ function LevelSection({ report }: { report: Report }) {
           </table>
         </>
       )}
+    </>
+  );
+}
+
+function ProfileSection({ report }: { report: Report }) {
+  const p = report.profile!;
+  const rows = [p.overall, ...p.classes];
+  return (
+    <>
+      <h3>Tu perfil comparado con tus rivales en estas partidas</h3>
+      <p>
+        Desplazamiento de Elo de calidad: con qué Elo de jugadores de blitz de Lichess (según Maia-3) encaja la calidad de las jugadas, comparado con tus rivales en estas
+        mismas {p.games} partidas. Negativo = peor que tus rivales. Grado A confirmado, B sugestivo, C dentro del ruido. {p.decisions.player} decisiones tuyas,{" "}
+        {p.decisions.opponents} de tus rivales. {p.warnings.length > 0 && `Avisos: ${p.warnings.join(", ")}`}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>clase</th>
+            <th>decisiones (tú / rivales)</th>
+            <th>diferencia [IC 95%]</th>
+            <th>grado</th>
+            <th>detectable</th>
+            <th>partidas para confirmar</th>
+            <th>pérdida/partida (tú / rivales)</th>
+            <th>lo que ganan los de +200 por partida</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr key={c.id}>
+              <td>{c.id}</td>
+              <td>
+                {c.decisions} / {c.opponentDecisions}
+              </td>
+              <td>{c.insufficient ? "muestra insuficiente" : `${c.gap} [${c.ci95![0]}, ${c.ci95![1]}]`}</td>
+              <td>{c.grade ?? "–"}</td>
+              <td>{c.detectableGap ?? "–"}</td>
+              <td>{c.gamesToConfirm ?? "–"}</td>
+              <td>
+                {c.cost.lossPerGame} / {c.cost.opponentsLossPerGame}
+              </td>
+              <td>{c.nextLevel.gainPerGame}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h4>Reloj (descriptivo: tú menos tu rival en la misma partida; hallazgo solo con |z| ≥ 3)</h4>
+      <table>
+        <tbody>
+          {p.clock.paired.map((c) => (
+            <tr key={c.id}>
+              <td>{c.id}</td>
+              <td>{c.games} partidas</td>
+              <td>
+                {c.mean} ± {c.se}
+              </td>
+              <td>z {c.z}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </>
   );
 }

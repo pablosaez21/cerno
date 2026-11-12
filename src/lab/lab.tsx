@@ -54,7 +54,7 @@ export function Lab() {
         abort.current.signal,
       );
       if (!res.analyzed.length) throw new Error("No hay partidas que analizar con esos filtros.");
-      const r = buildReport(res.analyzed, username, DEFAULT_SETTINGS, res.level);
+      const r = buildReport(res.analyzed, username, DEFAULT_SETTINGS, res.peers);
       setTimings(res.timings);
       setReport(r);
       const cache = await IdbCache.open();
