@@ -9,6 +9,7 @@ import type { MaiaPrediction } from "./maia";
 import type { MaiaQuery } from "./maia-ort";
 import { openingOf, phasesOf, type Phase } from "./phase";
 import { candidateSet, finishDecision, PEER_ELO_DELTAS, type Decision } from "./peers";
+import { styleAttr } from "./style";
 import type { Color, PositionEval } from "./types";
 import { winPercentFor } from "./winprob";
 
@@ -195,6 +196,7 @@ export async function evaluatePeers(skeletons: PeerSkeleton[], games: AnalyzedGa
       win,
       winPosition: p.winPos,
     });
+    d.attr = styleAttr(sk.fen, sk.played, sk.moveNumber, sk.preds);
     deps.onPolicies?.(d, sk.preds);
     return d;
   });

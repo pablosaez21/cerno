@@ -8,6 +8,7 @@
 import { parseStdUci, positionFromFen } from "./chess";
 import type { MaiaPrediction } from "./maia";
 import type { Phase } from "./phase";
+import type { StyleAttr } from "./style";
 import type { Color } from "./types";
 import { THRESHOLDS } from "./winprob";
 
@@ -71,6 +72,8 @@ export interface Decision {
   demand: Demand;
   /** Exactly one good move in S and S has at least 3 moves. */
   oneGood: boolean;
+  /** Style attributes of the move played and their expectation under Maia (step 8). */
+  attr?: StyleAttr;
 }
 
 /** Moves in decreasing probability (stable on ties: order of first appearance). */

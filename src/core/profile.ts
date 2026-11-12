@@ -4,6 +4,8 @@
 // Control: the player's opponents in the same games.
 import { ALL_CLASS, BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, CLOCK_CLASSES, eloShift, PRIMARY_CLASSES, profileStats, SECONDARY_CLASSES, type ClassStat, type ProfileStats } from "./peer-stats";
 import { PEER_COVERAGE, PEER_ELO_DELTAS, PEER_MAX_MOVES, type Decision } from "./peers";
+import { repertoire, type RepertoireNode } from "./repertoire";
+import { styleTraits, type StyleTrait } from "./style";
 
 /** Index of the +200 and +400 levels in PEER_ELO_DELTAS. */
 const L0 = 2;
@@ -54,9 +56,8 @@ export interface Profile {
   classes: ProfileClass[];
   secondary: ProfileClass[];
   clock: { paired: PairedStat[]; classes: ProfileClass[]; experimental: true };
-  /** Filled by later steps (style traits, repertoire). */
-  style: unknown[];
-  repertoire: unknown[];
+  style: StyleTrait[];
+  repertoire: RepertoireNode[];
 }
 
 /** Probability, at a level, of a good move among the evaluated set, normalised by the set's mass. */
@@ -207,7 +208,12 @@ function withExtras(c: ClassStat, test: (d: Decision) => boolean, decisions: Dec
 }
 
 /** Builds the profile. `judged` holds `${gameId}#${ply}` of moves verified by pass 2. */
-export function buildProfile(decisions: Decision[], judged: Set<string> = new Set(), stats: ProfileStats | undefined = profileStats(decisions)): Profile | undefined {
+export function buildProfile(
+  decisions: Decision[],
+  judged: Set<string> = new Set(),
+  extras: { points?: Map<string, number>; judgedLoss?: Map<string, number> } = {},
+  stats: ProfileStats | undefined = profileStats(decisions),
+): Profile | undefined {
   if (!stats) return undefined;
   const G = stats.games;
   const player = decisions.filter((d) => d.mover === "player" && d.inScope);
@@ -229,8 +235,8 @@ export function buildProfile(decisions: Decision[], judged: Set<string> = new Se
     classes: stats.classes.map((c) => ext(c, PRIMARY_CLASSES)),
     secondary: stats.secondary.map((c) => ext(c, SECONDARY_CLASSES)),
     clock: { paired: pairedClock(decisions), classes: stats.clock.map((c) => ext(c, CLOCK_CLASSES, true)), experimental: true },
-    style: [],
-    repertoire: [],
+    style: styleTraits(decisions),
+    repertoire: repertoire(decisions, extras.points ?? new Map(), extras.judgedLoss),
   };
 }
 

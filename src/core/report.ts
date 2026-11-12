@@ -18,6 +18,7 @@ import type { EndgameType, Phase } from "./phase";
 import { settledBalance, type Motif, type TacticTag } from "./tactics";
 import { CHESSCOM_TO_LICHESS_OFFSET, type OutOfScope } from "./level";
 import type { Decision } from "./peers";
+import { STYLE_ATTRIBUTES } from "./style";
 import { buildProfile, OFFSET_WARNING, opponentsTotalShift, peerFields, type LevelTag, type PeerFields, type Profile } from "./profile";
 import type { Color, GameResult, Source, Termination, TimeClass } from "./types";
 import { THRESHOLDS, type Judgement } from "./winprob";
@@ -47,7 +48,7 @@ export const RECOMMENDATION_MAX_OVERLAP = 0.5;
 export const EXERCISES_PER_CATEGORY = 25;
 
 /** "profile": a gap against the opponents of the same games (version 3). */
-export type Area = Category | "clock" | "profile";
+export type Area = Category | "clock" | "profile" | "style";
 
 export interface EvidenceRef {
   gameId: string;
@@ -147,7 +148,9 @@ export type FindingKind =
   | "game_pattern"
   | "strategy_errors"
   | "clock"
-  | "profile_gap";
+  | "profile_gap"
+  | "style_trait"
+  | "repertoire_leak";
 
 export interface Finding {
   /** Stable id, e.g. "tactics:hanging_piece", "openings:line:Sicilian Defense:black". */
@@ -190,7 +193,22 @@ export interface Prescription {
   /** Positions to work on: the evidence ordered by loss. */
   positions: EvidenceRef[];
   params: Record<string, string | number | undefined>;
+  /** Positions to play out against Maia-3 at the opponents' Elo (method play_vs_maia). */
+  drills?: DrillSpec[];
 }
+
+export interface DrillSpec {
+  fen: string;
+  side: Color;
+  goal: "win" | "draw";
+  /** Lichess Elo for Maia-3: median of the opponents' Elo in these games. */
+  maiaElo: number;
+  sourceGameId: string;
+  ply: number;
+}
+
+/** What a recommendation rests on. */
+export type RecommendationBasis = "confirmed_vs_opponents" | "suggestive_vs_opponents" | "level_typical";
 
 export interface Recommendation {
   rank: number;
@@ -198,6 +216,7 @@ export interface Recommendation {
   prescription: Prescription;
   /** "Because of this": the numbers behind the recommendation. */
   reason: { occurrences: number; games: number; winLoss: number; impact: number; gamesAnalysed: number; level?: LevelSummary };
+  basis?: RecommendationBasis;
 }
 
 export interface Exercise {
@@ -302,11 +321,13 @@ export interface Report {
   level?: LevelReport;
   /** Peer profile against the opponents of the same games (Maia-3 + Stockfish). Present in full mode with enough games. */
   profile?: Profile;
+  /** Recurring opening moves that cost points, with what stronger players choose there. */
+  repertoireFixes?: { fen: string; ply: number; played: string; count: number; meanLoss: number; favouritePlus400: string; engineBest: string; habitBelowLevel: boolean; evidence: EvidenceRef[] }[];
   /**
    * Alternative ordering by avoidable loss, shown next to the default one
    * until the player approves switching. Present when Maia-3 ran.
    */
-  rankings?: { byAvoidableLoss: string[]; recommendationsByAvoidableLoss: Recommendation[] };
+  rankings?: { byAvoidableLoss: string[]; recommendationsByAvoidableLoss: Recommendation[]; legacyRecommendations: Recommendation[] };
 }
 
 const emptyCounts = (): Record<Judgement, number> => ({ inaccuracy: 0, mistake: 0, blunder: 0 });
@@ -596,7 +617,9 @@ export function buildReport(
   fromMoves({ id: "clock:fast_critical", area: "clock", kind: "clock", key: "fast_critical", params: {} }, judged.filter((m) => isError(m) && m.clockTags.includes("fast_critical")));
 
   // Peer profile (version 3): graded gaps against the opponents become findings.
-  const profile = peers?.mode === "full" ? buildProfile(peers.decisions, new Set(judged.map((m) => `${m.gameId}#${m.ply}`))) : undefined;
+  const points = new Map(games.map((g) => [g.game.id, g.game.result === "win" ? 1 : g.game.result === "draw" ? 0.5 : 0]));
+  const judgedLoss = new Map(judged.map((m) => [`${m.gameId}#${m.ply}`, m.loss]));
+  const profile = peers?.mode === "full" ? buildProfile(peers.decisions, new Set(judgedLoss.keys()), { points, judgedLoss }) : undefined;
   if (profile) {
     for (const c of profile.classes) {
       if (c.insufficient || (c.grade !== "A" && c.grade !== "B")) continue;
@@ -617,15 +640,76 @@ export function buildReport(
       });
     }
   }
+  if (profile) {
+    for (const t of profile.style) {
+      if (!t.trait) continue;
+      const ev = peers!.decisions
+        .filter((d) => d.mover === "player" && d.inScope && d.attr?.observed[STYLE_ATTRIBUTES.indexOf(t.attribute)] === (t.controlled < 0 ? 0 : 1) && d.playedLoss >= 5)
+        .sort((a, b) => b.playedLoss - a.playedLoss)
+        .slice(0, 20)
+        .map((d) => ({ gameId: d.gameId, ply: d.ply }));
+      findings.push({
+        id: `style:${t.attribute}`,
+        area: "style",
+        kind: "style_trait",
+        key: t.attribute,
+        params: { observed: t.observed, expected: t.expected, z: t.z, zOpponents: t.zOpponents, zControlled: t.zControlled, trend: round(t.expectedPlus400 - t.expectedMinus400, 4) },
+        occurrences: t.decisions,
+        games: profile.games,
+        winLoss: 0,
+        impact: 0,
+        evidence: ev.length ? ev : [{ gameId: peers!.decisions[0].gameId, ply: peers!.decisions[0].ply }],
+      });
+    }
+    // Repertoire leaks replace the repeated-mistake findings.
+    for (let i = findings.length - 1; i >= 0; i--) if (findings[i].kind === "repeated_mistake") findings.splice(i, 1);
+    for (const node of profile.repertoire) {
+      for (const mv of node.moves) {
+        if (!mv.leak) continue;
+        const winLoss = round(mv.meanLoss * mv.count, 1);
+        findings.push({
+          id: `repertoire:${node.fen.split(" ").slice(0, 4).join(" ")}|${mv.uci}`,
+          area: "openings",
+          kind: "repertoire_leak",
+          key: mv.uci,
+          params: { fen: node.fen, played: mv.san, best: node.engineBest.san, favouritePlus400: node.favouritePlus400.san, pMinus400: mv.pMinus400, p0: mv.p0, pPlus400: mv.pPlus400, habitBelowLevel: mv.habitBelowLevel },
+          occurrences: mv.count,
+          games: mv.count,
+          winLoss,
+          impact: round(winLoss / Math.max(1, N)),
+          evidence: mv.evidence,
+        });
+      }
+    }
+  }
   findings.sort((a, b) => b.impact - a.impact);
   for (const f of findings) {
     f.level = levelSummary(f.evidence.map((e) => judgedByKey.get(`${e.gameId}#${e.ply}`)).filter((m): m is MoveAnalysis => !!m));
   }
 
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] ?? 0;
+  const oppElo = median((peers?.decisions ?? []).filter((d) => d.mover === "opponent").map((d) => d.elo));
+  const attachProfileExtras = (rec: Recommendation, f: Finding) => {
+    const cls = f.key;
+    if (cls === "phase:opening" && profile) {
+      const fixes = profile.repertoire.flatMap((n) => n.moves.filter((m) => m.leak).flatMap((m) => m.evidence.slice(0, 1)));
+      rec.prescription.positions = [...fixes, ...rec.prescription.positions].slice(0, 10);
+      rec.prescription.params.repertoireFixes = fixes.length;
+    }
+    if (rec.prescription.methods.includes("play_vs_maia") && peers) {
+      const goal: "win" | "draw" = cls === "standing:behind" ? "draw" : "win";
+      rec.prescription.drills = f.evidence.slice(0, 10).map((e) => {
+        const d = decisionByKey.get(`${e.gameId}#${e.ply}`)!;
+        return { fen: d.fen, side: d.color, goal, maiaElo: oppElo, sourceGameId: e.gameId, ply: e.ply };
+      });
+    }
+  };
   // ---- Recommendations: top three, skipping heavy overlaps.
-  const recommend = (ordered: Finding[]): Recommendation[] => {
-    const out: Recommendation[] = [];
-    const used: Set<string>[] = [];
+  const basisOf = (f: Finding): RecommendationBasis | undefined =>
+    !profile ? undefined : f.kind === "profile_gap" ? (f.params.grade === "A" ? "confirmed_vs_opponents" : "suggestive_vs_opponents") : "level_typical";
+  const recommend = (ordered: Finding[], start: Recommendation[] = []): Recommendation[] => {
+    const out: Recommendation[] = [...start];
+    const used: Set<string>[] = start.map((r) => new Set(findings.find((f) => f.id === r.findingId)!.evidence.map((e) => `${e.gameId}#${e.ply}`)));
     for (const f of ordered) {
       if (out.length >= 3) break;
       const keys = new Set(f.evidence.map((e) => `${e.gameId}#${e.ply}`));
@@ -637,11 +721,29 @@ export function buildReport(
         findingId: f.id,
         prescription: prescribe(f),
         reason: { occurrences: f.occurrences, games: f.games, winLoss: f.winLoss, impact: f.impact, gamesAnalysed: N, level: f.level },
+        basis: basisOf(f),
       });
+      if (f.kind === "profile_gap") attachProfileExtras(out[out.length - 1], f);
     }
     return out;
   };
-  const recommendations = recommend(findings);
+  const NEW_KINDS: FindingKind[] = ["profile_gap", "style_trait", "repertoire_leak"];
+  const legacy = recommend(findings.filter((f) => !NEW_KINDS.includes(f.kind)));
+  // Version 3 (plan 3.12): per family, the weakest graded class (A or B); A before B, then z.
+  // choice:several_good is never a target (everything but critical positions: too broad to train).
+  // Then fill with level-typical findings by the loss players 200 Elo higher avoid.
+  let recommendations: Recommendation[];
+  if (profile) {
+    const targets = profileTargets(profile.classes)
+      .map((id) => findings.find((x) => x.id === `profile:${id}`))
+      .filter((f): f is Finding => !!f);
+    const fromProfile = recommend(targets);
+    const perGameNext = (f: Finding) => (f.level?.nextLevelLoss ?? 0) / Math.max(1, N);
+    const fill = findings.filter((f) => !NEW_KINDS.includes(f.kind)).sort((a, b) => perGameNext(b) - perGameNext(a));
+    recommendations = recommend(fill, fromProfile);
+  } else {
+    recommendations = legacy;
+  }
   const byAvoidable = peers ? [...findings].filter((f) => f.level).sort((a, b) => b.level!.avoidableLoss - a.level!.avoidableLoss) : undefined;
 
   // ---- Exercises
@@ -766,7 +868,8 @@ export function buildReport(
     games: gameRows,
     level: peers && levelReport(peers, judged.filter(isError), peerOf, outOfScopeOf, games.some((g) => g.game.source === "chesscom")),
     profile,
-    rankings: byAvoidable && { byAvoidableLoss: byAvoidable.map((f) => f.id), recommendationsByAvoidableLoss: recommend(byAvoidable) },
+    repertoireFixes: profile?.repertoire.flatMap((n) => n.moves.filter((m) => m.leak).map((m) => ({ fen: n.fen, ply: n.ply, played: m.san, count: m.count, meanLoss: m.meanLoss, favouritePlus400: n.favouritePlus400.san, engineBest: n.engineBest.san, habitBelowLevel: m.habitBelowLevel, evidence: m.evidence }))),
+    rankings: byAvoidable && { byAvoidableLoss: byAvoidable.map((f) => f.id), recommendationsByAvoidableLoss: recommend(byAvoidable), legacyRecommendations: legacy },
   };
 }
 
@@ -821,6 +924,10 @@ export function prescribe(f: Finding): Prescription {
     }
     case "clock":
       return { ...base, methods: f.key === "fast_critical" ? ["slow_down_critical"] : ["time_management"], themes: [] };
+    case "style_trait":
+      return { ...base, methods: ["own_positions", "review_games"], themes: [], params: { attribute: f.key } };
+    case "repertoire_leak":
+      return { ...base, methods: ["repertoire_fix"], themes: [], params: { fen: String(f.params.fen), played: String(f.params.played), best: f.params.best as string | undefined, favouritePlus400: f.params.favouritePlus400 as string | undefined } };
     case "profile_gap": {
       // Section 6 of the plan: one entry per profile class.
       const table: Record<string, Pick<Prescription, "methods" | "themes">> = {
@@ -867,4 +974,19 @@ function levelReport(
     opponentsTotalShift: shift,
     offsetWarning: shift === undefined ? undefined : Math.abs(shift) > OFFSET_WARNING,
   };
+}
+
+/**
+ * Plan 3.12: per family, the weakest class graded A or B (choice:several_good
+ * excluded: too broad to train); grade A before B, then by z ascending.
+ */
+export function profileTargets(classes: { id: string; family: string; insufficient?: boolean; direction?: string; grade?: string; z?: number }[]): string[] {
+  const out: { id: string; grade: string; z: number }[] = [];
+  for (const family of ["phase", "standing", "demand", "choice"]) {
+    const c = classes
+      .filter((x) => x.family === family && x.id !== "choice:several_good" && !x.insufficient && x.direction === "weaker" && (x.grade === "A" || x.grade === "B"))
+      .sort((a, b) => a.z! - b.z!)[0];
+    if (c) out.push({ id: c.id, grade: c.grade!, z: c.z! });
+  }
+  return out.sort((a, b) => (a.grade === b.grade ? a.z - b.z : a.grade === "A" ? -1 : 1)).map((x) => x.id);
 }

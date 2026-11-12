@@ -52,7 +52,7 @@ async function main() {
   const pool = new EnginePool(() => nodeTransport(), Number(process.env.WORKERS ?? 9));
   await pool.start();
   const runner = await MaiaRunner.create(ort, fs.readFileSync(model));
-  const { analyzed, decisions, seconds } = await buildDecisions(games, runner, pool, cache);
+  const { analyzed, decisions, seconds } = await buildDecisions(games, runner, pool, cache, { noPass2: !!process.env.NOPASS2 });
   pool.stop();
   fs.writeFileSync(out, decisions.map((d) => JSON.stringify(d)).join("\n") + "\n");
   const inScope = decisions.filter((d) => d.inScope);
