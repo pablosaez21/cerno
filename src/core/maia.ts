@@ -105,8 +105,20 @@ export interface MaiaPrediction {
 }
 
 /** Masked softmax over legal moves, and WDL from the value head. */
+/** Legal moves of the last positions decoded: a position is queried at several Elo levels in a row. */
+const legalCache = new Map<string, { uci: string; index: number }[]>();
+function cachedLegalMoves(fen: string): { uci: string; index: number }[] {
+  let legal = legalCache.get(fen);
+  if (!legal) {
+    legal = maiaLegalMoves(fen);
+    if (legalCache.size >= 512) legalCache.clear();
+    legalCache.set(fen, legal);
+  }
+  return legal;
+}
+
 export function decodePrediction(fen: string, logitsMove: ArrayLike<number>, logitsValue: ArrayLike<number>, moveOffset = 0, valueOffset = 0): MaiaPrediction {
-  const legal = maiaLegalMoves(fen);
+  const legal = cachedLegalMoves(fen);
   let max = -Infinity;
   for (const m of legal) max = Math.max(max, logitsMove[moveOffset + m.index]);
   let total = 0;
