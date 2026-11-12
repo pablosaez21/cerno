@@ -18,6 +18,10 @@ describe("version-3 recommendation targets", () => {
     expect(ids).toEqual(["standing:level", "phase:endgame", "choice:one_good"]);
   });
 
+  it("skips classes without real between-player spread (V4)", () => {
+    expect(profileTargets([{ ...c("phase:endgame", "phase", "B", -2), tau: null }, { ...c("phase:opening", "phase", "B", -1.5), tau: 131 }])).toEqual(["phase:opening"]);
+  });
+
   it("ignores stronger classes, grade C and insufficient samples", () => {
     expect(profileTargets([c("phase:opening", "phase", "A", 3, "stronger"), c("demand:pawn", "demand", "C", -1), { id: "phase:endgame", family: "phase", insufficient: true }])).toEqual([]);
   });

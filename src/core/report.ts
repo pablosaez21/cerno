@@ -978,13 +978,15 @@ function levelReport(
 
 /**
  * Plan 3.12: per family, the weakest class graded A or B (choice:several_good
- * excluded: too broad to train); grade A before B, then by z ascending.
+ * excluded: too broad to train; classes without real between-player spread in
+ * V4 excluded); grade A before B, then by z ascending.
  */
-export function profileTargets(classes: { id: string; family: string; insufficient?: boolean; direction?: string; grade?: string; z?: number }[]): string[] {
+export function profileTargets(classes: { id: string; family: string; insufficient?: boolean; direction?: string; grade?: string; z?: number; tau?: number | null }[]): string[] {
   const out: { id: string; grade: string; z: number }[] = [];
   for (const family of ["phase", "standing", "demand", "choice"]) {
     const c = classes
-      .filter((x) => x.family === family && x.id !== "choice:several_good" && !x.insufficient && x.direction === "weaker" && (x.grade === "A" || x.grade === "B"))
+      // tau === null: external players show no real between-player spread in this class (V4).
+      .filter((x) => x.family === family && x.id !== "choice:several_good" && !x.insufficient && x.tau !== null && x.direction === "weaker" && (x.grade === "A" || x.grade === "B"))
       .sort((a, b) => a.z! - b.z!)[0];
     if (c) out.push({ id: c.id, grade: c.grade!, z: c.z! });
   }

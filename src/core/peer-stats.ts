@@ -38,6 +38,27 @@ export const SD_INFLATION: Record<string, number> = {
   "choice:several_good": 1.16,
 };
 export const SD_INFLATION_DEFAULT = 1.15;
+
+/**
+ * V4: real between-player spread of each class's gap beyond the player's overall
+ * gap ("shape"), tau = sqrt(var(gap - overall) - mean(sd^2)), on 16 Lichess players
+ * rated 1000-2400 (~48 games each, scripts/peers/external.ts). null = no spread
+ * beyond sampling noise: a gap in that class does not single out a trait, so it is
+ * not used as a personal recommendation (plan, V4 rule). Overall tau: 178 Elo.
+ */
+export const CLASS_TAU: Record<string, number | null> = {
+  "phase:opening": 131,
+  "phase:middlegame": 36,
+  "phase:endgame": null,
+  "standing:ahead": null,
+  "standing:level": null,
+  "standing:behind": 176,
+  "demand:forcing": null,
+  "demand:pawn": 116,
+  "demand:piece": null,
+  "choice:one_good": 109,
+  "choice:several_good": null,
+};
 /** 80% power at two-sided 0.05: 0.84 + 1.96. */
 export const POWER_FACTOR = 2.8;
 
@@ -77,6 +98,8 @@ export interface ClassStat {
   direction?: "weaker" | "stronger";
   detectableGap?: number;
   gamesToConfirm?: number;
+  /** Between-player spread measured externally (V4); null = class gaps are noise beyond the overall gap. */
+  tau?: number | null;
   /** Style shift gap (within-quality choices), same bootstrap. */
   style?: { gap: number; sd: number; ci95: [number, number] };
   cost: { lossPerGame: number; errorsPer100: number; opponentsLossPerGame: number; opponentsErrorsPer100: number };
@@ -302,7 +325,7 @@ export function profileStats(decisions: Decision[], opts: { resamples?: number; 
   if (scopeGames < MIN_PROFILE_GAMES) return undefined;
   const boot = bootstrapIndices(gameIds.length, opts.resamples, opts.seed);
   const overall = classStat(ALL_CLASS, inScope, gameIds, boot);
-  const classes = PRIMARY_CLASSES.map((c) => classStat(c, inScope, gameIds, boot));
+  const classes = PRIMARY_CLASSES.map((c) => ({ ...classStat(c, inScope, gameIds, boot), tau: CLASS_TAU[c.id] }));
   gradeClasses(overall, classes);
   const secondary = SECONDARY_CLASSES.map((c) => classStat(c, inScope, gameIds, boot));
   const clock = CLOCK_CLASSES.map((c) => classStat(c, decisions, gameIds, boot, { minDecisions: 50, minGames: 10 }));
