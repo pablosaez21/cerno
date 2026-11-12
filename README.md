@@ -27,7 +27,7 @@ Static build: `npm run build` writes `out/`; `node scripts/serve-out.mjs` serves
 
 The Maia-3 model is not in git: `npm run build` downloads `maia3-5m.onnx` (21 MB) from this repo's `maia3-onnx-v1` release and checks its SHA-256. `scripts/maia/export.py` rebuilds it from the official weights.
 
-Measured on an Apple M5 (10 cores, 9 workers), Chromium, empty cache: 100 blitz games in 3 min 50 s. A second run of the same games is served from the cache.
+Measured on an Apple M5 (10 cores, 9 Stockfish workers, Maia on WebGPU), Chromium, empty cache: 100 blitz games with the full peer profile in 4 min 44 s; the base report is ready at 2 min 49 s. A second run of the same games is served from the cache.
 
 Validation (measured, see REPORT.md): synthetic players with planted weaknesses (unbiased; 6.7% of null players get any discovery; power 0.87 for a -200 Elo middlegame gap), 16 external Lichess players (the overall gap correlates 0.38 with results beyond rating), and a holdout of the reference player's older games. `scripts/peers/` reproduces each one.
 
