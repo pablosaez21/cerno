@@ -1,6 +1,7 @@
 // Browser adapters: Stockfish in a Web Worker and an IndexedDB cache.
 import type { AnalyzedGame, EvalCache } from "./analyze";
 import type { UciTransport } from "./engine";
+import type { MaiaPrediction } from "./maia";
 import type { PositionEval } from "./types";
 
 export const ENGINE_URL = "/engine/stockfish-19-lite-single.js";
@@ -17,7 +18,7 @@ export function workerTransport(url = ENGINE_URL): UciTransport {
 }
 
 const DB_NAME = "cerno";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -27,6 +28,9 @@ function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains("evals")) db.createObjectStore("evals");
       if (!db.objectStoreNames.contains("games")) db.createObjectStore("games");
       if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta");
+      // Maia-3 predictions, by model, Elo and position history. Separate store:
+      // adding it does not touch the Stockfish evaluations already saved.
+      if (!db.objectStoreNames.contains("maia")) db.createObjectStore("maia");
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -91,6 +95,17 @@ export class IdbCache implements EvalCache {
       await done(tx);
     });
     return this.flushing;
+  }
+
+  async getMaia(key: string): Promise<MaiaPrediction | undefined> {
+    return request(this.db.transaction("maia").objectStore("maia").get(key));
+  }
+
+  async setMaiaMany(entries: [string, MaiaPrediction][]): Promise<void> {
+    if (!entries.length) return;
+    const tx = this.db.transaction("maia", "readwrite");
+    for (const [k, v] of entries) tx.objectStore("maia").put(v, k);
+    await done(tx);
   }
 
   /** Small key-value store for the interface (last report, review answers). */

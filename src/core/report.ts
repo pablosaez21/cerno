@@ -16,10 +16,13 @@ import {
 } from "./classify";
 import type { EndgameType, Phase } from "./phase";
 import { settledBalance, type Motif, type TacticTag } from "./tactics";
+import type { LevelTag, OutOfScope, PeerMetrics } from "./level";
+import type { LevelData, PhaseLevelSample } from "./level-analysis";
+import { rng } from "./review";
 import type { Color, GameResult, Source, Termination, TimeClass } from "./types";
 import { THRESHOLDS, type Judgement } from "./winprob";
 
-export const REPORT_VERSION = 1;
+export const REPORT_VERSION = 2;
 
 /** Minimum sample for a finding. */
 export const MIN_SAMPLE = {
@@ -51,6 +54,46 @@ export interface EvidenceRef {
   ply: number;
 }
 
+/** Level numbers (Maia-3) for a set of judged moves. Absent when Maia did not run. */
+export interface LevelSummary {
+  /** Judged moves inside Maia's scope (blitz, 30 s or more, ratings known). */
+  inScope: number;
+  /** Of those, how many most Lichess players of the same Elo would have avoided. */
+  belowLevel: number;
+  /** Of those, how many most players of that Elo would also have got wrong. */
+  hard: number;
+  /** Sum over in-scope moves of loss x pGood. */
+  avoidableLoss: number;
+}
+
+export interface PhaseComparison {
+  /** Sampled positions of the player in this phase (in scope). */
+  sample: number;
+  games: number;
+  /** Win % lost per 100 moves by the player in those positions. */
+  realLossPer100: number;
+  /** Expected for a Lichess player of the same Elo in the same positions. */
+  expectedLossPer100: number;
+  /** realLoss / expectedLoss, with a 95% bootstrap interval over games. */
+  ratio: number;
+  ratioCi95: [number, number];
+  /** Set only when the interval excludes 1. */
+  finding?: "worse_than_level" | "better_than_level";
+  /** Mean share of Maia's probability covered by evaluated moves. */
+  meanCoverage: number;
+}
+
+export interface LevelReport {
+  model: string;
+  /** The comparison population, always a population, never the player. */
+  population: "lichess_blitz";
+  /** Lichess Elo fed to Maia = source rating + this. */
+  eloOffset: number;
+  /** Mistakes and blunders in and out of Maia's scope. */
+  scope: { errors: number; inScope: number; outOfScope: Partial<Record<OutOfScope, number>>; outOfScopeShare: number };
+  phases: Partial<Record<Phase, PhaseComparison>>;
+}
+
 export interface CategoryStats {
   /** Share of all win % lost in judged moves that falls in this category, 0..1. */
   winLossShare: number;
@@ -61,6 +104,7 @@ export interface CategoryStats {
   counts: Record<Judgement, number>;
   /** Lost games (and draws from a winning position) whose decisive move is in this category. */
   decidedGames: number;
+  level?: LevelSummary;
 }
 
 export interface ClockStats {
@@ -121,6 +165,7 @@ export interface Finding {
   /** winLoss divided by games analysed: win % per game. Used for ranking. */
   impact: number;
   evidence: EvidenceRef[];
+  level?: LevelSummary;
 }
 
 export type TrainingMethod =
@@ -151,7 +196,7 @@ export interface Recommendation {
   findingId: string;
   prescription: Prescription;
   /** "Because of this": the numbers behind the recommendation. */
-  reason: { occurrences: number; games: number; winLoss: number; impact: number; gamesAnalysed: number };
+  reason: { occurrences: number; games: number; winLoss: number; impact: number; gamesAnalysed: number; level?: LevelSummary };
 }
 
 export interface Exercise {
@@ -168,6 +213,7 @@ export interface Exercise {
   solution: { uci: string[]; san: string[] };
   loss: number;
   tags: string[];
+  level?: LevelTag;
 }
 
 export interface ErrorRow {
@@ -195,6 +241,10 @@ export interface ErrorRow {
   timeSpent?: number;
   opening?: { eco?: string; name?: string; family?: string };
   timeClass: TimeClass;
+  /** Maia-3 comparison with Lichess blitz players of the same Elo. */
+  peer?: PeerMetrics;
+  /** Why Maia-3 says nothing about this move. */
+  outOfScope?: OutOfScope;
 }
 
 export interface GameRow {
@@ -247,6 +297,13 @@ export interface Report {
   exercises: Record<Category, Exercise[]>;
   errors: ErrorRow[];
   games: GameRow[];
+  /** Present when Maia-3 ran. */
+  level?: LevelReport;
+  /**
+   * Alternative ordering by avoidable loss, shown next to the default one
+   * until the player approves switching. Present when Maia-3 ran.
+   */
+  rankings?: { byAvoidableLoss: string[]; recommendationsByAvoidableLoss: Recommendation[] };
 }
 
 const emptyCounts = (): Record<Judgement, number> => ({ inaccuracy: 0, mistake: 0, blunder: 0 });
@@ -271,6 +328,7 @@ export function buildReport(
   analyzed: AnalyzedGame[],
   playerName: string,
   settings: AnalysisSettings = DEFAULT_SETTINGS,
+  levelData?: LevelData,
 ): Report {
   const games = analyzed.map(classifyGame);
   markRepeated(games);
@@ -279,6 +337,24 @@ export function buildReport(
   const judged = allMoves.filter((m) => m.judgement && m.category);
   const totalJudgedLoss = sum(judged, (m) => m.loss) || 1;
   const byId = new Map(games.map((g) => [g.game.id, g]));
+  const levelByKey = new Map<string, { peer?: PeerMetrics; outOfScope?: OutOfScope }>();
+  for (const [gameId, list] of Object.entries(levelData?.moves ?? {})) for (const m of list) levelByKey.set(`${gameId}#${m.ply}`, m);
+  const judgedByKey = new Map(judged.map((m) => [`${m.gameId}#${m.ply}`, m]));
+  /** Peer metrics with avoidableLoss on the judged (pass-2) loss. */
+  const peerOf = (m: MoveAnalysis): PeerMetrics | undefined => {
+    const p = levelByKey.get(`${m.gameId}#${m.ply}`)?.peer;
+    return p && { ...p, avoidableLoss: round(m.loss * p.pGood, 2) };
+  };
+  const levelSummary = (ms: MoveAnalysis[]): LevelSummary | undefined => {
+    if (!levelData) return undefined;
+    const peers = ms.map(peerOf).filter((p): p is PeerMetrics => !!p);
+    return {
+      inScope: peers.length,
+      belowLevel: peers.filter((p) => p.level === "below_level").length,
+      hard: peers.filter((p) => p.level === "hard").length,
+      avoidableLoss: round(sum(peers, (p) => p.avoidableLoss), 1),
+    };
+  };
 
   // ---- Categories
   const decisiveCategory = new Map<string, Category | undefined>();
@@ -297,6 +373,7 @@ export function buildReport(
         errorsPer100: round(((counts.mistake + counts.blunder) / Math.max(1, allMoves.length)) * 100),
         counts,
         decidedGames: [...decisiveCategory.values()].filter((x) => x === c).length,
+        level: levelSummary(ms),
       };
       return [c, stats];
     }),
@@ -505,27 +582,37 @@ export function buildReport(
   fromMoves({ id: "clock:fast_critical", area: "clock", kind: "clock", key: "fast_critical", params: {} }, judged.filter((m) => isError(m) && m.clockTags.includes("fast_critical")));
 
   findings.sort((a, b) => b.impact - a.impact);
-
-  // ---- Recommendations: top three by impact, skipping heavy overlaps.
-  const recommendations: Recommendation[] = [];
-  const used: Set<string>[] = [];
   for (const f of findings) {
-    if (recommendations.length >= 3) break;
-    const keys = new Set(f.evidence.map((e) => `${e.gameId}#${e.ply}`));
-    const overlaps = used.some((u) => [...keys].filter((k) => u.has(k)).length / keys.size > RECOMMENDATION_MAX_OVERLAP);
-    if (overlaps) continue;
-    used.push(keys);
-    recommendations.push({
-      rank: recommendations.length + 1,
-      findingId: f.id,
-      prescription: prescribe(f),
-      reason: { occurrences: f.occurrences, games: f.games, winLoss: f.winLoss, impact: f.impact, gamesAnalysed: N },
-    });
+    f.level = levelSummary(f.evidence.map((e) => judgedByKey.get(`${e.gameId}#${e.ply}`)).filter((m): m is MoveAnalysis => !!m));
   }
+
+  // ---- Recommendations: top three, skipping heavy overlaps.
+  const recommend = (ordered: Finding[]): Recommendation[] => {
+    const out: Recommendation[] = [];
+    const used: Set<string>[] = [];
+    for (const f of ordered) {
+      if (out.length >= 3) break;
+      const keys = new Set(f.evidence.map((e) => `${e.gameId}#${e.ply}`));
+      const overlaps = used.some((u) => [...keys].filter((k) => u.has(k)).length / keys.size > RECOMMENDATION_MAX_OVERLAP);
+      if (overlaps) continue;
+      used.push(keys);
+      out.push({
+        rank: out.length + 1,
+        findingId: f.id,
+        prescription: prescribe(f),
+        reason: { occurrences: f.occurrences, games: f.games, winLoss: f.winLoss, impact: f.impact, gamesAnalysed: N, level: f.level },
+      });
+    }
+    return out;
+  };
+  const recommendations = recommend(findings);
+  const byAvoidable = levelData ? [...findings].filter((f) => f.level).sort((a, b) => b.level!.avoidableLoss - a.level!.avoidableLoss) : undefined;
 
   // ---- Exercises
   const exercises = Object.fromEntries(CATEGORIES.map((c) => [c, [] as Exercise[]])) as Record<Category, Exercise[]>;
-  for (const m of [...judged].sort((a, b) => b.loss - a.loss)) {
+  // Errors below the player's level first: those are the ones to train first.
+  const belowFirst = (m: MoveAnalysis) => (peerOf(m)?.level === "below_level" ? 1 : 0);
+  for (const m of [...judged].sort((a, b) => belowFirst(b) - belowFirst(a) || b.loss - a.loss)) {
     if (!isError(m) || !m.best || !m.bestLine.length) continue;
     const list = exercises[m.category!];
     if (list.length >= EXERCISES_PER_CATEGORY) continue;
@@ -542,6 +629,7 @@ export function buildReport(
       solution: { uci, san: sanLine(m.fenBefore, uci) },
       loss: round(m.loss, 1),
       tags: [...(m.tactic ? [m.tactic.tag, ...m.tactic.motifs] : []), ...(m.endgameType ? [`endgame_${m.endgameType}`] : []), ...m.clockTags],
+      level: peerOf(m)?.level,
     });
   }
 
@@ -573,6 +661,8 @@ export function buildReport(
       timeSpent: m.timeSpent,
       opening: { eco: g.opening.eco, name: g.opening.name, family: g.opening.family },
       timeClass: g.game.timeClass,
+      peer: peerOf(m),
+      outOfScope: levelByKey.get(`${m.gameId}#${m.ply}`)?.outOfScope,
     };
   });
 
@@ -637,6 +727,8 @@ export function buildReport(
     exercises,
     errors,
     games: gameRows,
+    level: levelData && levelReport(levelData, judged.filter(isError), levelByKey),
+    rankings: byAvoidable && { byAvoidableLoss: byAvoidable.map((f) => f.id), recommendationsByAvoidableLoss: recommend(byAvoidable) },
   };
 }
 
@@ -695,3 +787,58 @@ export function prescribe(f: Finding): Prescription {
 }
 
 export type { Category } from "./classify";
+
+/** M3: per phase, real vs expected loss with a 95% bootstrap interval over games. */
+export function phaseComparison(samples: PhaseLevelSample[], resamples = 1000, seed = 1): Partial<Record<Phase, PhaseComparison>> {
+  const out: Partial<Record<Phase, PhaseComparison>> = {};
+  for (const phase of ["opening", "middlegame", "endgame"] as Phase[]) {
+    const xs = samples.filter((x) => x.phase === phase);
+    if (!xs.length) continue;
+    const byGame = new Map<string, PhaseLevelSample[]>();
+    for (const x of xs) byGame.set(x.gameId, [...(byGame.get(x.gameId) ?? []), x]);
+    const gameList = [...byGame.values()];
+    const ratioOf = (gs: PhaseLevelSample[][]) => {
+      const r = sum(gs, (g) => sum(g, (x) => x.realLoss));
+      const e = sum(gs, (g) => sum(g, (x) => x.expectedLoss));
+      return e > 0 ? r / e : NaN;
+    };
+    const rand = rng(seed);
+    const ratios: number[] = [];
+    for (let b = 0; b < resamples; b++) {
+      const pick = Array.from({ length: gameList.length }, () => gameList[Math.floor(rand() * gameList.length)]);
+      const r = ratioOf(pick);
+      if (Number.isFinite(r)) ratios.push(r);
+    }
+    ratios.sort((a, b) => a - b);
+    const ci: [number, number] = [round(ratios[Math.floor(0.025 * ratios.length)] ?? NaN), round(ratios[Math.floor(0.975 * ratios.length)] ?? NaN)];
+    out[phase] = {
+      sample: xs.length,
+      games: gameList.length,
+      realLossPer100: round((sum(xs, (x) => x.realLoss) / xs.length) * 100, 1),
+      expectedLossPer100: round((sum(xs, (x) => x.expectedLoss) / xs.length) * 100, 1),
+      ratio: round(ratioOf(gameList)),
+      ratioCi95: ci,
+      finding: ci[0] > 1 ? "worse_than_level" : ci[1] < 1 ? "better_than_level" : undefined,
+      meanCoverage: round(sum(xs, (x) => x.coverage) / xs.length, 3),
+    };
+  }
+  return out;
+}
+
+function levelReport(data: LevelData, errors: MoveAnalysis[], levelByKey: Map<string, { peer?: PeerMetrics; outOfScope?: OutOfScope }>): LevelReport {
+  const outOfScope: Partial<Record<OutOfScope, number>> = {};
+  let inScope = 0;
+  for (const m of errors) {
+    const l = levelByKey.get(`${m.gameId}#${m.ply}`);
+    if (l?.outOfScope) outOfScope[l.outOfScope] = (outOfScope[l.outOfScope] ?? 0) + 1;
+    else if (l?.peer) inScope++;
+  }
+  const out = errors.length - inScope;
+  return {
+    model: data.model,
+    population: "lichess_blitz",
+    eloOffset: data.eloOffset,
+    scope: { errors: errors.length, inScope, outOfScope, outOfScopeShare: round(out / Math.max(1, errors.length), 3) },
+    phases: phaseComparison(data.phaseSamples),
+  };
+}

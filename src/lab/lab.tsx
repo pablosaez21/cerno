@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IdbCache } from "@/core/browser";
+import { DEFAULT_SETTINGS } from "@/core/analyze";
 import { buildReport, type Report } from "@/core/report";
 import { guessPgnPlayer, type PgnPlayerGuess } from "@/core/sources";
 import type { TimeClass } from "@/core/types";
+import { MaiaBench } from "./maia-bench";
 import { ReportView } from "./report-view";
 import { runAnalysis, type RunTimings, type SourceInput } from "./run";
 
@@ -52,7 +54,7 @@ export function Lab() {
         abort.current.signal,
       );
       if (!res.analyzed.length) throw new Error("No hay partidas que analizar con esos filtros.");
-      const r = buildReport(res.analyzed, username);
+      const r = buildReport(res.analyzed, username, DEFAULT_SETTINGS, res.level);
       setTimings(res.timings);
       setReport(r);
       const cache = await IdbCache.open();
@@ -120,6 +122,7 @@ export function Lab() {
       {report && (
         <>
           <button onClick={download}>Descargar informe JSON</button>
+          <MaiaBench report={report} />
           <ReportView report={report} />
         </>
       )}

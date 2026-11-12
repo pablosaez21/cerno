@@ -39,6 +39,7 @@ export function ReportView({ report }: { report: Report }) {
               <th>errores</th>
               <th>graves</th>
               <th>partidas decididas</th>
+              {report.level && <th>en alcance de Maia / por debajo de nivel / difíciles a ese nivel / pérdida evitable</th>}
             </tr>
           </thead>
           <tbody>
@@ -53,11 +54,14 @@ export function ReportView({ report }: { report: Report }) {
                   <td>{s.counts.mistake}</td>
                   <td>{s.counts.blunder}</td>
                   <td>{s.decidedGames}</td>
+                  {report.level && <td>{s.level ? `${s.level.inScope} / ${s.level.belowLevel} / ${s.level.hard} / ${s.level.avoidableLoss}` : "–"}</td>}
                 </tr>
               );
             })}
           </tbody>
         </table>
+
+        {report.level && <LevelSection report={report} />}
 
         <h2>Reloj</h2>
         <pre>{JSON.stringify(report.clock, null, 1)}</pre>
@@ -83,6 +87,7 @@ export function ReportView({ report }: { report: Report }) {
               <th>partidas</th>
               <th>prob. perdida</th>
               <th>impacto/partida</th>
+              {report.level && <th>nivel: en alcance / por debajo / pérdida evitable</th>}
               <th>parámetros</th>
             </tr>
           </thead>
@@ -221,13 +226,14 @@ function FindingRow({
         <td>{f.games}</td>
         <td>{f.winLoss}</td>
         <td>{f.impact}</td>
+        {f.level && <td>{`${f.level.inScope} / ${f.level.belowLevel} / ${f.level.avoidableLoss}`}</td>}
         <td>
           <code>{JSON.stringify(f.params)}</code>
         </td>
       </tr>
       {open && (
         <tr>
-          <td colSpan={6}>
+          <td colSpan={7}>
             {f.evidence.map((r) => {
               const e = errorsByKey.get(key(r));
               return (
@@ -273,6 +279,14 @@ function EvidencePanel({ refPos, error, game }: { refPos: EvidenceRef; error?: E
         {error.clockTags.length > 0 && ` · ${error.clockTags.join(", ")}`}
         {error.bestGap !== undefined && ` · diferencia 1ª-2ª: ${error.bestGap}`}
       </p>
+      {error.peer && (
+        <p>
+          Jugadores de blitz de Lichess con Elo {error.peer.eloSelf}: harían esta jugada {(error.peer.pPlayed * 100).toFixed(1)}% de las veces; harían una jugada buena{" "}
+          {(error.peer.pGood * 100).toFixed(1)}% (sin evaluar {(error.peer.pUnevaluated * 100).toFixed(1)}%) → <b>{error.peer.level ?? "sin etiqueta de nivel"}</b>, pérdida evitable{" "}
+          {error.peer.avoidableLoss}
+        </p>
+      )}
+      {error.outOfScope && <p>Fuera del alcance de Maia: {error.outOfScope}</p>}
       <LineBoard
         key={`${refPos.gameId}#${refPos.ply}`}
         fen={error.fen}
@@ -286,5 +300,80 @@ function EvidencePanel({ refPos, error, game }: { refPos: EvidenceRef; error?: E
         <code>{error.fen}</code>
       </p>
     </div>
+  );
+}
+
+function LevelSection({ report }: { report: Report }) {
+  const lv = report.level!;
+  const byId = new Map(report.findings.map((f) => [f.id, f]));
+  const alt = report.rankings;
+  return (
+    <>
+      <h2>Comparación con jugadores de blitz de Lichess del mismo Elo (Maia-3)</h2>
+      <p>
+        Modelo {lv.model} · Elo de Lichess = Elo de la partida + {lv.eloOffset} · errores (errores y graves) {lv.scope.errors}, dentro del alcance {lv.scope.inScope}, fuera{" "}
+        {(lv.scope.outOfScopeShare * 100).toFixed(1)}% {JSON.stringify(lv.scope.outOfScope)}
+      </p>
+      <h3>Por fase: pérdida real frente a la esperada a ese Elo, en las mismas posiciones (muestra)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>fase</th>
+            <th>muestra (partidas)</th>
+            <th>real /100 jug.</th>
+            <th>esperada /100 jug.</th>
+            <th>cociente [IC 95%]</th>
+            <th>hallazgo</th>
+            <th>cobertura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(lv.phases).map(([ph, c]) => (
+            <tr key={ph}>
+              <td>{ph}</td>
+              <td>
+                {c.sample} ({c.games})
+              </td>
+              <td>{c.realLossPer100}</td>
+              <td>{c.expectedLossPer100}</td>
+              <td>
+                {c.ratio} [{c.ratioCi95[0]}, {c.ratioCi95[1]}]
+              </td>
+              <td>{c.finding ?? "ninguno (el intervalo cruza 1)"}</td>
+              <td>{c.meanCoverage}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {alt && (
+        <>
+          <h3>Top 3: orden actual (pérdida bruta) frente a orden por pérdida evitable</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>actual</th>
+                <th>por pérdida evitable</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[0, 1, 2].map((i) => {
+                const a = report.recommendations[i];
+                const b = alt.recommendationsByAvoidableLoss[i];
+                const fa = a && byId.get(a.findingId);
+                const fb = b && byId.get(b.findingId);
+                return (
+                  <tr key={i}>
+                    <td>{i + 1}</td>
+                    <td>{fa ? `${fa.id} (bruta ${fa.winLoss}, evitable ${fa.level?.avoidableLoss ?? "–"})` : "–"}</td>
+                    <td>{fb ? `${fb.id} (bruta ${fb.winLoss}, evitable ${fb.level?.avoidableLoss ?? "–"})` : "–"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+    </>
   );
 }

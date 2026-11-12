@@ -14,7 +14,7 @@
 
 | Field | Meaning |
 | --- | --- |
-| `version` | Contract version (1). |
+| `version` | Contract version (2). Version 2 adds the level fields below; everything from version 1 is unchanged. |
 | `player`, `sample` | Who and what was analysed: games, player moves, time classes, results, date range. |
 | `settings` | Thresholds, engine, node budgets and minimum samples used. |
 | `categories` | One entry per category: `tactics`, `openings`, `endgames`, `strategy`. |
@@ -25,6 +25,8 @@
 | `exercises` | The player's own errors as positions to solve, per category. |
 | `errors` | Every judged move of the player, with all its detail. |
 | `games` | One row per game, including the PGN for the viewer. |
+| `level` | Maia-3 summary: model, Elo conversion, scope, per-phase comparison (M3). Absent when the model could not run. |
+| `rankings` | Findings and recommendations ordered by avoidable loss, shown next to the default order. Absent without Maia. |
 
 ## Categories
 
@@ -78,3 +80,21 @@ Minimum sample: 3 occurrences in 3 different games. Exceptions: a repeated mista
 ## Exercises
 
 Per category, up to 25 of the player's mistakes and blunders, worst first. `fen` is the position before the move, `orientation` the player's colour, `played` the move to avoid and `solution` the engine line (first move is the answer; tactical lines are cut when the material settles).
+
+## Level (Maia-3), version 2
+
+Maia-3 (CSSLab, AGPL-3.0) predicts the move a **Lichess blitz player of a given Elo** would play. It describes that population, never the player. Every field and text must say so ("Lichess blitz players rated X"). Model: Maia-3 5M, exported to ONNX from the official weights (`scripts/maia/export.py`), run in the browser with onnxruntime-web (WebGPU on real GPUs, WASM otherwise).
+
+**Scope.** A move gets level metrics only if it is from a blitz game, both ratings are known and the player had 30 s or more before moving. Maia-3 does not see the clock and was trained without moves under 30 s. Other moves carry `errors[].outOfScope`: `clock`, `time_class` or `no_rating`. `level.scope` counts mistakes and blunders in and out of scope.
+
+**Elo.** Maia's input is a continuous Elo (0 to 5000; training balanced from 600 to 2600). Lichess Elo = Chess.com rating + `level.eloOffset` (+360). The offset is the one that makes the real moves of the reference player's opponents (2,837 moves with 30 s or more, mean Chess.com rating 1453) most likely: 95% bootstrap interval over games [+313, +399]. It is measured at that level and may differ elsewhere. Lichess games use their own rating.
+
+**Per error** (`errors[].peer`, judged moves in scope): `eloSelf`, `eloOppo`, `pPlayed` (probability of the move played), `pGood` (probability of a move that loses less than 5 points), `pUnevaluated` (probability of moves not evaluated), `level` and `avoidableLoss` = loss × `pGood`. Losses of the move played and of Maia's most likely moves (until 90% of the probability or 6 moves) are measured with the pass-1 budget (60k nodes), so they are judged the same way.
+
+`level`: `below_level` when `pGood` ≥ 0.7, `hard` when `pGood` ≤ 0.3, none in between. Calibration on 1,200 random moves of the opponents (30 s or more): Maia is monotonic and conservative. Real frequency of a good move by bin of `pGood`: 0-0.3 → 20.5% (n 146), 0.3-0.5 → 51.8% (112), 0.5-0.7 → 68.8% (157), 0.7-0.85 → 87.4% (214), 0.85-1 → 97.4% (571). So with `below_level`, 87% or more of real players at that level found a good move; with `hard`, about 20% did.
+
+`LevelSummary` (in `categories[].level`, `findings[].level`, `recommendations[].reason.level`): judged moves in scope, how many are `below_level` and `hard`, and their `avoidableLoss`. Exercises list `below_level` errors first.
+
+**Per phase** (`level.phases`, M3): on a fixed pseudo-random sample of 150 player positions per phase (in scope), the win % lost per 100 moves by the player versus the loss expected for a Lichess player of the same Elo in the same positions (probability-weighted loss of Maia's evaluated moves). `ratio` with a 95% bootstrap interval over games. `finding` is set only when the interval excludes 1.
+
+**Ranking.** The default order (findings by `impact`, top three recommendations) is unchanged. `rankings.byAvoidableLoss` and `rankings.recommendationsByAvoidableLoss` give the order by avoidable loss, for comparison before switching.

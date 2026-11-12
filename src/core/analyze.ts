@@ -59,7 +59,7 @@ export interface Progress {
   cachedGames: number;
 }
 
-const evalKey = (s: AnalysisSettings, nodes: number, multiPv: number, fen: string) =>
+export const evalKey = (s: AnalysisSettings, nodes: number, multiPv: number, fen: string) =>
   `${s.engineId}|${nodes}|${multiPv}|${positionKey(fen)}`;
 export const gameKey = (s: AnalysisSettings, id: string) =>
   `${ANALYSIS_VERSION}|${s.engineId}|${s.pass1Nodes}|${s.pass2Nodes}|${s.multiPv}|${s.candidateLoss}|${id}`;
