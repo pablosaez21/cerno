@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { benjaminiHochberg, bootstrapIndices, classStat, eloShift, gamesToConfirm, gradeClasses, percentile, profileStats, ALL_CLASS } from "../peer-stats";
+import { benjaminiHochberg, bootstrapIndices, classStat, eloShift, gamesToConfirm, gradeClasses, gradeFamily, percentile, profileStats, ALL_CLASS, type ClassStat } from "../peer-stats";
 import { simulate } from "../peer-sim";
 import { finishDecision, PEER_ELO_DELTAS, type Decision } from "../peers";
 import { rng } from "../review";
@@ -14,6 +14,15 @@ describe("Elo shift", () => {
   it("returns the edge point, flagged, when the maximum is at the edge", () => {
     expect(eloShift([5, 4, 3, 2, 1])).toEqual({ shift: -400, atEdge: true });
     expect(eloShift([1, 2, 3, 4, 5])).toEqual({ shift: 400, atEdge: true });
+  });
+});
+
+describe("family grades", () => {
+  it("grades a separate family with its own Benjamini-Hochberg", () => {
+    const c = (id: string, p: number, ci80: [number, number]) => ({ id, family: "clock", decisions: 200, opponentDecisions: 200, games: 30, p, ci80, atEdge: false, cost: {} }) as unknown as ClassStat;
+    const fam = [c("a", 0.001, [-200, -100]), c("b", 0.2, [-80, -5]), c("c", 0.8, [-40, 60])];
+    gradeFamily(fam);
+    expect(fam.map((x) => x.grade)).toEqual(["A", "B", "C"]);
   });
 });
 

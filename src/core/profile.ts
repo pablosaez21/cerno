@@ -55,7 +55,8 @@ export interface Profile {
   overall: ProfileClass;
   classes: ProfileClass[];
   secondary: ProfileClass[];
-  clock: { paired: PairedStat[]; classes: ProfileClass[]; experimental: true };
+  /** Clock family: graded within its own family; includes moves under 30 s (Maia calibrated there too). */
+  clock: { paired: PairedStat[]; classes: ProfileClass[] };
   style: StyleTrait[];
   repertoire: RepertoireNode[];
 }
@@ -234,7 +235,7 @@ export function buildProfile(
     overall: ext(stats.overall, [ALL_CLASS]),
     classes: stats.classes.map((c) => ext(c, PRIMARY_CLASSES)),
     secondary: stats.secondary.map((c) => ext(c, SECONDARY_CLASSES)),
-    clock: { paired: pairedClock(decisions), classes: stats.clock.map((c) => ext(c, CLOCK_CLASSES, true)), experimental: true },
+    clock: { paired: pairedClock(decisions), classes: stats.clock.map((c) => ext(c, CLOCK_CLASSES, true)) },
     style: styleTraits(decisions),
     repertoire: repertoire(decisions, extras.points ?? new Map(), extras.judgedLoss),
   };

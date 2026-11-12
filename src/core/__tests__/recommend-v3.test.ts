@@ -14,6 +14,7 @@ describe("version-3 recommendation targets", () => {
       c("demand:pawn", "demand", "C", -1.0),
       c("choice:one_good", "choice", "B", -1.6),
       c("choice:several_good", "choice", "A", -4),
+      c("clock:>=60", "clock", "A", -5),
     ]);
     expect(ids).toEqual(["standing:level", "phase:endgame", "choice:one_good"]);
   });

@@ -8,7 +8,7 @@ import { goodShare } from "../../src/core/profile";
 import { rng } from "../../src/core/review";
 
 const [file, sizeArg = "1200"] = process.argv.slice(2);
-const all = fs.readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Decision).filter((d) => d.mover === "opponent" && d.inScope);
+const all = fs.readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Decision).filter((d) => d.mover === "opponent" && (process.env.UNDER30 ? d.clockBefore !== undefined && d.clockBefore < 30 : d.inScope));
 const rand = rng(99);
 const sample = all.map((d) => ({ d, r: rand() })).sort((a, b) => a.r - b.r).slice(0, Number(sizeArg)).map((x) => x.d);
 const rows = sample.map((d) => ({ pGood: goodShare(d, 2), good: d.playedLoss < 5 ? 1 : 0, mass: d.mass[2] }));

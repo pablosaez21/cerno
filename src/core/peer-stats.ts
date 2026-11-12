@@ -309,6 +309,17 @@ export function gradeClasses(overall: ClassStat, primary: ClassStat[]): void {
   }
 }
 
+/** Grades for a separate family (BH within it), same rules as the primary family. */
+export function gradeFamily(stats: ClassStat[]): void {
+  const tested = stats.filter((c) => !c.insufficient);
+  const qs = benjaminiHochberg(tested.map((c) => c.p!));
+  tested.forEach((c, i) => {
+    c.q = Math.round(qs[i] * 10000) / 10000;
+    const [lo, hi] = c.ci80!;
+    c.grade = c.q <= BH_Q && !c.atEdge ? "A" : lo > 0 || hi < 0 ? "B" : "C";
+  });
+}
+
 export interface ProfileStats {
   games: number;
   overall: ClassStat;
@@ -328,7 +339,9 @@ export function profileStats(decisions: Decision[], opts: { resamples?: number; 
   const classes = PRIMARY_CLASSES.map((c) => ({ ...classStat(c, inScope, gameIds, boot), tau: CLASS_TAU[c.id] }));
   gradeClasses(overall, classes);
   const secondary = SECONDARY_CLASSES.map((c) => classStat(c, inScope, gameIds, boot));
+  // Clock family: all decisions, graded within its own family (BH over its 3 classes).
   const clock = CLOCK_CLASSES.map((c) => classStat(c, decisions, gameIds, boot, { minDecisions: 50, minGames: 10 }));
+  gradeFamily(clock);
   return { games: gameIds.length, overall, classes, secondary, clock };
 }
 

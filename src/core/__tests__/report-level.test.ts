@@ -55,16 +55,17 @@ describe("report v3 level fields", () => {
     expect(e.peer?.level).toBe("hard");
     expect(e.peer?.nextLevel).toBe(true);
     expect(e.peer?.learnability).toBeCloseTo((0.45 - 0.2) / 0.95, 3);
-    expect(r.errors.find((x) => x.gameId === "F")!.outOfScope).toBe("clock");
+    // Moves under 30 s keep their Maia fields (calibrated there too).
+    expect(r.errors.find((x) => x.gameId === "F")!.peer?.pGood).toBeCloseTo(0.5 / 0.95, 3);
   });
 
   it("summarises level per category, including next-level counts", () => {
     // C: (0.9 - 0.8) / 0.95 = 0.105 and E: 0.26 reach the 0.10 learnability tag; D: 0.05 does not.
-    expect(r.categories.tactics.level).toMatchObject({ inScope: 3, belowLevel: 2, hard: 1, nextLevel: 2 });
+    expect(r.categories.tactics.level).toMatchObject({ inScope: 4, belowLevel: 2, hard: 1, nextLevel: 2 });
   });
 
   it("reports the scope and the mode; no profile in reduced mode", () => {
-    expect(r.level).toMatchObject({ mode: "reduced", population: "lichess_blitz", eloOffset: 360, scope: { errors: 4, inScope: 3, outOfScope: { clock: 1 } } });
+    expect(r.level).toMatchObject({ mode: "reduced", population: "lichess_blitz", eloOffset: 360, scope: { errors: 4, inScope: 4, outOfScope: {} } });
     expect(r.profile).toBeUndefined();
   });
 
