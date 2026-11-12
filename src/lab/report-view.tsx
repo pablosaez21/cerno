@@ -70,7 +70,7 @@ export function ReportView({ report }: { report: Report }) {
         <ol>
           {report.recommendations.map((r) => (
             <li key={r.findingId}>
-              <code>{r.findingId}</code> → {r.prescription.methods.join(", ")}
+              <code>{r.findingId}</code> {r.basis && <i>({r.basis})</i>} → {r.prescription.methods.join(", ")}
               {r.prescription.themes.length > 0 && ` · temas ${r.prescription.themes.join(", ")}`} · motivo: {r.reason.occurrences} casos en {r.reason.games}{" "}
               partidas, {r.reason.winLoss} puntos de prob. perdidos ({r.reason.impact} por partida){" "}
               <button onClick={() => setOpenFinding(r.findingId)}>ver evidencia</button>
@@ -389,6 +389,70 @@ function ProfileSection({ report }: { report: Report }) {
                 {c.cost.lossPerGame} / {c.cost.opponentsLossPerGame}
               </td>
               <td>{c.nextLevel.gainPerGame}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h4>Estilo: qué eliges más o menos que jugadores de blitz de Lichess de tu Elo (Maia-3) en las mismas posiciones, comparado con tus rivales</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>atributo</th>
+            <th>tú</th>
+            <th>esperado (−400 / tu Elo / +400)</th>
+            <th>z tú</th>
+            <th>z rivales</th>
+            <th>z controlado</th>
+            <th>rasgo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {p.style.map((t) => (
+            <tr key={t.attribute} style={{ fontWeight: t.trait ? 700 : 400 }}>
+              <td>{t.attribute}</td>
+              <td>{(t.observed * 100).toFixed(1)}%</td>
+              <td>
+                {(t.expectedMinus400 * 100).toFixed(1)} / {(t.expected * 100).toFixed(1)} / {(t.expectedPlus400 * 100).toFixed(1)}%
+              </td>
+              <td>{t.z}</td>
+              <td>{t.zOpponents}</td>
+              <td>{t.zControlled}</td>
+              <td>{t.trait ? "sí" : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h4>Repertorio: posiciones que repites (3 partidas o más, hasta la jugada 12)</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>jugada (ply)</th>
+            <th>partidas · puntuación</th>
+            <th>lo que juegas: veces, pérdida media, probabilidad a −400 / tu Elo / +400</th>
+            <th>favorita a +400</th>
+            <th>motor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {p.repertoire.map((n) => (
+            <tr key={n.fen}>
+              <td>{n.ply}</td>
+              <td>
+                {n.games} · {n.score}
+              </td>
+              <td>
+                {n.moves.map((m) => (
+                  <div key={m.uci} style={{ fontWeight: m.leak ? 700 : 400 }}>
+                    {m.san} ×{m.count} · −{m.meanLoss} · {m.pMinus400} / {m.p0} / {m.pPlus400}
+                    {m.leak ? " · FUGA" : ""}
+                    {m.habitBelowLevel ? " · los fuertes la abandonan" : ""}
+                  </div>
+                ))}
+              </td>
+              <td>
+                {n.favouritePlus400.san} ({n.favouritePlus400.p}, −{n.favouritePlus400.loss})
+              </td>
+              <td>{n.engineBest.san}</td>
             </tr>
           ))}
         </tbody>
