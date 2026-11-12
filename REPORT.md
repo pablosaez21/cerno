@@ -14,7 +14,7 @@
 
 | Field | Meaning |
 | --- | --- |
-| `version` | Contract version (2). Version 2 adds the level fields below; everything from version 1 is unchanged. |
+| `version` | Contract version (3). Version 3 adds `profile`, `repertoireFixes` and new per-error Maia fields, and removes `level.phases`. |
 | `player`, `sample` | Who and what was analysed: games, player moves, time classes, results, date range. |
 | `settings` | Thresholds, engine, node budgets and minimum samples used. |
 | `categories` | One entry per category: `tactics`, `openings`, `endgames`, `strategy`. |
@@ -25,8 +25,10 @@
 | `exercises` | The player's own errors as positions to solve, per category. |
 | `errors` | Every judged move of the player, with all its detail. |
 | `games` | One row per game, including the PGN for the viewer. |
-| `level` | Maia-3 summary: model, Elo conversion, scope, per-phase comparison (M3). Absent when the model could not run. |
-| `rankings` | Findings and recommendations ordered by avoidable loss, shown next to the default order. Absent without Maia. |
+| `level` | Maia-3 summary: model, Elo conversion, mode, scope and the Elo-scale check. Absent when the model could not run. |
+| `profile` | The peer profile: the player against the opponents of the same games, by class, with intervals and grades; style traits; repertoire. Full mode only (WebGPU), 30 or more blitz games. |
+| `repertoireFixes` | Recurring opening moves that cost points, with what players 400 Elo higher choose there. |
+| `rankings` | `byAvoidableLoss`, `recommendationsByAvoidableLoss`, and `legacyRecommendations` (what version 2 would recommend). Absent without Maia. |
 
 ## Categories
 
@@ -81,20 +83,60 @@ Minimum sample: 3 occurrences in 3 different games. Exceptions: a repeated mista
 
 Per category, up to 25 of the player's mistakes and blunders, worst first. `fen` is the position before the move, `orientation` the player's colour, `played` the move to avoid and `solution` the engine line (first move is the answer; tactical lines are cut when the material settles).
 
-## Level (Maia-3), version 2
+## Level (Maia-3)
 
-Maia-3 (CSSLab, AGPL-3.0) predicts the move a **Lichess blitz player of a given Elo** would play. It describes that population, never the player. Every field and text must say so ("Lichess blitz players rated X"). Model: Maia-3 5M, exported to ONNX from the official weights (`scripts/maia/export.py`), run in the browser with onnxruntime-web (WebGPU on real GPUs, WASM otherwise).
+Maia-3 (CSSLab, AGPL-3.0) predicts the move a **Lichess blitz player of a given Elo** would play. It describes that population, never the player: every field and text says so. Model: Maia-3 5M, exported to ONNX from the official weights (`scripts/maia/export.py`), run in the browser with onnxruntime-web.
 
-**Scope.** A move gets level metrics only if it is from a blitz game, both ratings are known and the player had 30 s or more before moving. Maia-3 does not see the clock and was trained without moves under 30 s. Other moves carry `errors[].outOfScope`: `clock`, `time_class` or `no_rating`. `level.scope` counts mistakes and blunders in and out of scope.
+**Modes.** `full` (WebGPU): Maia at five Elo levels (the mover's Elo -400, -200, 0, +200, +400) for every move of both sides, in parallel with Stockfish. `reduced` (WASM, about 15 times slower): the player's judged moves only; no `profile`.
 
-**Elo.** Maia's input is a continuous Elo (0 to 5000; training balanced from 600 to 2600). Lichess Elo = Chess.com rating + `level.eloOffset` (+360). The offset is the one that makes the real moves of the reference player's opponents (2,837 moves with 30 s or more, mean Chess.com rating 1453) most likely: 95% bootstrap interval over games [+313, +399]. It is measured at that level and may differ elsewhere. Lichess games use their own rating.
+**Scope.** Per-move Maia fields need a blitz game and both ratings (`errors[].outOfScope`: `time_class`, `no_rating`). Moves under 30 s are included: Maia-3 was trained without them, but on 1,654 opponent moves under 30 s normalised `pGood` predicts 0.836 against 0.810 observed, with every bin within its standard error, as well calibrated as with more time. The graded primary classes and the style traits keep the 30 s minimum, because that is the scope they were validated on (V1, V4, holdout).
 
-**Per error** (`errors[].peer`, judged moves in scope): `eloSelf`, `eloOppo`, `pPlayed` (probability of the move played), `pGood` (probability of a move that loses less than 5 points), `pUnevaluated` (probability of moves not evaluated), `level` and `avoidableLoss` = loss × `pGood`. Losses of the move played and of Maia's most likely moves (until 90% of the probability or 6 moves) are measured with the pass-1 budget (60k nodes), so they are judged the same way.
+**Elo.** Lichess Elo = Chess.com rating + `level.eloOffset` (+360: the offset that makes the reference player's opponents' moves most likely, 95% interval [+313, +399], mean Chess.com rating 1453). Lichess games use their own rating. `level.opponentsTotalShift` re-checks it per user with the opponents' full move likelihood; `offsetWarning` when it exceeds 150. Because the profile compares with the opponents, an offset error moves both sides alike.
 
-`level`: `below_level` when `pGood` ≥ 0.7, `hard` when `pGood` ≤ 0.3, none in between. Calibration on 1,200 random moves of the opponents (30 s or more): Maia is monotonic and conservative. Real frequency of a good move by bin of `pGood`: 0-0.3 → 20.5% (n 146), 0.3-0.5 → 51.8% (112), 0.5-0.7 → 68.8% (157), 0.7-0.85 → 87.4% (214), 0.85-1 → 97.4% (571). So with `below_level`, 87% or more of real players at that level found a good move; with `hard`, about 20% did.
+**Candidate set.** For each move, the union over the five levels of Maia's moves until 80% of the probability or 4 moves, plus the engine's best. It never depends on the move played. Every candidate is evaluated at the pass-1 budget (60k nodes): the best move takes the position's own eval, the played move the next position's eval. Losses are against the best move of the set; categories good (< 5), inaccuracy (< 10), mistake (< 15), blunder; a played move outside the set is the category `tail`.
 
-`LevelSummary` (in `categories[].level`, `findings[].level`, `recommendations[].reason.level`): judged moves in scope, how many are `below_level` and `hard`, and their `avoidableLoss`. Exercises list `below_level` errors first.
+**Per error** (`errors[].peer`, judged moves in scope):
 
-**Per phase** (`level.phases`, M3): on a fixed pseudo-random sample of 150 player positions per phase (in scope), the win % lost per 100 moves by the player versus the loss expected for a Lichess player of the same Elo in the same positions (probability-weighted loss of Maia's evaluated moves). `ratio` with a 95% bootstrap interval over games. `finding` is set only when the interval excludes 1.
+| Field | Meaning |
+| --- | --- |
+| `pPlayed` | Probability that players of `eloSelf` play the move played. |
+| `pGood` | Probability of a good move for those players, over the evaluated moves (normalised by `pEvaluated`). |
+| `pGoodNext`, `pGoodPlus400` | Same for players 200 and 400 Elo higher. |
+| `learnability` | `pGoodPlus400 - pGood`. `nextLevel` is true from 0.10 (the top 30% of the reference player's errors). |
+| `eloTrend` | log p(+400) - log p(-400) of the move played: negative when stronger players abandon it. |
+| `level` | `below_level` if `pGood` >= 0.7, `hard` if <= 0.3. |
+| `avoidableLoss`, `nextLevelLoss` | Judged loss x `pGood`, x `pGoodNext`. Exercises are ordered by `nextLevelLoss`. |
 
-**Ranking.** The default order (findings by `impact`, top three recommendations) is unchanged. `rankings.byAvoidableLoss` and `rankings.recommendationsByAvoidableLoss` give the order by avoidable loss, for comparison before switching.
+Calibration (V6, 1,200 random opponent moves with 30 s or more): normalised `pGood` predicts 0.787 against 0.766 observed. By bin: 0-0.3 → 0.197 observed (n 117), 0.3-0.5 → 0.378 (90), 0.5-0.7 → 0.635 (137), 0.7-0.85 → 0.726 (146), 0.85-1 → 0.942 (710). Moves tagged `below_level` are good 91% of the time for real players, `hard` ones 20%.
+
+`LevelSummary` (in `categories[].level`, `findings[].level`, `recommendations[].reason.level`): judged moves in scope, `belowLevel`, `hard`, `nextLevel`, `avoidableLoss`, `nextLevelLoss`.
+
+## Peer profile (`profile`)
+
+A **weakness** is a class of decisions, defined before looking at the move played, where the player's moves are worse than his opponents' moves in the same games, after adjusting both for the difficulty of their own positions, by a margin the sample can tell from zero.
+
+**Statistic.** For each decision and each of the five levels, the log-probability under Maia of the quality category actually observed (good, inaccuracy, mistake, blunder, tail). Summed over a class, the Elo shift that maximises it (local 3-point parabola; `atEdge` when the maximum is at -400 or +400) is the class's **quality-Elo shift**: the Elo, relative to the mover's own rating, at which the Maia population best explains how good the moves were. Its absolute value depends on platform, time control and position type and is never interpreted alone.
+
+**Control.** `gap` = player's shift minus opponents' shift in the same class. Interval: 1,000 bootstrap resamples over games (seed 20261111), same resample for both sides and all classes. Bootstrap deviations are widened per class by the ratio measured on synthetic players (V1: 1.0 to 1.29, median 1.16), so that `sd`, `ci80` and `ci95` match the real spread. `detectableGap` = 2.8 x `sd` (80% power at 0.05). `gamesToConfirm` = games x (2.8 / |z|)^2.
+
+**Grades.** A, confirmed: Benjamini-Hochberg q <= 0.10 over the 11 primary classes (the overall class: p <= 0.05), not `atEdge`. B, suggestive: the 80% interval excludes 0. C, within noise: reported with `detectableGap`, never as "no weakness". Classes need 150 decisions per side in 20 games (`insufficient` otherwise); the profile needs 30 blitz games.
+
+**Classes.** Primary (graded): `phase:opening|middlegame|endgame`; `standing:ahead|level|behind` (best move's win % >= 65, between, <= 35); `demand:forcing|pawn|piece` (the engine's best move captures or checks; else is a pawn move; else a piece move); `choice:one_good|several_good` (exactly one good move in a set of 3 or more). Secondary (no grade): move-number bands. Clock family (all decisions, including under 30 s; graded with its own Benjamini-Hochberg over its three classes): `clock:>=60|30-60|<30`. `clock:>=60` (about 90% of decisions) and `choice:several_good` are too broad to be recommendation targets. Classes defined by Maia's own prediction are not allowed: selecting on the predictor biases the comparison.
+
+Each class also has `cost` (win % lost per game in moves losing 5 or more, mistakes+blunders per 100 decisions, both sides) and `nextLevel.gainPerGame` (expected loss at the player's Elo minus at +200, Maia's model on his positions, losses capped at 30). `evidence`: the player's decisions of the class losing 10 or more, pass-2 verified first.
+
+**Validation (V1).** 300 synthetic players per setting, drawn from Maia on the reference player's real positions: null estimates unbiased (means -7 to +11); any discovery for 6.7% of null players; overall p < 0.05 for 4.0%. Power: planted -200 middlegame gap 0.87, -300 endgame 0.81, -250 forcing 0.62, -150 everywhere 0.84.
+
+**Validation on real players.** 16 Lichess players rated 1000-2400, ~48 blitz games each (V2-V4): the overall gap correlates 0.38 with score minus the Elo-expected score; real between-player spread of the overall gap tau = 178 Elo. Class gaps beyond the overall gap show real spread for opening (131), pawn demand (116), one good move (109), behind (176) and middlegame (36), and none beyond noise for endgame, ahead, level, forcing, piece and several good moves: those classes keep their grade but are not personal recommendation targets (`ProfileClass.tau = null`). Lichess movers sit +66 Elo (se 9) above Maia at their own rating (3+0 +32, 3+2 +161, 5+0 +185): Maia alone is not the standard. Games with a rating difference above 300 show no different baseline (+22 vs +33).
+
+**Holdout (V5).** Signals registered on the reference player's latest 96 games, tested on his 300 previous blitz games: overall (-69, grade A on its own), opening (-170, A), level positions (-115, A), pawn demand (-204, A), several good moves (-80, A) and the opening style gap replicate; endgame (-32) and forcing (-60), the two classes without real spread in V4, do not; middlegame, piece and one-good stay near 0 as registered. All five style traits replicate.
+
+**Clock (`profile.clock.paired`).** Player minus opponent in the same game: clock at moves 10/20/30/40, mean time per move by phase, share of moves under 1.5 s. A clock statement needs |z| >= 3.
+
+**Style (`profile.style`).** For 15 move attributes (capture, check, pawn move, equal trade, queen trade, castling, king move, knight/bishop/rook/queen move, retreat, advance, move to an attacked square, pawn move near the own king after move 8): share observed against Maia's full-policy expectation at the player's Elo (also at -400 and +400), z for player and opponents, and `zControlled` = player's excess minus opponents' excess over its game-bootstrap SD. A `trait` needs |zControlled| >= 3 and the opponents' own |z| < 3. Texts say "your choices resemble", never "you play at".
+
+**Repertoire (`profile.repertoire`).** Positions with the player to move reached in 3 or more games by ply 24: per move played, count, mean loss, Maia probability at -400 / 0 / +400, `leak` (twice with mean loss >= 5, or three times with >= 3), `habitBelowLevel` (p(+400) <= 0.6 x p(-400)); the favourite of players 400 Elo higher and the engine's best.
+
+**Findings and recommendations.** Graded gaps (A or B) become findings `profile_gap` (area `profile`); traits `style_trait` (area `style`); leaks `repertoire_leak` (replacing `repeated_mistake`). Recommendations: per family (phase, standing, demand, choice) the weakest class graded A or B, A before B then by z (never `choice:several_good`), up to three, skipping evidence overlaps above 50%; then level-typical findings by `nextLevelLoss` per game. `basis`: `confirmed_vs_opponents`, `suggestive_vs_opponents`, `level_typical`. Prescriptions may carry `drills` for `play_vs_maia`: a position, the side, the goal and Maia's Elo (the opponents' median).
+
+**Known limits.** The control assumes Maia+Stockfish is off by the same amount for the player's positions and the opponents' (other side of the same openings); this cannot be tested with one player. Statistics use 60k-node evaluations (8.5% of good/not-good calls differ from 500k): same noise for both sides, it costs power, not validity. The tail category is part quality, part unusualness. A gap is an average over the sample. What the sample cannot resolve is stated as `detectableGap`.

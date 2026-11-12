@@ -15,6 +15,7 @@ A browser-only app (Next.js static export) that analyses a player's recent games
 - This version of Next.js has breaking changes; read the relevant guide in `node_modules/next/dist/docs/` before changing framework code.
 - When a threshold or rule changes, update `REPORT.md` and the tests in the same change, and say what measurement motivated it.
 - Maia-3 describes a population (Lichess blitz players of an Elo), never the player: say so in every field and text. No level label on moves outside its scope (under 30 s, not blitz, unknown rating), and every level label carries its numbers.
+- Peer comparisons use the opponents of the same games as control; a Maia expectation alone is never a standard. Every class-level conclusion carries its interval, grade and detectable gap.
 - Model files are not committed. `scripts/copy-maia.mjs` fetches them and checks the pinned SHA-256; the report must still build when the model is missing.
 
 ## Tests and verification

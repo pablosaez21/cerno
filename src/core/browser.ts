@@ -2,6 +2,7 @@
 import type { AnalyzedGame, EvalCache } from "./analyze";
 import type { UciTransport } from "./engine";
 import type { MaiaPrediction } from "./maia";
+import type { Decision } from "./peers";
 import type { PositionEval } from "./types";
 
 export const ENGINE_URL = "/engine/stockfish-19-lite-single.js";
@@ -18,7 +19,7 @@ export function workerTransport(url = ENGINE_URL): UciTransport {
 }
 
 const DB_NAME = "cerno";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -31,6 +32,8 @@ function openDb(): Promise<IDBDatabase> {
       // Maia-3 predictions, by model, Elo and position history. Separate store:
       // adding it does not touch the Stockfish evaluations already saved.
       if (!db.objectStoreNames.contains("maia")) db.createObjectStore("maia");
+      // Peer decision records, one entry per game (new store: other caches stay valid).
+      if (!db.objectStoreNames.contains("peers")) db.createObjectStore("peers");
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -105,6 +108,16 @@ export class IdbCache implements EvalCache {
     if (!entries.length) return;
     const tx = this.db.transaction("maia", "readwrite");
     for (const [k, v] of entries) tx.objectStore("maia").put(v, k);
+    await done(tx);
+  }
+
+  async getPeers(key: string): Promise<Decision[] | undefined> {
+    return request(this.db.transaction("peers").objectStore("peers").get(key));
+  }
+
+  async setPeers(key: string, decisions: Decision[]): Promise<void> {
+    const tx = this.db.transaction("peers", "readwrite");
+    tx.objectStore("peers").put(decisions, key);
     await done(tx);
   }
 

@@ -21,9 +21,15 @@ export interface AnalysisSettings {
 
 export const DEFAULT_SETTINGS: AnalysisSettings = {
   pass1Nodes: 60_000,
+  // 500k nodes: 400k passed the 10-game reference (V8) but kept only 84% of the
+  // mistake/blunder labels of the 100 reference games (plan gate: 97%), so it stays.
+  // MultiPV 2: only the gap between the first and second move is used (lever L1).
   pass2Nodes: 500_000,
-  multiPv: 3,
-  candidateLoss: 4,
+  multiPv: 2,
+  // Pass-1 loss from which a player move is re-analysed. 6 instead of 4 re-analyses
+  // 587 moves instead of 799 on the reference player's 100 games and keeps 330 of
+  // 332 verified mistakes+blunders and all 222 blunders (planner's pilot, V8 re-run).
+  candidateLoss: 6,
   engineId: "sf19-lite",
 };
 
@@ -96,30 +102,39 @@ export async function analyzeGames(
   }
   const cachedGames = results.size;
 
-  // ---- Pass 1
+  // ---- Pass 1. Each distinct position is searched once, by the first game that
+  // has it (9% of the positions of 100 games repeat across games); the result is
+  // then given to every game with that position.
   const fensOf = (p: (typeof pending)[number]) => [p.parsed.startFen, ...p.parsed.plies.map((x) => x.fenAfter)];
-  let total1 = 0;
-  for (const p of pending) {
+  const owner = new Map<string, number>();
+  const found = new Map<string, PositionEval>();
+  for (let pi = 0; pi < pending.length; pi++) {
+    const p = pending[pi];
     const fens = fensOf(p);
     for (let i = 0; i < fens.length; i++) {
       p.evals[i] = await cache?.getEval(evalKey(s, s.pass1Nodes, 1, fens[i]));
-      if (!p.evals[i]) total1++;
+      const k = positionKey(fens[i]);
+      if (!p.evals[i] && !owner.has(k)) owner.set(k, pi);
     }
   }
+  const total1 = owner.size;
   let done1 = 0;
   deps.onProgress?.({ phase: "pass1", done: 0, total: total1, cachedGames });
   await deps.pool.run(
-    pending,
-    (p) =>
-      fensOf(p)
-        .map((fen, i) => ({ fen, i }))
-        .filter(({ i }) => !p.evals[i])
-        .map(({ fen }) => ({ fen, nodes: s.pass1Nodes, multiPv: 1 })),
-    async (p, req, ev) => {
-      const fens = fensOf(p);
-      fens.forEach((fen, i) => {
-        if (fen === req.fen && !p.evals[i]) p.evals[i] = ev;
-      });
+    pending.map((p, pi) => ({ p, pi })),
+    ({ p, pi }) => {
+      const seen = new Set<string>();
+      return fensOf(p)
+        .filter((fen, i) => {
+          const k = positionKey(fen);
+          if (p.evals[i] || owner.get(k) !== pi || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+        .map((fen) => ({ fen, nodes: s.pass1Nodes, multiPv: 1 }));
+    },
+    async (_t, req, ev) => {
+      found.set(positionKey(req.fen), ev);
       await cache?.setEval(evalKey(s, s.pass1Nodes, 1, req.fen), ev);
       done1++;
       deps.onProgress?.({ phase: "pass1", done: done1, total: total1, cachedGames });
@@ -127,6 +142,7 @@ export async function analyzeGames(
     deps.signal,
   );
   if (deps.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  for (const p of pending) fensOf(p).forEach((fen, i) => (p.evals[i] ??= found.get(positionKey(fen))));
 
   // ---- Pass 2
   type Job = { p: (typeof pending)[number]; requests: AnalyseRequest[]; deep: Record<number, Partial<DeepEval>> };
