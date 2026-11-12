@@ -21,8 +21,11 @@ export interface AnalysisSettings {
 
 export const DEFAULT_SETTINGS: AnalysisSettings = {
   pass1Nodes: 60_000,
+  // 500k nodes: 400k passed the 10-game reference (V8) but kept only 84% of the
+  // mistake/blunder labels of the 100 reference games (plan gate: 97%), so it stays.
+  // MultiPV 2: only the gap between the first and second move is used (lever L1).
   pass2Nodes: 500_000,
-  multiPv: 3,
+  multiPv: 2,
   // Pass-1 loss from which a player move is re-analysed. 6 instead of 4 re-analyses
   // 587 moves instead of 799 on the reference player's 100 games and keeps 330 of
   // 332 verified mistakes+blunders and all 222 blunders (planner's pilot, V8 re-run).

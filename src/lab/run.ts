@@ -29,6 +29,8 @@ export interface RunInput {
   workers?: number;
   /** Run Maia-3. Default true. */
   level?: boolean;
+  /** Stage 1: called when the Stockfish passes end, before the peer profile (plan: two-stage delivery). */
+  onBase?: (analyzed: AnalyzedGame[], elapsedMs: number) => void;
 }
 
 export interface RunTimings {
@@ -40,6 +42,8 @@ export interface RunTimings {
   /** Candidate searches after the Stockfish passes. */
   candidatesMs?: number;
   totalMs: number;
+  /** When the base report (without the profile) was ready. */
+  baseReadyMs?: number;
   workers: number;
   games: number;
   cachedGames: number;
@@ -119,6 +123,7 @@ export async function runAnalysis(
     // Full mode: Maia on the GPU in parallel with Stockfish on the CPU.
     const [analyzed, skeletons] = await Promise.all([stockfish, full ? runMaia(parsedOnly) : Promise.resolve(undefined)]);
     const t2 = performance.now();
+    input.onBase?.(analyzed, Math.round(t2 - t0));
 
     let peers: PeerInput | undefined;
     let candidatesMs: number | undefined;
@@ -156,6 +161,7 @@ export async function runAnalysis(
         maiaMs,
         candidatesMs,
         totalMs: Math.round(t3 - t0),
+        baseReadyMs: Math.round(t2 - t0),
         workers,
         games: games.length,
         cachedGames,

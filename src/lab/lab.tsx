@@ -49,7 +49,13 @@ export function Lab() {
     try {
       const source: SourceInput = kind === "pgn" ? { kind, text: pgnText, player: username } : { kind, username };
       const res = await runAnalysis(
-        { source, max, timeClasses: classes },
+        {
+          source,
+          max,
+          timeClasses: classes,
+          // Stage 1: the base report shows as soon as Stockfish ends; the profile follows.
+          onBase: (analyzed) => setReport(buildReport(analyzed, username, DEFAULT_SETTINGS)),
+        },
         (p) => setProgress(`${p.phase} ${p.done}/${p.total} · ${Math.round((performance.now() - t0) / 1000)} s`),
         abort.current.signal,
       );
