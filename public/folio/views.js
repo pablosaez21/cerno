@@ -187,8 +187,7 @@
       return `<div class="row" id="rec${r.rank}"><div class="v">
         <p class="chno" style="font-size:54px;color:var(--red)">${roman[r.rank - 1]}.</p>
         <h2 class="title" style="font-size:32px;margin-top:4px">${I.recTitle[F.state.lang][f.key] || F.findingTitle(f)}</h2>
-        <p class="kicker" style="margin-top:20px">${t("pre.because")}</p>
-        <p class="claim"><a class="link" href="${findingUrl(f)}">${F.findingTitle(f)}</a>. ${t("pre.reason", { occ: r.reason.occurrences, games: r.reason.games, n: r.reason.gamesAnalysed, impact: pp(r.reason.impact), below: r.reason.level.belowLevel, inScope: r.reason.level.inScope })}.</p>
+        <p class="claim" style="margin-top:18px"><a class="link" href="${findingUrl(f)}">${F.findingTitle(f)}</a>. ${t("pre.reason", { occ: r.reason.occurrences, games: r.reason.games, n: r.reason.gamesAnalysed, impact: pp(r.reason.impact), below: r.reason.level.belowLevel, inScope: r.reason.level.inScope })}.</p>
         ${F.splitBar(s)}
         <p class="kicker" style="margin-top:24px">${t("pre.train")}</p>
         <ol class="pref" style="margin-top:2px">${r.prescription.methods.map((m, i) => `<li><span class="rn">${i + 1}</span><span class="pt" style="font-size:17.5px">${F.lbl("method." + m)}</span></li>`).join("")}</ol>
