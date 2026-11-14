@@ -818,7 +818,7 @@ html.rm .cell.s-a path { animation: none; stroke-dashoffset: 0; }
 .ascii.sifting .c.ink { transform: translateY(var(--fy, 120px)); opacity: 0; transition: transform 700ms cubic-bezier(.55, 0, .9, .4), opacity 600ms ease-in; transition-delay: var(--dl, 0ms); }
 .ascii.phone { font-size: 13px; line-height: 15px; } .ascii.phone .c { height: 15px; }
 .ascii-grid { font: 400 12px/1.3 var(--mono); margin: 0; white-space: pre; color: var(--ink-2); }
-.ascii-grid .rw { color: var(--ink); font-weight: 500; } .ascii-grid .rl { color: var(--ink-3); } .ascii-grid .rd { color: var(--ink-2); }
+.ascii-grid .rw { color: var(--ink); font-weight: 500; } .ascii-grid .rl { color: var(--ink-3); } .ascii-grid .rd { color: var(--ink-2); } .ascii-grid .rq { color: var(--ink-3); }
 .foot .exlibris { margin-top: 26px; }
 .foot .exlibris .cap { font-size: 13px; margin-top: 8px; }
 .foot-end { font-size: 12.5px; }

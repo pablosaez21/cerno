@@ -11,8 +11,10 @@
     o: [".######.", "##....##", "##....##", "##....##", "##....##", "##....##", ".######."],
   };
   const chron = [...M.D.games].reverse();
+  // No study yet: letter the word with the footer's classic game, and leave the grid empty (the sieve before any game).
+  const classic = M.empty && F.classicGame ? F.classicGame() : null;
   const stream = [];
-  chron.forEach((g) => {
+  (classic ? [classic] : chron).forEach((g) => {
     const errAt = Object.fromEntries((M.errorsByGame[g.id] || []).map((e) => [e.ply, e.judgement]));
     const first = (g.startFen.split(" ")[1] === "w") === (g.color === "white") ? 0 : 1;
     for (let k = first; k < g.plies.length; k += 2) {
@@ -41,14 +43,15 @@
       lines.push(ln);
     }
     let grid = "";
-    for (let r = 0; r < 10; r++) grid += chron.slice(r * 10, r * 10 + 10).map((g) => `<span class="r${g.result[0]}">${g.result === "win" ? "." : g.result === "loss" ? "#" : "="}</span>`).join(" ") + "\n";
+    if (classic) for (let r = 0; r < 10; r++) grid += Array(10).fill(`<span class="rq">·</span>`).join(" ") + "\n";
+    else for (let r = 0; r < 10; r++) grid += chron.slice(r * 10, r * 10 + 10).map((g) => `<span class="r${g.result[0]}">${g.result === "win" ? "." : g.result === "loss" ? "#" : "="}</span>`).join(" ") + "\n";
     return (cache[cpp] = { html: lines.join("\n"), used: si, kept, grid });
   }
   F.asciiTail = () => {
     const phone = !matchMedia("(min-width: 700px)").matches;
     const b = build(phone ? 1 : 2);
     return `<div class="tail">
-      <p class="tail-cap">${t("foot.tail", { k: b.kept })}</p>
+      <p class="tail-cap">${classic ? t("foot.tailClassic") : t("foot.tail", { k: b.kept })}</p>
       <div class="tail-art"><pre class="ascii ${phone ? "phone" : ""}" tabindex="0" role="img" aria-label="${t("foot.tailAria")}">${b.html}</pre>
       <pre class="ascii-grid" aria-label="${t("sv.grid")}">${b.grid}</pre></div></div>`;
   };

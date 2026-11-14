@@ -575,30 +575,47 @@
     out.push(" |" + pad("· · ·") + "|");
     F.asciiBoard(fen, hl).forEach((ln) => out.push(" |" + pad(ln, ln.replace(/<[^>]+>/g, "").length + 0) + "|"));
     out.push(" |" + " ".repeat(W) + "|");
-    out.push(" |" + pad(M.user) + "|");
-    out.push(" |" + pad(M.N + (F.state.lang === "es" ? " partidas · " : " games · ") + M.D.sample.playerMoves + (F.state.lang === "es" ? " jugadas" : " moves")) + "|");
-    const tag = "C E R N O  ·  " + new Date(M.D.sample.to).getFullYear();
+    if (g.classic) {
+      out.push(" |" + pad("P. Morphy") + "|");
+      out.push(" |" + pad(F.state.lang === "es" ? "París 1858 · 17 jugadas" : "Paris 1858 · 17 moves") + "|");
+    } else {
+      out.push(" |" + pad(M.user) + "|");
+      out.push(" |" + pad(M.N + (F.state.lang === "es" ? " partidas · " : " games · ") + M.D.sample.playerMoves + (F.state.lang === "es" ? " jugadas" : " moves")) + "|");
+    }
+    const tag = g.classic ? "C E R N O" : "C E R N O  ·  " + new Date(M.D.sample.to).getFullYear();
     out.push(" |" + pad(tag) + "|");
     out.push(" |" + " ".repeat(W) + "|");
     out.push(" '" + "-".repeat(W) + "'");
     return out.join("\n");
   };
+  // Before any study is saved (the cover on a first visit) the footer's ex libris and lettering use a
+  // classic game in the public domain: Morphy's "Opera game", Paris 1858, mate on move 17.
+  const OPERA = "e4 e5 Nf3 d6 d4 Bg4 dxe5 Bxf3 Qxf3 dxe5 Bc4 Nf6 Qb3 Qe7 Nc3 c6 Bg5 b5 Nxb5 cxb5 Bxb5+ Nbd7 O-O-O Rd8 Rxd7 Rxd7 Rd1 Qe6 Bxd7+ Nxd7 Qb8+ Nxb8 Rd8#".split(" ");
+  let classic = null;
+  F.classicGame = () => {
+    if (classic || !window.Chess) return classic;
+    const ch = new window.Chess(), startFen = ch.fen();
+    const plies = OPERA.map((san) => { const m = ch.move(san); return { san: m.san, uci: m.from + m.to + (m.promotion || ""), fen: ch.fen() }; });
+    return (classic = { id: "classic:opera-1858", classic: true, startFen, plies, color: "white", result: "win", white: { name: "Morphy" }, black: { name: "Brunswick, Isouard" } });
+  };
   F.footer = (meta) => {
     const ft = document.getElementById("colophon");
-    const g = meta.footGame || M.bestGame;
+    const g = meta.footGame || M.bestGame || (M.empty ? F.classicGame() : null);
     if (meta.noFooter || !g) { ft.innerHTML = ""; return; }
-    const best = !meta.footGame;
+    const best = !meta.footGame && !g.classic;
     const last = g.plies[g.plies.length - 1];
     const fen = last.fen, hl = [last.uci.slice(0, 2), last.uci.slice(2, 4)];
     const resTxt = g.result === "draw" ? F.t("res.d") : M.pgnResult(g) === "1–0" ? F.t("res.w") : F.t("res.b");
-    const cap = best
+    const cap = g.classic
+      ? F.t("foot.asciiCapClassic")
+      : best
       ? F.t("foot.asciiCapBest", { acc: F.pctv(g.accuracy, 1), mv: Math.ceil(g.plies.length / 2), w: F.esc(g.white.name), b: F.esc(g.black.name), date: F.date(g.endTime) })
       : F.t("foot.asciiCap", { w: F.esc(g.white.name), b: F.esc(g.black.name), date: F.date(g.endTime), res: resTxt });
     const D = M.D;
     ft.innerHTML = `<div class="foot">
       <div class="checker" aria-hidden="true">${"<i></i>".repeat(32)}</div>
       <div class="exlibris" role="button" tabindex="0" aria-label="${F.esc(cap.replace(/<[^>]+>/g, ""))}"><pre aria-hidden="true">${F.exLibris(g, fen, hl)}</pre><p class="cap">${cap}</p></div>
-      <div class="foot-end"><span>${F.t("foot.line", { from: F.dateShort(D.sample.from), to: F.date(D.sample.to) })}</span><a href="#" data-top>${F.t("foot.top")} ↑</a></div>
+      <div class="foot-end"><span>${F.t("foot.line", M.empty ? {} : { from: F.dateShort(D.sample.from), to: F.date(D.sample.to) })}</span><a href="#" data-top>${F.t("foot.top")} ↑</a></div>
       ${F.asciiTail ? F.asciiTail() : ""}
     </div>`;
     F.mountTail && F.mountTail(ft);
