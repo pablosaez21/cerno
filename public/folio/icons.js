@@ -23,5 +23,10 @@
     settings: `<path d="M4 7h16M4 12h16M4 17h16" ${ink}/><circle cx="8" cy="7" r="1.9" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle cx="15.5" cy="12" r="1.9" fill="var(--paper)" stroke="currentColor" stroke-width="1.4"/><circle class="rf" cx="10.5" cy="17" r="2.1"/>`,
   };
   F.ICONS = ICONS;
+  // The Cerno mark (same drawing as src/app/icon.svg): a Roman capital C round a corner of a printed board,
+  // hatched as in the diagrams, with the red square that stays in the sieve. Fixed colours: it is a stamp, in both themes.
+  const MARK = "<defs><pattern id=\"hm@\" width=\"2.1\" height=\"2.1\" patternUnits=\"userSpaceOnUse\" patternTransform=\"rotate(45)\"><rect width=\"1.05\" height=\"2.1\" fill=\"#f5efe3\"/></pattern></defs><rect width=\"32\" height=\"32\" rx=\"7\" fill=\"#1b1d22\"/><path transform=\"translate(1.36 28.74) scale(0.0364 -0.0364)\" fill=\"#f5efe3\" d=\"M722 292 731 120Q709 83 672 53Q635 23 580 4Q525 -14 450 -14Q328 -13 237 30Q145 74 95 155Q45 236 45 351Q45 463 94 545Q143 626 235 670Q326 714 453 714Q533 714 597 698Q660 682 702 659L704 488H695Q668 587 607 629Q546 672 464 672Q384 672 327 633Q270 594 239 523Q208 452 208 353Q208 254 238 182Q267 110 322 70Q376 30 450 28Q527 28 580 53Q633 78 666 136Q698 194 714 292Z\"/><rect x=\"11.2\" y=\"9.4\" width=\"6.0\" height=\"6.0\" fill=\"#f5efe3\"/><rect x=\"18.00\" y=\"9.4\" width=\"6.0\" height=\"6.0\" fill=\"url(#hm@)\"/><rect x=\"11.2\" y=\"16.20\" width=\"6.0\" height=\"6.0\" fill=\"url(#hm@)\"/><rect x=\"18.00\" y=\"16.20\" width=\"6.0\" height=\"6.0\" fill=\"#bf2c24\"/>";
+  let markN = 0;
+  F.mark = (cls = "") => `<svg class="mark ${cls}" viewBox="0 0 32 32" aria-hidden="true" focusable="false">${MARK.replace(/@/g, ++markN)}</svg>`;
   F.icon = (k, cls = "") => (ICONS[k] ? `<svg class="ico ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICONS[k]}</svg>` : "");
 })();
