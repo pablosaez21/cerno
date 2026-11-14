@@ -11,20 +11,28 @@
     o: [".######.", "##....##", "##....##", "##....##", "##....##", "##....##", ".######."],
   };
   const chron = [...M.D.games].reverse();
-  // No study yet: letter the word with the footer's classic game, and leave the grid empty (the sieve before any game).
-  const classic = M.empty && F.classicGame ? F.classicGame() : null;
-  const stream = [];
-  (classic ? [classic] : chron).forEach((g) => {
-    const errAt = Object.fromEntries((M.errorsByGame[g.id] || []).map((e) => [e.ply, e.judgement]));
-    const first = (g.startFen.split(" ")[1] === "w") === (g.color === "white") ? 0 : 1;
-    for (let k = first; k < g.plies.length; k += 2) {
-      const j = errAt[k + 1], tag = j === "blunder" || j === "mistake" ? "m" : "";
-      for (const ch of g.plies[k].san) stream.push([ch, tag]);
-    }
-  });
+  // Classic mode (no study yet, or the cover, where nothing has been analysed): letter the word with the
+  // footer's classic game and leave the grid empty, the sieve before any game. Otherwise: the player's own moves.
+  const streams = {};
+  const streamOf = (classic) => {
+    const key = classic ? "c" : "p";
+    if (streams[key]) return streams[key];
+    const stream = [];
+    (classic ? [F.classicGame()] : chron).forEach((g) => {
+      const errAt = Object.fromEntries((M.errorsByGame[g.id] || []).map((e) => [e.ply, e.judgement]));
+      const first = (g.startFen.split(" ")[1] === "w") === (g.color === "white") ? 0 : 1;
+      for (let k = first; k < g.plies.length; k += 2) {
+        const j = errAt[k + 1], tag = j === "blunder" || j === "mistake" ? "m" : "";
+        for (const ch of g.plies[k].san) stream.push([ch, tag]);
+      }
+    });
+    return (streams[key] = stream);
+  };
   const cache = {};
-  function build(cpp) {
-    if (cache[cpp]) return cache[cpp];
+  function build(cpp, classic) {
+    const ck = cpp + (classic ? "c" : "p");
+    if (cache[ck]) return cache[ck];
+    const stream = streamOf(classic);
     const word = "cerno", rows = 7, W = word.length * 9 + 1, lines = [];
     let si = 0, kept = 0;
     for (let y = -1; y < rows + 1; y++) {
@@ -45,11 +53,12 @@
     let grid = "";
     if (classic) for (let r = 0; r < 10; r++) grid += Array(10).fill(`<span class="rq">·</span>`).join(" ") + "\n";
     else for (let r = 0; r < 10; r++) grid += chron.slice(r * 10, r * 10 + 10).map((g) => `<span class="r${g.result[0]}">${g.result === "win" ? "." : g.result === "loss" ? "#" : "="}</span>`).join(" ") + "\n";
-    return (cache[cpp] = { html: lines.join("\n"), used: si, kept, grid });
+    return (cache[ck] = { html: lines.join("\n"), used: si, kept, grid });
   }
-  F.asciiTail = () => {
+  F.asciiTail = (opts = {}) => {
     const phone = !matchMedia("(min-width: 700px)").matches;
-    const b = build(phone ? 1 : 2);
+    const classic = !!(opts.classic || M.empty) && !!F.classicGame;
+    const b = build(phone ? 1 : 2, classic);
     return `<div class="tail">
       <p class="tail-cap">${classic ? t("foot.tailClassic") : t("foot.tail", { k: b.kept })}</p>
       <div class="tail-art"><pre class="ascii ${phone ? "phone" : ""}" tabindex="0" role="img" aria-label="${t("foot.tailAria")}">${b.html}</pre>

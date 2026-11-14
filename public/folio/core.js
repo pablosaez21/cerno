@@ -600,8 +600,20 @@
   };
   F.footer = (meta) => {
     const ft = document.getElementById("colophon");
+    // The cover comes before any analysis: no ex libris of a study, and the tail lettered with the classic game.
+    const cover = !!meta.coverFoot;
     const g = meta.footGame || M.bestGame || (M.empty ? F.classicGame() : null);
-    if (meta.noFooter || !g) { ft.innerHTML = ""; return; }
+    if (meta.noFooter || (!g && !cover)) { ft.innerHTML = ""; return; }
+    if (cover) {
+      ft.innerHTML = `<div class="foot foot-cover">
+      <div class="checker" aria-hidden="true">${"<i></i>".repeat(32)}</div>
+      <div class="foot-end"><span>${F.t("foot.line", {})}</span><a href="#" data-top>${F.t("foot.top")} ↑</a></div>
+      ${F.asciiTail ? F.asciiTail({ classic: true }) : ""}
+    </div>`;
+      F.mountTail && F.mountTail(ft);
+      ft.querySelector("[data-top]").addEventListener("click", (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: F.reduced() ? "auto" : "smooth" }); });
+      return;
+    }
     const best = !meta.footGame && !g.classic;
     const last = g.plies[g.plies.length - 1];
     const fen = last.fen, hl = [last.uci.slice(0, 2), last.uci.slice(2, 4)];
