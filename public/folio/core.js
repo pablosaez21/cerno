@@ -261,7 +261,7 @@
     document.title = (meta.title ? meta.title.replace(/<[^>]+>/g, "") + " · " : "") + "Cerno";
     // running head (mobile)
     const rh = document.getElementById("runhead");
-    rh.innerHTML = `${meta.hideWm ? "<span></span>" : `<a class="wm" href="#/contents">Cerno</a>`}<div class="where">${meta.where ? `<span class="sep">/</span>${meta.where}` : ""}</div>${F.langSwitch()}${F.themeBtn()}`;
+    rh.innerHTML = `${meta.hideWm ? "<span></span>" : `<a class="wm" href="#/contents">${F.mark()}Cerno</a>`}<div class="where">${meta.where ? `<span class="sep">/</span>${meta.where}` : ""}</div>${F.langSwitch()}${F.themeBtn()}`;
     // dock
     const dock = document.getElementById("dock");
     const di = DOCK.findIndex(([k]) => k === meta.nav), dFrom = F._dockIdx != null && F._dockIdx >= 0 ? F._dockIdx : di;
@@ -287,7 +287,7 @@
     ];
     const curIdx = items.findIndex((it) => it[3] === meta.ribbon);
     const fill = curIdx < 0 ? 0 : curIdx / (items.length - 1), fillFrom = F._rbFill ?? fill;
-    rb.innerHTML = `<a class="wm" href="#/">Cerno</a>
+    rb.innerHTML = `<a class="wm" href="#/">${F.mark()}Cerno</a>
       <div class="by">${F.t("brand.sub", { n: M.N, user: `<i>${M.user}</i>` })}</div>
       <nav aria-label="${F.t("toc.title")}"><span class="fillline" style="height:calc(100% - 28px);transform:scaleY(${fillFrom})"></span><ol>${items
         .map((it, i) => `<li><a href="${it[0]}" class="${i < curIdx ? "past" : ""} ${it[4] ? "gap" : ""}" ${i === curIdx ? 'aria-current="page"' : ""}><span class="bul">${F.icon(it[3].replace("ch:", ""))}</span><span>${it[1] !== "" ? `<span class="rn">${it[1]}</span>` : ""}${it[2]}</span></a></li>`)

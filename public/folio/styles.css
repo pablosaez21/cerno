@@ -969,3 +969,6 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
   .ribbon nav a[aria-current="page"] .bul { color: var(--ink); }
   .ribbon nav a[aria-current="page"] .bul .ico { opacity: 1; }
 }
+
+/* the Cerno mark beside the wordmark (icons.js F.mark) */
+.wm .mark { width: .92em; height: .92em; display: inline-block; vertical-align: -.1em; margin-right: .34em; }
