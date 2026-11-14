@@ -16,12 +16,46 @@ export const MAIA_MIN_CLOCK = 30;
  * `level.opponentsTotalShift` checks it per user.
  */
 export const CHESSCOM_TO_LICHESS_OFFSET = 360;
+/** 95% bootstrap interval of the offset, and the mean Chess.com rating it was measured at (one reference player). */
+export const CHESSCOM_TO_LICHESS_OFFSET_CI95: [number, number] = [313, 399];
+export const CHESSCOM_OFFSET_REFERENCE_RATING = 1453;
+
+export type EloSource = "chesscom" | "lichess" | "pgn";
+
+/** What is added to a source rating to get the Lichess Elo Maia is asked with. PGN ratings are taken as given. */
+export function maiaEloOffset(source: EloSource): number {
+  return source === "chesscom" ? CHESSCOM_TO_LICHESS_OFFSET : 0;
+}
+
+/**
+ * The scale every Elo is shown on: the one of the games' source. Inside the
+ * analysis and the report every Elo is Maia's (Lichess); `shownElo` is the only
+ * way back.
+ */
+export interface EloScale {
+  shown: EloSource;
+  /** Maia's Elo (Lichess) = shown Elo + this. */
+  maiaOffset: number;
+  maiaOffsetCi95?: [number, number];
+  /** Mean rating, on the shown scale, of the one player the offset was measured on. */
+  measuredAt?: number;
+}
+
+export function eloScale(source: EloSource): EloScale {
+  if (source !== "chesscom") return { shown: source, maiaOffset: 0 };
+  return { shown: source, maiaOffset: CHESSCOM_TO_LICHESS_OFFSET, maiaOffsetCi95: CHESSCOM_TO_LICHESS_OFFSET_CI95, measuredAt: CHESSCOM_OFFSET_REFERENCE_RATING };
+}
+
+/** Maia's Elo (Lichess) back on the scale of the games' source: the Elo the user sees. */
+export function shownElo(maiaElo: number, source: EloSource): number {
+  return maiaElo - maiaEloOffset(source);
+}
 
 export type OutOfScope = "clock" | "time_class" | "no_rating" | "no_model";
 
-export function eloForMaia(rating: number | undefined, source: "chesscom" | "lichess" | "pgn"): number | undefined {
+export function eloForMaia(rating: number | undefined, source: EloSource): number | undefined {
   if (rating === undefined) return undefined;
-  return source === "chesscom" ? rating + CHESSCOM_TO_LICHESS_OFFSET : rating;
+  return rating + maiaEloOffset(source);
 }
 
 export function outOfScope(input: { clockBefore?: number; timeClass: TimeClass; ratingKnown: boolean }): OutOfScope | undefined {

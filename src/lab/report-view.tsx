@@ -281,7 +281,7 @@ function EvidencePanel({ refPos, error, game }: { refPos: EvidenceRef; error?: E
       </p>
       {error.peer && (
         <p>
-          Jugadores de blitz de Lichess con Elo {error.peer.eloSelf}, según Maia-3: harían esta jugada {(error.peer.pPlayed * 100).toFixed(1)}% de las veces; encontrarían una jugada
+          Jugadores de blitz de Lichess con Elo de Lichess {error.peer.eloSelf}, según Maia-3: harían esta jugada {(error.peer.pPlayed * 100).toFixed(1)}% de las veces; encontrarían una jugada
           buena {(error.peer.pGood * 100).toFixed(0)}% (con +200: {(error.peer.pGoodNext * 100).toFixed(0)}%, con +400: {(error.peer.pGoodPlus400 * 100).toFixed(0)}%; evaluado{" "}
           {(error.peer.pEvaluated * 100).toFixed(0)}% de la probabilidad) → <b>{error.peer.level ?? "sin etiqueta de nivel"}</b>
           {error.peer.nextLevel && " · next_level"} · pérdida evitable {error.peer.avoidableLoss} · la evitan los de +200: {error.peer.nextLevelLoss}
