@@ -181,7 +181,7 @@
     const rep = (D.repertoireFixes || []);
     const html = `<div class="spread"><div class="row"><div class="v">
       <p class="kicker">${t("chapter")}</p>
-      <p class="chno" aria-hidden="true">N</p>
+      <p class="chno" aria-hidden="true">N${F.icon("level", "chico")}</p>
       <h1 class="title">${t("lv.title")}</h1>
       <p class="lede">${t("lv.lede")}</p>
       ${o && o.ci95 ? `<p class="claim" style="margin-top:14px">${t("lv.overall", { gap: sign(o.gap), lo: sign(o.ci95[0]), hi: sign(o.ci95[1]) })}</p>` : ""}
@@ -204,27 +204,69 @@
     return { html, nav: "contents", ribbon: "level", where: `${t("chapter")} N · ${t("lv.title")}`, title: t("lv.title") };
   });
 
-  /* =============== The real wait =============== */
-  const STAGES = ["fetch", "model", "pass1", "pass2", "maia", "cand", "ladder", "book"];
-  const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  /* =============== The real wait: the demo's sieve, fed by the analysis =============== */
+  // Same markup and CSS as the demo (sieve.js): the grid fills with each game's win % curve once
+  // Stockfish has read it, the counters and the feed move as games complete, and the galley
+  // board shows the latest costly mistake. Everything comes from CernoApp.live (src/folio/host.ts).
+  Object.assign(I.en, {
+    "lvx.sf": (p) => `Stockfish 19 · ${p.w} workers`, "lvx.maiaCpu": "Maia-3 · processor",
+    "lvx.grid": (p) => `Your ${p.n} games, one square each`,
+    "lvx.whyWait": (p) => `${p.w} Stockfish workers take the games in order: a fast pass on every move, a deep one on the costly moves. Then Maia-3 looks at your mistakes. Each game is saved as soon as it is done.`,
+    "lvx.done": (p) => (p.n ? `Sifted. <em>${["One", "Two", "Three", "Four", "Five"][p.n - 1] || p.n}</em> ${p.n === 1 ? "thing" : "things"} to train.` : "Sifted."),
+  });
+  Object.assign(I.es, {
+    "lvx.sf": (p) => `Stockfish 19 · ${p.w} procesos`, "lvx.maiaCpu": "Maia-3 · procesador",
+    "lvx.grid": (p) => `Tus ${p.n} partidas, un cuadro cada una`,
+    "lvx.whyWait": (p) => `${p.w} procesos de Stockfish toman las partidas en orden: una pasada rápida en cada jugada y otra profunda en las caras. Después Maia-3 mira tus errores. Cada partida se guarda al terminar.`,
+    "lvx.done": (p) => (p.n ? `Cribado. <em>${["Una", "Dos", "Tres", "Cuatro", "Cinco"][p.n - 1] || p.n}</em> ${p.n === 1 ? "cosa" : "cosas"} que entrenar.` : "Cribado."),
+  });
+  const fmt = (ms) => F.clockFmt(ms / 1000);
+  const STG = ["dl", "sf", "maia", "pat", "ex"];
+  const pathOf = (c) => {
+    const N = c.length, step = Math.max(1, Math.floor(N / 48)), W = 40, H = 40, P = 3;
+    if (N < 2) return "";
+    let d = "";
+    for (let i = 0; i < N; i += step) d += (d ? "L" : "M") + (P + (i / (N - 1)) * (W - 2 * P)).toFixed(1) + " " + (P + (1 - c[i] / 100) * (H - 2 * P)).toFixed(1);
+    return d + "L" + (W - P) + " " + (P + (1 - c[N - 1] / 100) * (H - 2 * P)).toFixed(1);
+  };
+  // A finished error (study data) or a live move, as a position the pencil and caption helpers take.
+  const posOf = (e, gameId) => {
+    const ref = e.refutationUci || e.refutation;
+    const after = CernoBoard.applyUci(e.fen, e.played.uci);
+    const refSan = e.refutationUci ? e.refutation : ref && ref[0] ? [F.uciSan(after, ref[0])] : null;
+    return {
+      key: (gameId || e.gameId) + "#" + e.ply, ply: e.ply, fen: e.fen, orientation: e.color, judgement: e.judgement, played: e.played, best: e.best,
+      solution: { uci: e.best ? [e.best.uci] : [], san: e.best ? [e.best.san] : [] },
+      refutation: ref && ref[0] ? { uci: ref, san: refSan } : null,
+    };
+  };
+  // What the feed has printed for a run survives leaving the page and coming back.
+  let mem = null;
   F.route(/^\/analysing$/, () => {
     const app = window.CernoApp;
     const L0 = app && app.live;
     if (!L0 || L0.status === "idle") return { html: `<div class="page"><p class="lede">${t("lvx.idle")}</p><a class="btn" href="#/">${t("set.newRun")}</a></div>`, noDock: true, noRibbon: true, title: t("lvx.title") };
+    if (!mem || mem.run !== L0.startedAt) mem = { run: L0.startedAt, lines: [], seen: new Set(), pats: new Set(), galley: null, galleyAt: 0, drawn: new Set(), final: false };
     const N = L0.max || 100;
+    const ctr = (k) => `<div class="ctr" data-k="${k}"><b class="num">0</b><span>${t("sv.c." + k)}</span></div>`;
     const html = `<div class="sift"><div class="col col-l">
       <div class="w-a">
         <p class="kicker">${t("lvx.title")} · ${esc(L0.user || "")}</p>
         <h1 class="ts-lead" data-lead aria-live="polite"></h1>
-        <p class="sub num"><b data-clk>0:00</b> ${t("lvx.elapsed")} <span data-games></span></p>
+        <p class="sub num"><b data-clk>0:00</b> <span data-eta></span></p>
         <div class="done-cta" hidden><a class="btn primary" href="#/contents" data-open>${t("lvx.open")} <span class="arr">→</span></a></div>
       </div>
-      <div class="w-d"><ol class="stages">${STAGES.map((k) => `<li data-st="${k}"><span class="mk">○</span><span>${t("lvx.s." + k)}</span><span class="ct num" data-ct></span></li>`).join("")}</ol>
-        <div class="small faint leave">${t("lvx.leave")}</div>
+      <div class="w-d"><ol class="stages">${STG.map((k) => `<li data-st="${k}"><span class="mk">○</span><span data-lb>${t("sv.s." + k)}</span><span class="ct num" data-ct></span></li>`).join("")}</ol>
+        <div class="small faint leave">${t("lvx.leave")} <span data-why></span></div>
         <p class="small muted" data-nogpu hidden style="margin-top:8px">${t("lvx.noGpu")}</p>
         <div data-err></div></div>
       </div><div class="col col-c">
-      <div class="w-b"><div class="grid-wrap pips-off">${F.blankGrid(N)}</div></div>
+      <div class="w-b"><div class="grid-wrap pips-off">${F.blankGrid(N)}</div><div data-legend>${F.gridLegend(false)}</div></div>
+      </div><div class="col col-r">
+      <figure class="w-g galley"><div class="gl-board">${F.diagram({ p: { fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", orientation: "white", turn: "w" }, size: "small", caption: false, number: false, mode: "fen", draw: false, animMs: 0 })}</div>
+        <figcaption><span class="gk">${t("ts.galley")}</span><span data-gcap>${t("sv.gwait")}</span></figcaption></figure>
+      <div class="w-k counters">${["games", "moves", "judged", "mist", "pat", "train"].map(ctr).join("")}</div>
+      <div class="w-f"><ul class="feed" aria-label="${t("sv.found")}"></ul></div>
       </div>
       <div class="ts-ctrl" role="group"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-cancel>${t("lvx.cancel")}</button><span class="progressline" aria-hidden="true"></span></div>
     </div>`;
@@ -232,43 +274,174 @@
       html, noDock: true, noRibbon: true, noFooter: true, where: t("lvx.title"), title: t("lvx.title"),
       after(root) {
         const $ = (s) => root.querySelector(s);
-        const cells = [...root.querySelectorAll(".cell")];
+        const rm = F.reduced();
+        const desk = matchMedia("(min-width: 1000px)").matches;
+        const b = F.boards[0];
+        const gw = $(".grid-wrap"), feed = $(".feed"), gcap = $("[data-gcap]"), lead = $("[data-lead]");
+        const C = {}; root.querySelectorAll(".ctr").forEach((c) => (C[c.dataset.k] = c.querySelector("b")));
         const st = {}; root.querySelectorAll("[data-st]").forEach((li) => (st[li.dataset.st] = li));
-        const stage = (k, s) => {
-          const li = st[k]; if (!li) return;
-          li.className = s.state === "done" ? "done" : s.state === "run" ? "run" : "";
-          li.querySelector(".mk").textContent = s.state === "done" ? "✓" : s.state === "run" ? "●" : s.state === "skip" ? "–" : "○";
-          li.querySelector("[data-ct]").textContent = s.total ? (k === "model" ? Math.round((100 * s.done) / s.total) + " %" : `${n(s.done)}/${n(s.total)}`) : s.state === "done" && s.done ? n(s.done) : "";
+        let cells = null, drawT = 0, tick = 0;
+        const animUntil = {};
+
+        const stage = (k, cls, ct, label) => {
+          const li = st[k];
+          li.className = cls || "";
+          li.querySelector(".mk").textContent = cls === "done" ? "✓" : cls === "run" ? "●" : cls === "skip" ? "–" : "○";
+          li.querySelector("[data-ct]").textContent = ct == null ? "" : ct;
+          if (label) li.querySelector("[data-lb]").textContent = label;
         };
-        let tick = 0;
+        let lastLead = "";
+        const setLead = (html) => { if (html === lastLead) return; const first = !lastLead; lastLead = html; lead.innerHTML = html; if (!first) F.swapIn(lead); };
+        const paintLine = (x) => {
+          const li = document.createElement("li"); li.className = x.cls || "";
+          li.innerHTML = `<span class="gn">${x.no != null ? x.no : ""}</span><span>${x.html}</span>`;
+          feed.prepend(li);
+          while (feed.children.length > (desk ? 7 : 4)) feed.lastChild.remove();
+        };
+        const line = (html, cls, no) => { const x = { html, cls, no }; mem.lines.push(x); paintLine(x); };
+        mem.lines.slice(-(desk ? 7 : 4)).forEach(paintLine);
+        const showGalley = (p, no) => {
+          b.setOrientation(p.orientation); b.setFen(p.fen); b.highlight({});
+          b.pencil(F.pencilFor(p), { draw: !rm });
+          gcap.innerHTML = `<b class="num">${no}</b> · ${F.capLine(p)}`;
+          F.swapIn(gcap);
+        };
+        if (mem.galley) { const g = mem.galley; b.setOrientation(g.p.orientation); b.setFen(g.p.fen); b.pencil(F.pencilFor(g.p), { draw: false }); gcap.innerHTML = `<b class="num">${g.no}</b> · ${F.capLine(g.p)}`; }
+        const mv = (m) => F.mvn(m.ply, m.played.san, { cls: "bad", glyph: M.glyph(m.judgement) });
+        const counts = { fork: 0, hang: 0 };
+        const noteHtml = (nt) => {
+          if (!nt) return null;
+          if (nt.kind === "fork") return t("sv.n.fork", { mv: mv(nt.move), k: ++counts.fork });
+          if (nt.kind === "hang") return t("sv.n.hang", { mv: mv(nt.move), k: ++counts.hang });
+          if (nt.kind === "mate") return t("sv.n.mate", { mv: mv(nt.move) });
+          if (nt.kind === "lwtl") return t("sv.n.lwtl", { c: F.clockFmt(nt.clock) });
+          if (nt.kind === "worst") return t("sv.n.worst", { mv: mv(nt.move), l: n(nt.move.loss, 0) });
+          return t("sv.n.clean");
+        };
+
+        const buildGrid = (ids, byId) => {
+          gw.innerHTML = `<div class="grid10" role="img" aria-label="${t("lvx.grid", { n: ids.length })}">${ids.map((id) => `<span class="cell s-q r-${byId[id].result}" data-id="${esc(id)}"><svg viewBox="0 0 40 40" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="40" y1="20" y2="20" class="mid"/><path pathLength="1"/></svg><span class="pips"></span></span>`).join("")}</div>`;
+          cells = {}; gw.querySelectorAll(".cell").forEach((c) => (cells[c.dataset.id] = c));
+        };
+
         const draw = () => {
-          const L = app.live;
-          for (const k of STAGES) stage(k, L.stages[k] || { state: "wait" });
-          const now = L.endedAt || Date.now();
-          $("[data-clk]").textContent = fmt(now - L.startedAt);
-          $("[data-games]").textContent = L.games ? "· " + t("lvx.games", { n: L.games }) : "";
+          const L = app.live, now = performance.now();
+          const S = (k) => L.stages[k] || { state: "wait", done: 0, total: 0 };
+          const G = L.games || N;
+          const ids = L.grid;
+          if (ids && !cells) buildGrid(ids, L.byId);
+          const why = $("[data-why]");
+          if (L.workers && !why.firstChild) why.innerHTML = F.why("lvx.whyWait", { w: L.workers });
+          // ---- grid: the next games Stockfish takes are marked; a curve draws itself in red, then settles in ink
+          let soonest = Infinity;
+          if (cells) {
+            const working = new Set();
+            if (S("pass1").state === "run") for (const id of ids.slice().reverse()) { if (working.size >= (L.workers || 4)) break; if (L.byId[id].state === "q") working.add(id); }
+            for (const id of ids) {
+              const g = L.byId[id], c = cells[id];
+              let s = "s-q";
+              if (g.state === "q") s = working.has(id) ? "s-a" : "s-q";
+              else {
+                if (!mem.drawn.has(id)) {
+                  mem.drawn.add(id);
+                  c.querySelector("path").setAttribute("d", pathOf(g.curve || []));
+                  if (!rm && L.status === "running") { animUntil[id] = now + 1150; c.classList.remove("s-a"); void c.offsetWidth; }
+                }
+                s = animUntil[id] > now ? "s-a" : "s-d";
+                if (animUntil[id] > now) soonest = Math.min(soonest, animUntil[id] - now);
+              }
+              const cls = `cell r-${g.result} ${s}${c.classList.contains("mx") ? " mx" : ""}`;
+              if (c.className !== cls) c.className = cls;
+            }
+          }
+          if (soonest < Infinity) { clearTimeout(drawT); drawT = setTimeout(draw, soonest + 20); }
+
+          // ---- counters and feed, from the games that are complete
+          const tot = { games: 0, moves: 0, judged: 0, mist: 0, pat: (L.findings || []).length, train: L.final ? L.final.recommendations.length : 0 };
+          let newest = null;
+          for (const id of (ids || []).slice().reverse()) {
+            const g = L.byId[id];
+            if (g.state !== "d") continue;
+            tot.games++; tot.moves += g.playerMoves || 0; tot.judged += g.judged || 0; tot.mist += g.mistakes || 0;
+            if (!mem.seen.has(id)) {
+              mem.seen.add(id);
+              const h = noteHtml(g.note); if (h) line(h, "", g.no);
+              if (g.worst) newest = g;
+            }
+          }
+          if (L.status === "running") for (const f of L.findings || []) {
+            if (mem.pats.has(f.id)) continue;
+            mem.pats.add(f.id);
+            line(t("sv.n.pat", { f: F.findingTitle(f), o: f.occurrences, g: f.games }), "pat");
+          }
+          if (newest && now - mem.galleyAt > 1100) { const p = posOf(newest.worst, newest.id); mem.galley = { p, no: newest.no }; mem.galleyAt = now; showGalley(p, newest.no); }
+          Object.keys(C).forEach((k) => { C[k].textContent = n(tot[k]); C[k].parentElement.classList.toggle("live", tot[k] > 0); });
+
+          // ---- stages, in the demo's five
+          const fe = S("fetch"), p1 = S("pass1"), p2 = S("pass2"), mx = ["maia", "cand", "ladder"].map(S), mo = S("model"), bk = S("book");
+          const curves = ids ? ids.filter((id) => L.byId[id].state !== "q").length : 0;
+          stage("dl", fe.state === "done" ? "done" : "run", L.games ? `${L.games}/${L.games}` : "");
+          stage("sf", p2.state === "done" ? "done" : p1.state === "run" || p2.state === "run" ? "run" : "", `${curves}/${G}`, t("lvx.sf", { w: L.workers || "–" }));
+          const maiaOff = mx.every((x) => x.state === "skip");
+          const mRun = mx.find((x) => x.state === "run");
+          const mDone = !mRun && mx.some((x) => x.state === "done") && !mx.some((x) => x.state === "wait");
+          stage("maia", maiaOff ? "skip" : mRun ? "run" : mDone ? "done" : "",
+            maiaOff ? "–" : mRun ? `${n(mRun.done)}/${n(mRun.total)}` : mo.state === "run" && mo.total ? Math.round((100 * mo.done) / mo.total) + " %" : "",
+            maiaOff ? t("sv.s.maiaOff") : L.backend === "wasm" ? t("lvx.maiaCpu") : t("sv.s.maia"));
+          stage("pat", bk.state === "done" ? "done" : bk.state === "run" ? "run" : "", String(tot.pat));
+          stage("ex", L.final ? "done" : "", L.final ? String(L.final.exercises) : "–");
           $("[data-nogpu]").hidden = L.backend !== "wasm";
-          const cur = STAGES.slice().reverse().find((k) => (L.stages[k] || {}).state === "run") || "fetch";
-          const leadKey = L.status === "done" ? "done" : L.status === "error" ? "error" : cur === "model" || cur === "maia" ? "pass1" : cur;
-          $("[data-lead]").textContent = t("lvx.lead." + leadKey);
-          // the grid fills with the engine work: one square per game read
-          const games = L.games || N;
-          const frac = Math.min(1, L.progress || 0);
-          const doneN = Math.floor(frac * games);
-          cells.forEach((c, i) => { c.className = "cell " + (i >= games ? "s-q dim" : i < doneN ? "s-d r-draw" : i === doneN && L.status === "running" ? "s-a" : "s-q"); });
-          $(".progressline").style.transform = `scaleX(${frac})`;
+
+          // ---- lead, clock, progress
+          const elapsed = (L.endedAt || Date.now()) - L.startedAt;
+          $("[data-clk]").textContent = fmt(elapsed);
+          const p = Math.min(1, L.progress || 0);
+          $("[data-eta]").textContent = L.status === "done" ? t("sv.cached") : L.status === "running" && p > 0.04 ? t("sv.eta", { t: fmt((elapsed * (1 - p)) / p) }) : "";
+          $(".progressline").style.transform = `scaleX(${L.status === "done" ? 1 : p})`;
+          if (L.status === "error") setLead(t("lvx.lead.error"));
+          else if (L.status === "done") setLead(t("lvx.done", { n: L.final ? L.final.recommendations.length : 0 }));
+          else if (bk.state === "run") setLead(t("sv.t.pat"));
+          else if (mRun) setLead(t("sv.t.maia"));
+          else if (fe.state === "done") setLead(t("sv.t.sf", { n: G }));
+          else setLead(t("sv.t.dl", { n: N }));
+
           if (L.status === "error") {
             $("[data-err]").innerHTML = `<div class="formerr" role="alert"><p class="et">${t("err.run.t")}</p><p>${esc(L.error || "")}</p><div class="btnrow" style="margin-top:10px"><a class="btn sm" href="#/">${t("set.newRun")}</a></div></div>`;
             $("[data-cancel]").hidden = true;
           }
-          if (L.status === "done") { $(".done-cta").hidden = false; $("[data-cancel]").hidden = true; }
+          if (L.status === "done" && L.final) finish(L, maiaOff);
         };
+
+        // ---- last frame: level marks under each square, the costliest mistake below your level, what to train
+        const finish = (L, maiaOff) => {
+          $(".done-cta").hidden = false; $("[data-cancel]").hidden = true;
+          C.train.parentElement.classList.add("fin");
+          if (maiaOff) $("[data-legend]").innerHTML = F.gridLegend(true);
+          const errs = L.final.errors.filter((e) => e.judgement !== "inaccuracy");
+          if (cells && !maiaOff) {
+            const byGame = {};
+            errs.filter((e) => e.peer && (e.peer.level === "below_level" || e.peer.level === "hard")).forEach((e) => (byGame[e.gameId] = byGame[e.gameId] || []).push(e));
+            for (const [id, es2] of Object.entries(byGame)) if (cells[id]) cells[id].querySelector(".pips").innerHTML = es2.sort((a, c) => a.ply - c.ply).slice(0, 5).map((e) => `<i class="pip ${e.peer.level === "below_level" ? "pip-s" : "pip-h"}"></i>`).join("");
+            gw.classList.remove("pips-off"); Object.values(cells).forEach((c) => c.classList.add("mx"));
+          }
+          if (mem.final) return;
+          mem.final = true;
+          const front = errs.filter((e) => e.peer && e.peer.level === "below_level").sort((a, c) => c.loss - a.loss)[0] || errs.slice().sort((a, c) => c.loss - a.loss)[0];
+          if (front) { const p = posOf(front); const no = (L.byId[front.gameId] || {}).no; mem.galley = { p, no }; showGalley(p, no); }
+          if (maiaOff) line(t("sv.n.noMaia"), "pat");
+          const fById = {}; L.final.findings.forEach((f) => (fById[f.id] = f));
+          L.final.recommendations.slice().reverse().forEach((r) => {
+            const f = fById[r.findingId]; if (!f) return;
+            line(t("sv.n.rec", { r: ["i", "ii", "iii", "iv", "v"][r.rank - 1] || r.rank, f: (I.recTitle[F.state.lang] || {})[f.key] || F.findingTitle(f) }), "pat");
+          });
+        };
+
         const off = app.onChange(() => { cancelAnimationFrame(tick); tick = requestAnimationFrame(draw); });
         const clock = setInterval(draw, 1000);
         draw();
         $("[data-cancel]").addEventListener("click", () => app.cancel());
         $("[data-open]").addEventListener("click", (e) => { e.preventDefault(); app.openStudy(); });
-        F.onLeave(() => { off(); clearInterval(clock); cancelAnimationFrame(tick); });
+        F.onLeave(() => { off(); clearInterval(clock); clearTimeout(drawT); cancelAnimationFrame(tick); });
       },
     };
   });

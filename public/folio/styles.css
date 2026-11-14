@@ -948,3 +948,24 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
   transition-timing-function: cubic-bezier(.45, 0, .25, 1) !important;
   transition-delay: 0s !important;
 }
+
+/* ---------- book icons (icons.js): ink mesh + one red pencil mark ---------- */
+.ico { width: 18px; height: 18px; flex: none; overflow: visible; display: block; }
+.ico .m { fill: none; stroke: currentColor; stroke-width: .7; opacity: .5; }
+.ico .r { stroke: var(--red); }
+.ico .rf { fill: var(--red); }
+.dock a .dk-ic .ico { width: 23px; height: 23px; color: var(--ink-2); }
+.dock a[aria-current="page"] .dk-ic .ico { color: var(--ink); }
+.chno { display: flex; align-items: center; gap: 16px; }
+.chno .chico { width: 46px; height: 46px; color: var(--ink); }
+@media (min-width: 1000px) {
+  .chno .chico { width: 58px; height: 58px; }
+  .ribbon nav a { grid-template-columns: 30px 1fr; }
+  .ribbon nav ol::before, .ribbon nav .fillline { left: 9px; }
+  .ribbon nav a .bul, .ribbon nav a.past .bul, .ribbon nav a[aria-current="page"] .bul { width: 19px; height: 19px; border: 0; transform: none; background: var(--paper); display: grid; place-items: center; color: var(--ink-3); }
+  .ribbon nav a .bul .ico { width: 17px; height: 17px; opacity: .6; transition: opacity var(--dur-mod); }
+  .ribbon nav a.past .bul { color: var(--ink-2); }
+  .ribbon nav a.past .bul .ico, .ribbon nav a:hover .bul .ico { opacity: .85; }
+  .ribbon nav a[aria-current="page"] .bul { color: var(--ink); }
+  .ribbon nav a[aria-current="page"] .bul .ico { opacity: 1; }
+}

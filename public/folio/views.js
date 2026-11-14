@@ -222,7 +222,7 @@
       : area === "endgames" ? `<aside class="note out" style="margin-top:20px"><span class="nt">${es() ? "Muestra pequeña" : "Small sample"}</span>${t("ch.endgameNote", { n: c.level.inScope })}</aside>` : "";
     let html = `<div class="spread"><div class="row"><div class="v">
       <p class="kicker">${t("chapter")}</p>
-      <p class="chno" aria-hidden="true">${c.no}</p>
+      <p class="chno" aria-hidden="true">${c.no}${F.icon(area, "chico")}</p>
       <h1 class="title">${F.catName(area)}</h1>
       <p class="lede">${lede}</p>
       <p class="kicker" style="margin-top:26px">${t("ch.maia")}</p>
@@ -292,7 +292,7 @@
     const secs = M.sections.clock || [];
     const html = `<div class="spread"><div class="row"><div class="v">
       <p class="kicker">${t("interlude")}</p>
-      <p class="chno" aria-hidden="true" style="font-size:70px">I</p>
+      <p class="chno" aria-hidden="true" style="font-size:70px">I${F.icon("clock", "chico")}</p>
       <h1 class="title">${t("clk.title")}</h1>
       <p class="lede">${t("clk.lede", { trouble: C.movesInTimeTrouble, normal: n(C.errorsPer100Normal, 1), inTrouble: n(C.errorsPer100InTrouble, 1) })}</p>
       <p class="lede">${t("clk.lede2", { left: C.lostWithTimeLeft, onTime: C.lostOnTime })}</p>
