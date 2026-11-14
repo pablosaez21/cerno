@@ -101,11 +101,13 @@
             setStatus(p, "solved");
             msg.className = "ex-msg ok";
             msg.innerHTML = `<span class="mk">✓</span>${t("ex.right", { move: F.mvn(p.ply, p.solution.san[0], { glyph: "!" }) })} ${cont.length ? `<span class="faint">${t("ex.line")}: </span>${F.line(p.ply + 1, p.solution.san.slice(1, 5), 4)}` : ""}${maiaLine()}`;
+            F.swapIn(msg);
           } else {
             setStatus(p, "solved");
             msg.className = "ex-msg ok";
             const san = F.uciSan(p.fen, uci);
             msg.innerHTML = `<span class="mk">✓</span>${t("ex.alsoGood", { move: F.mvn(p.ply, san), best: F.mvn(p.ply, p.solution.san[0], { glyph: "!" }) })}${maiaLine()}`;
+            F.swapIn(msg);
             b.pencil({ seed: p.key, ink: [{ from: p.solution.uci[0].slice(0, 2), to: p.solution.uci[0].slice(2, 4) }] }, { draw: !F.reduced() });
           }
           root.querySelector("[data-next]").classList.replace("ghost", "primary");
@@ -131,9 +133,13 @@
               b.pencil({ seed: uci + tries, rings: [to], glyph: { sq: to, text: "?" } }, { draw: !F.reduced() });
               msg.className = "ex-msg no";
               msg.innerHTML = `<span class="mk">✗</span>${F.mvn(p.ply, F.uciSan(p.fen, uci), { cls: "bad", glyph: "?" })} · ${tries > 1 ? t("ex.wrong2") : t("ex.wrong")}`;
+              F.swapIn(msg);
               await sleep(900);
               if (!document.body.contains(boardEl)) return;
-              b.setFen(p.fen); b.pencil({}, {}); b.highlight({});
+              // the piece slides back home (no animation for castling, where the rook would be ambiguous)
+              const castle = pc && pc[1] === "K" && Math.abs(from.charCodeAt(0) - to.charCodeAt(0)) === 2;
+              if (F.motionOK() && !castle) b.setFen(p.fen, { uci: to + from }); else b.setFen(p.fen);
+              b.pencil({}, {}); b.highlight({});
               b._input.disabled = false;
             },
           });
@@ -151,6 +157,7 @@
           rv.classList.remove("holding");
           flipUp(); showFig();
           msg.className = "ex-msg"; msg.innerHTML = `${t("solution")}: ${F.mvn(p.ply, p.solution.san[0], { glyph: "!" })} · <span class="faint">${t("ex.line")}</span> ${F.line(p.ply + 1, p.solution.san.slice(1, 4), 3)}${maiaLine()}`;
+          F.swapIn(msg);
           root.querySelector("[data-next]").classList.replace("ghost", "primary");
           b.setFen(p.fen); b.highlight({});
           b.pencil(F.pencilFor(p), { draw: !F.reduced() });

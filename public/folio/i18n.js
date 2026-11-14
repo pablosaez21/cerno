@@ -149,6 +149,8 @@
     "fig.maia.find": "find a good move",
     "fig.maia.played": "play {san}",
     "fig.maia.at": "At {elo}",
+    "fig.maia.yAxis": "% of players who find a good move",
+    "fig.maia.xAxis": "Rating on {site}", "fig.maia.xAxisBare": "Rating",
     "fig.maia.scrub": "Drag across the figure to read any rating.",
 
     /* exercises */
@@ -252,7 +254,7 @@
 
     /* footer */
     "foot.colophon": "Colophon",
-    "foot.set": "Set in Source Serif 4, Funnel Sans and IBM Plex Mono.",
+    "foot.set": "Set in Literata, Funnel Sans and IBM Plex Mono.",
     "foot.made": (p) => `Typeset in your browser by Stockfish 19 and Maia-3 from ${p.n} games played between ${p.from} and ${p.to}. Nothing left this machine.`,
     "foot.open": "Cerno is free software (AGPL-3.0).",
     "foot.exlibris": "Ex libris",
@@ -411,6 +413,8 @@
     "fig.maia.find": "encuentra una buena jugada",
     "fig.maia.played": "juega {san}",
     "fig.maia.at": "Con {elo}",
+    "fig.maia.yAxis": "% de jugadores que encuentra una buena jugada",
+    "fig.maia.xAxis": "Elo en {site}", "fig.maia.xAxisBare": "Elo",
     "fig.maia.scrub": "Arrastra sobre la figura para leer cualquier Elo.",
 
     "ex.title": "Ejercicios {a}–{b}",
@@ -506,7 +510,7 @@
     "set.saved": "Guardado",
 
     "foot.colophon": "Colofón",
-    "foot.set": "Compuesto en Source Serif 4, Funnel Sans e IBM Plex Mono.",
+    "foot.set": "Compuesto en Literata, Funnel Sans e IBM Plex Mono.",
     "foot.made": (p) => `Compuesto en tu navegador por Stockfish 19 y Maia-3 a partir de ${p.n} partidas jugadas entre el ${p.from} y el ${p.to}. Nada salió de este ordenador.`,
     "foot.open": "Cerno es software libre (AGPL-3.0).",
     "foot.exlibris": "Ex libris",

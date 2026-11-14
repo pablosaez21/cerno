@@ -94,7 +94,7 @@
         <p class="kicker">${mode === "new" ? `<span class="red">${t("ed2.kicker")}</span> · ` : ""}${t("ts.title")} <span class="demo-tag">${t("demoTag")}</span></p>
         <h1 class="ts-lead" data-lead aria-live="polite"></h1>
         <p class="sub num"><b data-clk>0:00</b> <span data-eta></span></p>
-        <div class="done-cta" hidden><a class="btn primary" href="#/contents">${t("ts.open")} <span class="arr">→</span></a><a class="more" href="#/appendix">${t("sv.toGrid")}</a></div>
+        <div class="done-cta" hidden><a class="btn primary" href="#/contents">${t("ts.open")} <span class="arr">→</span></a></div>
       </div>
         <div class="w-d"><ol class="stages">${STG.map((k) => `<li data-st="${k}"><span class="mk">○</span><span>${k === "maia" && noMaia ? t("sv.s.maiaOff") : t("sv.s." + k)}</span><span class="ct num" data-ct></span></li>`).join("")}</ol>
         <div class="small faint leave">${t("sv.leave")} ${F.why("sv.whyWait")}</div></div>
@@ -179,11 +179,12 @@
           b.setOrientation(e.color); b.setFen(e.fen); b.highlight({});
           b.pencil(F.pencilFor(p), { draw: !rm });
           gcap.innerHTML = `<b class="num">${g.no}</b> · ${F.capLine(p)}`;
+          F.swapIn(gcap);
           return true;
         };
         const fmt = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
         let lastTitle = "";
-        const title = (k, p) => { if (lastTitle === k) return; lastTitle = k; lead.innerHTML = t("sv.t." + k, p); };
+        const title = (k, p) => { if (lastTitle === k) return; const first = !lastTitle; lastTitle = k; lead.innerHTML = t("sv.t." + k, p); if (!first) F.swapIn(lead); };
         const stage = (k, cls, ct) => { const li = st[k]; li.className = cls || ""; li.querySelector(".mk").textContent = cls === "done" ? "✓" : cls === "run" ? "●" : "○"; if (ct != null) li.querySelector("[data-ct]").textContent = ct; };
         const ev = P.ev.slice().sort((a, c) => a.start - c.start);
         const state = new Map(), failN = [];
@@ -248,6 +249,7 @@
           stage("sf", "done", `${sub - failN.length}/${sub}`); stage("pat", "done", String(tot.pat)); stage("ex", "done", String(nEx));
           if (!noMaia) stage("maia", "done", `${inScope}/${inScope}`);
           lead.innerHTML = failN.length ? t("sv.t.donePart", { k: 100 - failN.length }) : t("sv.t.done");
+          F.swapIn(lead);
           clk.textContent = fmt(P.exEnd); eta.textContent = t("sv.cached");
           pl.style.transform = "scaleX(1)";
           if (failN.length) line(t("sv.n.failEnd", { a: failN.join(es() ? " y " : " and "), k: 100 - failN.length }), "pat");

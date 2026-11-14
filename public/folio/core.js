@@ -26,9 +26,13 @@
     if (s.theme === "auto") h.removeAttribute("data-theme"); else h.setAttribute("data-theme", s.theme);
     h.setAttribute("data-board", s.board);
     h.classList.toggle("rm", s.motion === "reduced");
+    // html.mo gates every entrance/feedback animation; without it nothing is hidden or moved
+    h.classList.toggle("mo", !(s.motion === "reduced" || matchMedia("(prefers-reduced-motion: reduce)").matches) && "IntersectionObserver" in window);
   };
   F.set = (k, v) => { F.state[k] = v; store.set(k, v); F.applySettings(); };
   F.reduced = () => F.state.motion === "reduced" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+  F.motionOK = () => document.documentElement.classList.contains("mo");
+  try { matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", () => F.applySettings()); } catch (e) {}
   F.piecePath = () => PIECES + F.state.pieces;
   F.applySettings();
 
@@ -39,8 +43,8 @@
   F.esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const nf = {};
   F.n = (x, d = 0) => { const k = F.state.lang + d; nf[k] = nf[k] || new Intl.NumberFormat(F.state.lang, { minimumFractionDigits: d, maximumFractionDigits: d }); return nf[k].format(x); };
-  F.pct = (x01, d = 0) => (F.state.lang === "es" ? F.n(x01 * 100, d) + " %" : F.n(x01 * 100, d) + "%");
-  F.pctv = (x100, d = 0) => (F.state.lang === "es" ? F.n(x100, d) + " %" : F.n(x100, d) + "%");
+  F.pct = (x01, d = 0) => (F.state.lang === "es" ? F.n(x01 * 100, d) + "\u00a0%" : F.n(x01 * 100, d) + "%");
+  F.pctv = (x100, d = 0) => (F.state.lang === "es" ? F.n(x100, d) + "\u00a0%" : F.n(x100, d) + "%");
   F.date = (ms, o = { day: "numeric", month: "short", year: "numeric" }) => new Intl.DateTimeFormat(F.state.lang === "es" ? "es-ES" : "en-GB", o).format(new Date(ms));
   F.dateShort = (ms) => F.date(ms, { day: "numeric", month: "short" });
   F.clockFmt = (s) => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
@@ -96,8 +100,31 @@
   document.addEventListener("click", (e) => {
     if (!e.target.closest("[data-theme-toggle]")) return;
     const night = document.documentElement.getAttribute("data-theme") === "dark" || (F.state.theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
-    F.set("theme", night ? "light" : "dark"); F._keepScroll = true; F.render();
+    F.themeTo(night ? "light" : "dark");
   });
+  // paper ↔ night: every colour eases to its new value in place (bg, ink, rules, pencil, SVG).
+  // No snapshot crossfade, so text never doubles; ink and paper meet in the middle and the page dims, then relights.
+  F.themeTo = (theme) => {
+    const h = document.documentElement;
+    if (F.motionOK()) {
+      h.classList.add("theming"); void h.offsetWidth;
+      clearTimeout(F._themeT); F._themeT = setTimeout(() => h.classList.remove("theming"), 560);
+    }
+    F.set("theme", theme);
+    const night = h.getAttribute("data-theme") === "dark" || (theme === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.querySelectorAll("[data-theme-toggle]").forEach((b) => {
+      const l = F.t(night ? "set.theme.light" : "set.theme.dark");
+      b.setAttribute("aria-pressed", night); b.setAttribute("aria-label", l); b.title = l;
+    });
+    document.querySelectorAll('.opt[data-k="theme"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === theme));
+  };
+  // paper ↔ night (and other whole-page setting changes): one soft crossfade of the whole screen
+  F.crossfade = (fn) => {
+    if (!document.startViewTransition || !F.motionOK()) return fn();
+    const h = document.documentElement;
+    h.classList.add("vt-fade");
+    try { document.startViewTransition(fn).finished.finally(() => h.classList.remove("vt-fade")); } catch (e) { h.classList.remove("vt-fade"); fn(); }
+  };
 
   /* ---------- toast ---------- */
   let toastT;
@@ -116,6 +143,41 @@
     for (let i = 0; i <= 28; i++) { const a = s0 + (sw * i) / 28, w = 1 + (i / 28) * 0.08 + Math.sin(a * 3) * 0.02; pts.push([50 + Math.cos(a) * 48 * w, 50 + Math.sin(a) * 44 * w]); }
     const d = "M" + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" L");
     return `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="${d}"/></svg>`;
+  };
+
+  /* ---------- picker: a listbox on a slip of paper (replaces the native <select>) ----------
+   * Button opens a list; the chosen value carries the red pencil ring, redrawn on change.
+   * Keys: ↑ ↓ Home End move, Enter/Space choose, Esc/Tab close. Click outside closes. */
+  F.picker = (el, onPick) => {
+    if (!el) return;
+    const btn = el.querySelector(".pick-b"), list = el.querySelector(".pick-l"), hid = el.querySelector("input[type=hidden]");
+    const opts = [...list.querySelectorAll("[role=option]")];
+    let act = Math.max(0, opts.findIndex((o) => o.getAttribute("aria-selected") === "true"));
+    const mark = (i) => { act = i; opts.forEach((o, j) => o.classList.toggle("act", j === i)); list.setAttribute("aria-activedescendant", opts[i].id); };
+    const open = () => { el.classList.add("open"); btn.setAttribute("aria-expanded", "true"); mark(Math.max(0, opts.findIndex((o) => o.getAttribute("aria-selected") === "true"))); list.focus({ preventScroll: true }); document.addEventListener("pointerdown", outside, true); };
+    const close = (refocus) => { el.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); document.removeEventListener("pointerdown", outside, true); if (refocus) btn.focus({ preventScroll: true }); };
+    const outside = (e) => { if (!el.contains(e.target)) close(false); };
+    const choose = (i) => {
+      const v = +opts[i].dataset.v, was = hid.value;
+      opts.forEach((o, j) => { o.setAttribute("aria-selected", j === i); const r = o.querySelector(".ring"); r.innerHTML = o.dataset.v + (j === i ? F.ringSvg(+o.dataset.v) : ""); r.classList.toggle("draw", j === i && String(v) !== was && !F.reduced()); });
+      hid.value = v; btn.querySelector(".pick-v").textContent = v; onPick && onPick(v);
+      setTimeout(() => close(true), String(v) !== was && !F.reduced() ? 240 : 0);
+    };
+    btn.addEventListener("click", () => (el.classList.contains("open") ? close(true) : open()));
+    btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); } });
+    opts.forEach((o, i) => { o.addEventListener("click", () => choose(i)); o.addEventListener("pointermove", () => mark(i)); });
+    list.addEventListener("keydown", (e) => {
+      const k = e.key, n = opts.length;
+      if (k === "ArrowDown") mark(Math.min(n - 1, act + 1));
+      else if (k === "ArrowUp") mark(Math.max(0, act - 1));
+      else if (k === "Home") mark(0);
+      else if (k === "End") mark(n - 1);
+      else if (k === "Enter" || k === " ") choose(act);
+      else if (k === "Escape") close(true);
+      else if (k === "Tab") { close(false); return; }
+      else return;
+      e.preventDefault();
+    });
   };
 
   /* ---------- router ---------- */
@@ -141,6 +203,15 @@
     }
     if (!html) { F.go("#/"); return; }
     const main = document.getElementById("main");
+    const prev = F._lastPath;
+    const samePage = prev === path;
+    // a step inside one set (next exercise, appendix filter, another game) is not a new page: no entrance stagger
+    const fam = (x) => { const m = /^\/(exercises|train|appendix|game|position)\b/.exec(x || ""); return m && m[1]; };
+    const step = !samePage && prev != null && fam(prev) && fam(prev) === fam(path);
+    const keep = samePage || F._keepScroll;
+    F._keepScroll = false;
+    const vt = F._vt; F._vt = null;
+    let nb = null;
     const swap = () => {
       main.innerHTML = html;
       F.cur = { path, ...meta };
@@ -149,27 +220,26 @@
       F.flushAfter();
       after && after(main);
       F.footer(meta);
+      if (!keep) window.scrollTo(0, 0);
+      F.drawIn && F.drawIn(main);
+      F.motion && F.motion.mount(main, { entrance: !samePage && !step, path });
+      if (vt) { nb = main.querySelector("[data-vt-target]"); if (nb) nb.style.viewTransitionName = "dia"; }
     };
-    const samePage = F._lastPath === path;
     F._lastPath = path;
-    if (F._vt && document.startViewTransition && !F.reduced()) {
-      const vt = F._vt; F._vt = null;
-      const tr = document.startViewTransition(() => {
-        swap(); if (vt.scroll !== false) window.scrollTo(0, 0);
-        const nb = main.querySelector("[data-vt-target]");
-        if (nb) nb.style.viewTransitionName = "dia";
-        tr && tr.finished && tr.finished.finally(() => { if (nb) nb.style.viewTransitionName = ""; });
-      });
+    // route change: the old page fades to paper quickly, the new one fades in while its parts rise (motion.js)
+    if (document.startViewTransition && F.motionOK() && prev != null && (vt || !samePage)) {
+      try {
+        const tr = document.startViewTransition(swap);
+        tr.finished.finally(() => { if (nb) nb.style.viewTransitionName = ""; });
+      } catch (e) { swap(); }
     } else {
       swap();
-      if (!samePage && !F._keepScroll) window.scrollTo(0, 0);
-      F._keepScroll = false;
-      if (!F.reduced() && !samePage) { main.classList.remove("fade"); void main.offsetWidth; main.classList.add("fade"); }
+      if (F.motionOK() && !samePage) { main.classList.remove("fade"); void main.offsetWidth; main.classList.add("fade"); }
     }
   };
   // navigate with a shared-element flight of a diagram (View Transitions)
   F.flyTo = (hash, fromEl) => {
-    if (fromEl && document.startViewTransition && !F.reduced()) {
+    if (fromEl && document.startViewTransition && F.motionOK()) {
       document.querySelectorAll("[style*='view-transition-name']").forEach((e) => (e.style.viewTransitionName = ""));
       fromEl.style.viewTransitionName = "dia";
       F._vt = { scroll: true };
@@ -194,11 +264,15 @@
     rh.innerHTML = `${meta.hideWm ? "<span></span>" : `<a class="wm" href="#/contents">Cerno</a>`}<div class="where">${meta.where ? `<span class="sep">/</span>${meta.where}` : ""}</div>${F.langSwitch()}${F.themeBtn()}`;
     // dock
     const dock = document.getElementById("dock");
+    const di = DOCK.findIndex(([k]) => k === meta.nav), dFrom = F._dockIdx != null && F._dockIdx >= 0 ? F._dockIdx : di;
     dock.innerHTML = DOCK.map(([k, h, ic]) => {
       const on = meta.nav === k;
       const icon = ic === "fgN" ? `<i class="fg fg-N"></i>` : ic;
       return `<a href="${h}" ${on ? 'aria-current="page"' : ""}><span class="dk-ic" aria-hidden="true">${icon}</span>${F.t("nav." + k)}</a>`;
-    }).join("");
+    }).join("") + `<span class="dk-ind" aria-hidden="true" style="--i:${Math.max(0, dFrom)}${di < 0 ? ";opacity:0" : ""}"></span>`;
+    // the red indicator slides from the previous item to this one
+    if (di >= 0 && dFrom !== di) { const ind = dock.lastElementChild; void ind.offsetWidth; ind.style.setProperty("--i", di); }
+    F._dockIdx = di;
     // ribbon (desktop)
     const rb = document.getElementById("ribbon");
     const items = [
@@ -212,12 +286,16 @@
       ["#/method", "B", F.t("toc.appB"), "method"],
     ];
     const curIdx = items.findIndex((it) => it[3] === meta.ribbon);
+    const fill = curIdx < 0 ? 0 : curIdx / (items.length - 1), fillFrom = F._rbFill ?? fill;
     rb.innerHTML = `<a class="wm" href="#/">Cerno</a>
       <div class="by">${F.t("brand.sub", { n: M.N, user: `<i>${M.user}</i>` })}</div>
-      <nav aria-label="${F.t("toc.title")}"><span class="fillline" style="height:calc(100% - 28px);transform:scaleY(${curIdx < 0 ? 0 : curIdx / (items.length - 1)})"></span><ol>${items
+      <nav aria-label="${F.t("toc.title")}"><span class="fillline" style="height:calc(100% - 28px);transform:scaleY(${fillFrom})"></span><ol>${items
         .map((it, i) => `<li><a href="${it[0]}" class="${i < curIdx ? "past" : ""} ${it[4] ? "gap" : ""}" ${i === curIdx ? 'aria-current="page"' : ""}><span class="bul"></span><span>${it[1] !== "" ? `<span class="rn">${it[1]}</span>` : ""}${it[2]}</span></a></li>`)
         .join("")}</ol></nav>
       <div class="rb-foot"><a href="#/settings">${F.t("nav.settings")}</a>${F.langSwitch()}${F.themeBtn()}</div>`;
+    // the ribbon's ink line grows or shrinks to the new chapter instead of jumping
+    if (fillFrom !== fill) { const fl = rb.querySelector(".fillline"); void fl.offsetWidth; fl.style.transform = `scaleY(${fill})`; }
+    F._rbFill = fill;
     // desktop running heads
     const dh = document.getElementById("deskhead");
     dh.style.display = meta.noHead ? "none" : "";
@@ -225,7 +303,7 @@
   };
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-lang]");
-    if (b) { F.set("lang", b.dataset.lang); F._keepScroll = true; F.render(); }
+    if (b) F.crossfade(() => { F.set("lang", b.dataset.lang); F._keepScroll = true; F.render(); });
   });
   window.addEventListener("scroll", () => { const rh = document.getElementById("runhead"); rh && rh.classList.toggle("scrolled", scrollY > 4); }, { passive: true });
 
@@ -287,17 +365,19 @@
       <div class="dia-files" aria-hidden="true">${[...files].map((f) => `<span>${f}</span>`).join("")}</div>
     </div>${cap}${tools}</figure>`;
   };
-  let io;
+  let ios = [];
   F.mountAll = (root) => {
-    io && io.disconnect();
-    io = new IntersectionObserver((ents) => {
+    if (root.id === "main") { ios.forEach((o) => o.disconnect()); ios = []; }
+    // red pencil draws when the diagram is well into view, a beat after the diagram itself has risen in
+    const io = new IntersectionObserver((ents) => {
       ents.forEach((en) => {
         if (!en.isIntersecting) return;
         io.unobserve(en.target);
         const b = en.target._board;
-        if (b && en.target._draw) b.redrawPencil(!F.reduced());
+        if (b && en.target._draw) setTimeout(() => { if (b._lineToken == null && b._pencil && !b.pen.childElementCount) b.redrawPencil(!F.reduced()); }, F.motionOK() ? 220 : 0);
       });
     }, { rootMargin: "0px 0px -18% 0px" });
+    ios.push(io);
     root.querySelectorAll("[data-dia]").forEach((el) => {
       const o = F.pending[el.dataset.dia];
       if (!o) return;
@@ -382,37 +462,58 @@
     if (!p.curve) return `<p class="small faint" style="margin-top:14px">${F.t("f.noCurve")}</p>`;
     const id = "mf" + ++uid;
     const n = fno || ++F.figCount;
-    const C = p.curve.curve, W = 440, H = 230, L = 30, R = 8, T = 22, B = 26;
+    const C = p.curve.curve, W = 440, H = 262, L = 40, R = 18, T = 30, B = 50;
     const lo = C[0].elo, hi = C[C.length - 1].elo;
     const x = (e) => L + ((e - lo) / (hi - lo)) * (W - L - R), y = (v) => T + (1 - v) * (H - T - B);
     const path = (k) => C.map((c, i) => (i ? "L" : "M") + x(c.elo).toFixed(1) + "," + y(c[k]).toFixed(1)).join(" ");
     const area = path("pGood") + ` L${x(hi)},${y(0)} L${x(lo)},${y(0)} Z`;
     const me = M.playerElo(p);
     const start = me == null ? (lo + hi) / 2 : me;
-    const flip = me != null && me > lo + 0.72 * (hi - lo);
+    const meLeft = me != null && me > lo + 0.68 * (hi - lo);
     // round marks 400 apart, whatever the scale's end points are
     const ticks = [];
     for (let e = Math.ceil(lo / 200) * 200; e <= hi; e += 400) ticks.push(e);
-    const svg = `<svg viewBox="0 0 ${W} ${H}" class="scrub" data-mf="${id}" role="img" aria-label="${F.esc(F.t("fig.maia.title"))}">
-      <defs><pattern id="h${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--ink);stroke-width:.8;opacity:.35"/></pattern></defs>
-      <g class="ax">${[0, 0.3, 0.7].map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" ${v === 0.3 || v === 0.7 ? 'stroke-dasharray="2 4"' : ""}/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${Math.round(v * 100)}</text>`).join("")}
-      ${ticks.map((e) => `<text x="${x(e)}" y="${H - 10}" text-anchor="middle">${e}</text>`).join("")}</g>
-      <path d="${area}" fill="url(#h${id})"/>
-      <path d="${path("pGood")}" style="fill:none;stroke:var(--ink);stroke-width:2.2"/>
-      <path d="${path("pPlayed")}" style="fill:none;stroke:var(--red);stroke-width:1.8;stroke-dasharray:5 4"/>
-      ${me == null ? "" : `<line x1="${x(me)}" x2="${x(me)}" y1="${T - 4}" y2="${H - B}" style="stroke:var(--red);stroke-width:1.4"/>
-      <circle cx="${x(me)}" cy="${y(M.curveAt(p.curve, me).pGood)}" r="4.5" style="fill:var(--red)"/>
-      <text x="${x(me) + (flip ? -8 : 8)}" y="${T + 6}" text-anchor="${flip ? "end" : "start"}" style="fill:var(--red);font-size:13px;font-style:italic">${F.t("fig.maia.you")} · ${me}</text>`}
-      <text x="${W - R}" y="${y(C[C.length - 1].pGood) + (C[C.length - 1].pGood > 0.85 ? 17 : -8)}" text-anchor="end" style="fill:var(--ink);font-size:13px;font-style:italic">${F.t("fig.maia.find")}</text>
-      <text x="${W - R}" y="${y(C[C.length - 1].pPlayed) - 7}" text-anchor="end" style="fill:var(--red);font-size:13px;font-style:italic">${F.esc(F.t("fig.maia.played", { san: p.played.san }))}</text>
-      <g class="cur" style="display:none"><line y1="${T}" y2="${H - B}" style="stroke:var(--ink-3);stroke-width:1"/><circle r="3.5" style="fill:var(--ink)"/></g>
+    const site = { chesscom: "Chess.com", lichess: "Lichess" }[M.eloScale.shown];
+    const xAxis = site ? F.t("fig.maia.xAxis", { site }) : F.t("fig.maia.xAxisBare");
+    const lastG = C[C.length - 1].pGood, lastP = C[C.length - 1].pPlayed;
+    // series labels sit at the right end of each line; keep them from colliding with each other
+    // each label clears its own line over the whole width it spans, not just at the right end
+    const spanY = (k, txt) => { const x0 = W - R - txt.length * 6.8 - 6; const ys = C.filter((c) => x(c.elo) >= x0).map((c) => y(c[k])); return [Math.min(...ys), Math.max(...ys)]; };
+    const [gTop, gBot] = spanY("pGood", F.t("fig.maia.find")), [pTop, pBot] = spanY("pPlayed", F.t("fig.maia.played", { san: p.played.san }));
+    let gy = lastG > 0.8 ? gBot + 17 : gTop - 8, py = pTop - 8 < T ? pBot + 17 : pTop - 8;
+    if (Math.abs(gy - py) < 16) py = gy + (py >= gy ? 16 : -16);
+    const svg = `<svg viewBox="0 0 ${W} ${H}" class="scrub mfig" data-mf="${id}" role="img" aria-label="${F.esc(F.t("fig.maia.title"))}">
+      <defs><pattern id="h${id}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:.7;opacity:.22"/></pattern></defs>
+      <g class="ax mf-ax">
+        ${[0, 0.3, 0.7, 1].map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" ${v ? 'stroke-dasharray="2 4"' : 'class="base"'}/><text x="${L - 7}" y="${y(v) + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`).join("")}
+        ${ticks.map((e) => `<line class="tk" x1="${x(e)}" x2="${x(e)}" y1="${y(0)}" y2="${y(0) + 4}"/><text x="${x(e)}" y="${y(0) + 19}" text-anchor="middle">${e}</text>`).join("")}
+        <text class="axt" x="${L - 7}" y="${T - 14}" text-anchor="start">${F.t("fig.maia.yAxis")}</text>
+        <text class="axt" x="${L + (W - L - R) / 2}" y="${H - 6}" text-anchor="middle">${F.esc(xAxis)}</text>
+      </g>
+      <path class="mf-area" d="${area}" fill="url(#h${id})"/>
+      <path class="mf-good" d="${path("pGood")}" pathLength="1" style="fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"/>
+      <path class="mf-played" d="${path("pPlayed")}" style="fill:none;stroke:var(--red);stroke-width:2;stroke-dasharray:5 4"/>
+      ${me == null ? "" : `<g class="mf-me">
+        <line x1="${x(me)}" x2="${x(me)}" y1="${T - 2}" y2="${y(0)}" style="stroke:var(--red);stroke-width:1.3;opacity:.75"/>
+        <circle cx="${x(me)}" cy="${y(M.curveAt(p.curve, me).pGood)}" r="5" style="fill:var(--red);stroke:var(--paper);stroke-width:2"/>
+        <text x="${x(me) + (meLeft ? -8 : 8)}" y="${T + 8}" text-anchor="${meLeft ? "end" : "start"}" class="mf-lbl" style="fill:var(--red)">${F.t("fig.maia.you")} · ${me}</text>
+      </g>`}
+      <text class="mf-lbl mf-l1" x="${W - R}" y="${gy}" text-anchor="end" style="fill:var(--ink)">${F.t("fig.maia.find")}</text>
+      <text class="mf-lbl mf-l2" x="${W - R}" y="${py}" text-anchor="end" style="fill:var(--red)">${F.esc(F.t("fig.maia.played", { san: p.played.san }))}</text>
+      <g class="cur" style="display:none"><line y1="${T}" y2="${y(0)}" style="stroke:var(--ink-3);stroke-width:1"/><circle r="4" style="fill:var(--ink);stroke:var(--paper);stroke-width:1.5"/></g>
       <rect x="${L}" y="0" width="${W - L - R}" height="${H}" fill="transparent"/>
     </svg>`;
     F.after(() => {
       const el = document.querySelector(`[data-mf="${id}"]`);
       if (!el) return;
+      // entrance: the curve draws itself, the area and labels fade up out of a soft blur. Once, when it scrolls into view.
+      if (F.reduced() || !("IntersectionObserver" in window)) el.classList.add("in", "still");
+      else {
+        const io = new IntersectionObserver((en) => { if (en.some((e) => e.isIntersecting)) { io.disconnect(); requestAnimationFrame(() => el.classList.add("in")); } }, { threshold: 0.3 });
+        io.observe(el);
+      }
       const ro = el.closest("figure").querySelector(".readout"), cur = el.querySelector(".cur");
-      const show = (elo, user) => {
+      const show = (elo, user, rest) => {
         const c = M.curveAt(p.curve, elo);
         const bd = dia && F.board(dia);
         if (bd && user) {
@@ -424,7 +525,7 @@
         }
         const tops = (c.top || []).slice(0, 3).map(([u, pr]) => `${F.san(F.uciSan(p.fen, u), { cls: u === p.played.uci ? "bad" : "" })} ${F.pct(pr)}`).join(" · ");
         ro.innerHTML = `<b>${F.t("fig.maia.at", { elo: Math.round(elo) })}</b>: ${F.pct(c.pGood)} ${F.t("fig.maia.find")} · ${F.pct(c.pPlayed, c.pPlayed < 0.01 ? 1 : 0)} ${F.esc(F.t("fig.maia.played", { san: "" }))}${F.san(p.played.san, { cls: "bad" })}<br><span class="faint">${F.t("fig.maia.top")}: ${tops}</span>`;
-        cur.style.display = ""; cur.querySelector("line").setAttribute("x1", x(elo)); cur.querySelector("line").setAttribute("x2", x(elo));
+        cur.style.display = rest ? "none" : ""; cur.querySelector("line").setAttribute("x1", x(elo)); cur.querySelector("line").setAttribute("x2", x(elo));
         cur.querySelector("circle").setAttribute("cx", x(elo)); cur.querySelector("circle").setAttribute("cy", y(c.pGood));
       };
       const fromEv = (e) => { const r = el.getBoundingClientRect(); const px = ((e.clientX - r.left) / r.width) * W; return Math.max(lo, Math.min(hi, lo + ((px - L) / (W - L - R)) * (hi - lo))); };
@@ -432,7 +533,9 @@
       el.addEventListener("pointerdown", (e) => { down = true; el.setPointerCapture(e.pointerId); show(fromEv(e), true); });
       el.addEventListener("pointermove", (e) => { if (down) show(fromEv(e), true); else if (e.pointerType === "mouse") show(fromEv(e)); });
       el.addEventListener("pointerup", () => (down = false));
-      show(start);
+      // at rest the red "you" mark is the reading; the cursor only shows while pointing (none drawn when the game has no rating)
+      show(start, false, true);
+      el.addEventListener("pointerleave", (e) => { if (!down && e.pointerType === "mouse") cur.style.display = "none"; });
     });
     return `<figure class="fig maia"><div class="ft"><span class="fno">${F.t("figure")} ${n}</span>${F.t("fig.maia.title")}</div>${svg}
       <div class="readout" aria-live="polite"></div>

@@ -47,12 +47,12 @@
         ? `<div class="formerr" role="alert"><p class="et">${t("err.down.t")}</p><p>${t("err.down.b")}</p><div class="btnrow" style="margin-top:10px"><button class="btn sm" data-retry>${t("err.retry")}</button><button class="btn sm ghost" data-src="pgn">${t("err.usePgn")}</button></div></div>`
         : "";
     const html = `<div class="cover">
+      <div class="cover-tools">${F.langSwitch()}${F.themeBtn()}</div>
       <div>
-        <p class="kicker">${t("cover.kicker")}</p>
         <h1 class="wm-big">Cerno</h1>
         <hr class="rule2">
         <form class="madlib" id="coverForm" autocomplete="off" novalidate>
-          ${t("cover.title.a")} <span class="fld"><label class="vh" for="cn">${t("cover.games")}</label><select id="cn" name="n">${[25, 50, 100, 200].map((v) => `<option ${v === st.n ? "selected" : ""}>${v}</option>`).join("")}</select></span>
+          ${t("cover.title.a")} <span class="fld pick" data-pick><span class="vh" id="cnl">${t("cover.games")}</span><button type="button" class="pick-b" id="cn" aria-haspopup="listbox" aria-expanded="false" aria-controls="cnlist" aria-labelledby="cnl cn"><span class="pick-v">${st.n}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg></button><input type="hidden" name="n" value="${st.n}"><ul class="pick-l" role="listbox" id="cnlist" aria-labelledby="cnl" tabindex="-1">${[25, 50, 100, 200].map((v) => `<li role="option" id="cn-${v}" data-v="${v}" aria-selected="${v === st.n}"><span class="ring">${v}${v === st.n ? F.ringSvg(v) : ""}</span></li>`).join("")}</ul></span>
           ${t("cover.title.b")} <span class="fld"><label class="vh" for="cu">${t("cover.user.ph")}</label><input id="cu" name="user" type="text" value="${esc(st.user)}" placeholder="${t("cover.user.ph")}" spellcheck="false" autocapitalize="off"></span>
           ${t("cover.title.c")} <span class="paren" role="group" aria-label="Source">${srcBtn("chesscom", "Chess.com")}${srcBtn("lichess", "Lichess")}${srcBtn("pgn", "PGN")}</span>
           ${st.src === "pgn" ? `<label class="small muted" for="pgn" style="display:block;margin-top:8px;font-style:normal">${t("cover.pgn.label")}</label><textarea id="pgn" class="pgn-area" placeholder="${esc(t("cover.pgn.ph"))}"></textarea>` : `
@@ -75,7 +75,8 @@
       after(root) {
         const form = root.querySelector("#coverForm");
         root.querySelectorAll("[data-src]").forEach((b) => b.addEventListener("click", () => { F._srcChanged = !F.reduced(); st.src = b.dataset.src; st.err = null; F._keepScroll = true; F.render(); }));
-        form.addEventListener("input", () => { st.user = form.user ? form.user.value : st.user; st.n = +form.n.value; form.querySelectorAll("[name=tc]").forEach((c) => (st.tc[c.value] = c.checked)); });
+        F.picker(root.querySelector("[data-pick]"), (v) => { st.n = v; });
+        form.addEventListener("input", () => { st.user = form.user ? form.user.value : st.user; form.querySelectorAll("[name=tc]").forEach((c) => (st.tc[c.value] = c.checked)); });
         const retry = root.querySelector("[data-retry]");
         retry && retry.addEventListener("click", () => { st.err = null; F._keepScroll = true; F.render(); });
         form.addEventListener("submit", (e) => {
@@ -96,7 +97,7 @@
 
   /* =============== Second edition (returning visit, simulated) =============== */
   F.route(/^\/cover\/second$/, () => {
-    const html = `<div class="cover"><div>
+    const html = `<div class="cover"><div class="cover-tools">${F.langSwitch()}${F.themeBtn()}</div><div>
       <p class="kicker"><span class="red">${t("ed2.kicker")}</span></p>
       <h1 class="wm-big">Cerno</h1>
       <hr class="rule2">
@@ -314,7 +315,7 @@
     };
     const rapid = D.errors.length - pts.length;
     return `<figure class="fig"><div class="ft"><span class="fno">${t("figure")} I.1</span>${t("clk.fig")}</div>
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("clk.fig"))}">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(t("clk.fig"))}" data-draw>
       <defs><pattern id="chh" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3" style="stroke:var(--ink);stroke-width:1"/></pattern>
       <pattern id="chz" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" style="stroke:var(--ink);stroke-width:.7;opacity:.25"/></pattern></defs>
       <rect x="${x(0)}" y="${T}" width="${x(30) - x(0)}" height="${H - T - B}" fill="url(#chz)"/>
@@ -322,7 +323,7 @@
       <g class="ax">${[0, 25, 50, 75, 100].map((v) => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" ${v ? 'stroke-dasharray="2 4"' : ""}/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`).join("")}
       ${[0, 30, 60, 90, 120, 150, 180].map((s) => `<text x="${x(s)}" y="${H - 14}" text-anchor="middle">${s}</text>`).join("")}
       <text x="${W - R}" y="${H - 1}" text-anchor="end">${t("clk.axisX")} →</text><text x="${L}" y="${T - 2}" text-anchor="start" dy="-2">↑ ${t("clk.axisY")}</text></g>
-      ${pts.map(mark).join("")}
+      <g class="wipe">${pts.map(mark).join("")}</g>
       </svg><figcaption>${t("clk.figCap", { n: pts.length })} ${F.why("clk.why", { rapid })}</figcaption></figure>`;
   }
 
@@ -425,6 +426,7 @@
           const p = e ? M.posFromError(e) : { fen: last.fen, orientation: g.color, turn: "w" };
           box.innerHTML = F.diagram({ p, size: "small", caption: false, number: false, mode: e ? "mistake" : "fen", draw: false }) + `<p class="small" style="margin-top:8px"><b class="num">${g.no}.</b> ${F.lbl("result." + g.result)} · ${esc(M.opponent(g).name)} · ${F.dateShort(g.endTime)}</p><p class="small muted">${e ? F.capLine(p) : es() ? "Sin errores graves." : "No serious errors."}</p>`;
           F.mountAll(box);
+          F.swapIn(box);
         };
         let cur = null;
         const over = (ev) => { const c = ev.target.closest("[data-id],[data-gid]"); if (!c) return; const id = c.dataset.id || c.dataset.gid; if (id !== cur) { cur = id; show(id); } };
@@ -549,17 +551,18 @@
     const tmax = Math.max(10, ...mine.map((m) => m.p.t || 0));
     const bars = mine.map(({ p, ply }) => `<rect x="${(x(ply) - 1.5).toFixed(1)}" y="${(44 - ((p.t || 0) / tmax) * 40).toFixed(1)}" width="3" height="${(((p.t || 0) / tmax) * 40).toFixed(1)}" style="fill:${p.j === "b" || p.j === "m" ? "var(--red)" : "var(--ink)"};opacity:${p.j ? 1 : 0.55}"/>`).join("");
     return `<figure class="fig" style="margin-top:22px"><div class="ft"><span class="fno">${t("figure")} A.${g.no}</span>${t("g.curve")}</div>
-      <svg viewBox="0 0 ${W} ${H}" data-wc class="scrub" role="img" aria-label="${esc(t("g.curve"))}">
+      <svg viewBox="0 0 ${W} ${H}" data-wc data-draw class="scrub" role="img" aria-label="${esc(t("g.curve"))}">
         <defs><pattern id="wch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" style="stroke:var(--ink);stroke-width:.8;opacity:.45"/></pattern></defs>
         <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="url(#wch)"/>
-        <path d="${area}" style="fill:var(--paper)"/>
-        <path d="M${pts.join(" L")}" style="fill:none;stroke:var(--ink);stroke-width:1.6"/>
+        <rect class="wipe-r" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" style="fill:var(--paper)"/>
+        <path class="wipe" d="${area}" style="fill:var(--paper)"/>
+        <path class="wipe" d="M${pts.join(" L")}" style="fill:none;stroke:var(--ink);stroke-width:1.6"/>
         <line x1="${L}" x2="${W - R}" y1="${y(50)}" y2="${y(50)}" style="stroke:var(--ink-3);stroke-dasharray:3 4"/>
         <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" style="fill:none;stroke:var(--ink);stroke-width:1"/>
-        ${marks}
+        <g class="late">${marks}</g>
         <line data-wc-cur x1="${L}" x2="${L}" y1="${T}" y2="${H - B}" style="stroke:var(--ink);stroke-width:1.5"/>
       </svg>
-      <svg viewBox="0 0 ${W} 48" style="margin-top:6px" aria-hidden="true">${bars}<line x1="${L}" x2="${W - R}" y1="44.5" y2="44.5" style="stroke:var(--rule)"/></svg>
+      <svg viewBox="0 0 ${W} 48" style="margin-top:6px" aria-hidden="true" data-draw><g class="wipe">${bars}</g><line x1="${L}" x2="${W - R}" y1="44.5" y2="44.5" style="stroke:var(--rule)"/></svg>
       <figcaption>${t("g.curveCap")} ${t("g.timeCap")}</figcaption></figure>`;
   }
 
@@ -650,7 +653,7 @@
     return {
       html, nav: "settings", ribbon: "", where: t("set.title"), title: t("set.title"),
       after(root) {
-        root.querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => { F.set(b.dataset.k, b.dataset.v); F._keepScroll = true; F.render(); F.toast(t("set.saved")); }));
+        root.querySelectorAll(".opt").forEach((b) => b.addEventListener("click", () => { if (b.dataset.k === "theme") { F.themeTo(b.dataset.v); F.toast(t("set.saved")); return; } F.crossfade(() => { F.set(b.dataset.k, b.dataset.v); F._keepScroll = true; F.render(); }); F.toast(t("set.saved")); }));
         root.querySelector("[data-forget]").addEventListener("click", async () => { if (!confirm(t("set.forgetAsk"))) return; await window.CernoApp.forget(); });
         root.querySelector("[data-reset]").addEventListener("click", () => { try { Object.keys(localStorage).filter((k) => k.startsWith("cernod.ex.")).forEach((k) => localStorage.removeItem(k)); } catch (e) {} F.toast(t("set.saved")); });
       },

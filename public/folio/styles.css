@@ -2,11 +2,12 @@
  * Paper and ink, one red pencil. Radius 0. Hairlines. Motion: quiet, bookish. */
 
 :root {
-  --paper: oklch(0.975 0.004 90);
-  --paper-2: oklch(0.953 0.005 90);
-  --paper-3: oklch(0.925 0.006 90);
-  --rule: oklch(0.84 0.007 90);
-  --rule-2: oklch(0.9 0.006 90);
+  /* hueso B: warm bone paper (#f5efe3 / #efe7da / #e6ded0) */
+  --paper: #f5efe3;
+  --paper-2: #efe7da;
+  --paper-3: #e6ded0;
+  --rule: oklch(0.82 0.016 80);
+  --rule-2: oklch(0.885 0.014 80);
   --ink: oklch(0.21 0.012 260);
   --ink-2: oklch(0.4 0.01 260);
   --ink-3: oklch(0.56 0.008 260);
@@ -16,12 +17,16 @@
   --pen-red: var(--red);
   --pen-ink: var(--ink);
   --sq-light: var(--paper);
-  --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+  --serif: "Literata", Georgia, serif;
   --sans: "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --ease-out: cubic-bezier(.23, 1, .32, 1);
   --ease-io: cubic-bezier(.77, 0, .175, 1);
   --dur-fast: 90ms; --dur-mod: 160ms; --dur-slow: 240ms;
+  /* motion: quiet entrances (fade up out of a soft blur), drawn rules, faster exits */
+  --ease-draw: cubic-bezier(.33, 0, .1, 1);
+  --dur-in: 560ms; --dur-rise: 700ms; --dur-draw: 800ms; --dur-out: 160ms;
+  --rise: 8px; --blur: 4px;
   --gutter: 20px;
   --dock-h: 60px;
   --head-h: 52px;
@@ -112,7 +117,9 @@ em, i { font-style: italic; }
 .dock a .dk-ic { font: 400 21px/1 var(--serif); color: var(--ink-2); height: 22px; display: flex; align-items: center; }
 .dock a[aria-current="page"] { color: var(--ink); }
 .dock a[aria-current="page"] .dk-ic { color: var(--ink); }
-.dock a[aria-current="page"]::before { content: ""; position: absolute; top: -1px; left: 28%; right: 28%; height: 2px; background: var(--red); }
+/* one red indicator for the dock; it slides between items (core.js keeps its previous position) */
+.dock .dk-ind { position: absolute; top: -1px; left: 0; width: 25%; height: 2px; transform: translateX(calc(var(--i, 0) * 100%)); pointer-events: none; }
+.dock .dk-ind::before { content: ""; position: absolute; inset: 0 28%; background: var(--red); }
 .dock .fg { width: 20px; height: 20px; }
 body.no-dock .dock { display: none; }
 body { padding-bottom: calc(var(--dock-h) + env(safe-area-inset-bottom)); }
@@ -295,6 +302,25 @@ html[data-board="wood"] .cb { --cb-light: #f0d9b5; --cb-dark: #b58863; }
 .ax text { fill: var(--ink-3); font-size: 12.5px; font-style: italic; font-variant-numeric: lining-nums; }
 .ax line, .ax path { stroke: var(--rule); stroke-width: 1; }
 .fig .scrub { touch-action: none; cursor: crosshair; }
+/* Maia figure: readable axes + a soft entrance (curve draws, the rest fades up out of a blur) */
+.mf-ax text { font-size: 13px; fill: var(--ink-2); }
+.mf-ax .axt { font-size: 12.5px; font-style: italic; fill: var(--ink-3); letter-spacing: .01em; }
+.mf-ax line.base, .mf-ax line.tk { stroke: var(--ink-3); }
+.mf-lbl { font-size: 13.5px; font-style: italic; paint-order: stroke; stroke: var(--paper); stroke-width: 4px; stroke-linejoin: round; }
+.mfig .mf-good { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.mfig .mf-area, .mfig .mf-played { clip-path: inset(0 100% 0 0); }
+.mfig .mf-ax, .mfig .mf-me, .mfig .mf-lbl, .mfig .cur { opacity: 0; }
+.mfig .mf-lbl, .mfig .mf-me { filter: blur(4px); }
+.mfig.in .mf-ax { opacity: 1; transition: opacity 500ms var(--ease-out); }
+.mfig.in .mf-good { stroke-dashoffset: 0; transition: stroke-dashoffset 1100ms cubic-bezier(.33, 0, .1, 1) 120ms; }
+.mfig.in .mf-area { clip-path: inset(0 0 0 0); transition: clip-path 1100ms cubic-bezier(.33, 0, .1, 1) 120ms; }
+.mfig.in .mf-played { clip-path: inset(0 0 0 0); transition: clip-path 1100ms cubic-bezier(.33, 0, .1, 1) 260ms; }
+.mfig.in .mf-me { opacity: 1; filter: none; transition: opacity 500ms var(--ease-out) 900ms, filter 600ms var(--ease-out) 900ms; }
+.mfig.in .mf-lbl { opacity: 1; filter: none; transition: opacity 600ms var(--ease-out) 1050ms, filter 700ms var(--ease-out) 1050ms; }
+.mfig.in .cur { opacity: 1; transition: opacity 300ms 1300ms; }
+.mfig.still * { transition: none !important; }
+.fig.maia .readout { transition: opacity 400ms var(--ease-out); }
+.fig.maia:has(.mfig:not(.in)) .readout { opacity: 0; }
 
 /* ---------- Contents page ---------- */
 .verdict { font: 400 30px/1.14 var(--serif); letter-spacing: -.015em; margin-top: 14px; }
@@ -375,7 +401,7 @@ table.bk a { text-decoration: none; }
 .ctrl { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-top: 12px; border: 1px solid var(--ink); }
 .ctrl button { appearance: none; background: none; border: 0; height: 48px; font: 400 20px/1 var(--serif); cursor: pointer; color: var(--ink); transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast); }
 .ctrl button + button { border-left: 1px solid var(--rule); }
-.ctrl button:active { transform: scale(.94); background: var(--paper-2); }
+.ctrl button:active { transform: scale(.97); background: var(--paper-2); }
 .ctrl button.on { color: var(--red); }
 .score { font-size: 17px; line-height: 1.9; margin-top: 14px; }
 .score .mv { appearance: none; border: 0; background: none; padding: 2px 3px; margin: 0 -1px; font: inherit; cursor: pointer; color: inherit; border-radius: 0; font-variant-numeric: lining-nums; white-space: nowrap; }
@@ -430,11 +456,15 @@ table.bk td.r { white-space: nowrap; }
 .back-sol { margin-top: 28px; border-top: 1px solid var(--ink); padding-top: 12px; perspective: 900px; }
 .back-sol .bs-lab { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .sol { margin-top: 12px; padding: 14px 0; transform-origin: 50% 50%; transform: rotate(180deg); transition: transform 600ms var(--ease-io), opacity 200ms; color: var(--ink-2); font-size: 16px; line-height: 1.5; user-select: none; }
+/* the page turns: the hold already gave the anticipation, so the turn starts briskly and settles slowly */
+html.mo .sol { transition: transform 760ms cubic-bezier(.2, .8, .2, 1), opacity 200ms; }
 .sol.up { transform: rotate(0deg); color: var(--ink); user-select: auto; }
 .sol .sl { font-size: 19px; }
 .holdbtn { position: relative; overflow: hidden; }
 .holdbtn .fill { position: absolute; inset: 0; background: var(--ink); transform: scaleX(0); transform-origin: left; opacity: .12; pointer-events: none; }
 .holdbtn.holding .fill { transform: scaleX(1); transition: transform 650ms linear; }
+html.mo .holdbtn .fill { transition: transform 220ms var(--ease-out); }
+html.mo .holdbtn.holding .fill { transition: transform 650ms linear; }
 .done-card { margin-top: 28px; padding: 22px 0; border-top: 3px double var(--ink); border-bottom: 3px double var(--ink); text-align: center; }
 .done-card .h2 em { color: var(--red); }
 
@@ -485,6 +515,23 @@ table.bk td.r { white-space: nowrap; }
 }
 .madlib input[type="text"] { width: 7.2em; }
 .madlib input[type="text"]:focus, .madlib select:focus { outline: none; border-bottom-color: var(--red); }
+/* custom number picker (cover) */
+.pick-b { appearance: none; border: 0; border-bottom: 1.5px solid var(--ink); background: transparent; border-radius: 0; font: italic 400 25px/1.3 var(--serif); color: var(--ink); padding: 0 2px 1px; min-height: 44px; display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-variant-numeric: lining-nums; }
+.pick-b svg { width: 10px; height: 6px; fill: none; stroke: var(--ink-2); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--dur-slow) var(--ease-out); }
+.pick-b[aria-expanded="true"] svg { transform: rotate(180deg); }
+.pick-b:focus-visible, .pick-b[aria-expanded="true"] { outline: none; border-bottom-color: var(--red); }
+.pick-l { position: absolute; left: -12px; top: calc(100% + 6px); z-index: 20; margin: 0; padding: 6px 0; list-style: none; min-width: calc(100% + 24px); background: var(--paper); border: 1px solid var(--ink); box-shadow: 0 22px 36px -22px oklch(0 0 0 / .32); transform-origin: 30% 0;
+  opacity: 0; visibility: hidden; transform: translateY(-4px) scale(.98); filter: blur(2px); pointer-events: none;
+  transition: opacity 140ms ease-in, transform 140ms ease-in, filter 140ms ease-in, visibility 0s 140ms; }
+.pick.open .pick-l { opacity: 1; visibility: visible; transform: none; filter: none; pointer-events: auto; transition: opacity 220ms var(--ease-out), transform 280ms var(--ease-out), filter 220ms var(--ease-out); }
+.pick-l:focus { outline: none; }
+.pick-l li { font: italic 400 23px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; min-height: 46px; padding: 0 26px 0 14px; display: flex; align-items: center; cursor: pointer; color: var(--ink-2); transition: background-color var(--dur-fast); }
+.pick-l li .ring { padding: 4px 6px; }
+.pick-l li[aria-selected="true"] { color: var(--ink); }
+.pick-l li.act { background: var(--paper-2); }
+.pick-l:focus-visible li.act { box-shadow: inset 2px 0 0 var(--red); }
+html:not(.mo) .pick-l, html:not(.mo) .pick-b svg { transition: none !important; }
+.cover-tools { display: none; }
 .madlib select { padding-right: 18px; background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%); background-position: right 4px top 55%, right 0 top 55%; background-size: 4px 4px; background-repeat: no-repeat; font-variant-numeric: lining-nums; }
 .madlib .paren button { font-size: 23px; padding: 6px 3px; }
 .tcs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
@@ -549,9 +596,25 @@ table.bk td.r { white-space: nowrap; }
 .toast.in { opacity: 1; transform: translate(-50%, 0); }
 
 /* ---------- Page transitions ---------- */
-main.fade { animation: pageIn 220ms var(--ease-out) both; }
-@keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-::view-transition-old(root), ::view-transition-new(root) { animation-duration: 200ms; }
+/* without View Transitions: the new page fades in (its parts rise on their own, see Motion below) */
+main.fade { animation: pageIn 260ms var(--ease-out) both; }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+/* route change: the old page fades to paper fast, the new page fades in slower; dock and ribbon stay put
+   and their indicators slide (they are live, not snapshots) */
+html.mo .dock { view-transition-name: dock; }
+html.mo .ribbon { view-transition-name: ribbon; }
+::view-transition { background: var(--paper); }
+::view-transition-old(root) { animation: vtOut var(--dur-out) cubic-bezier(.4, 0, 1, 1) both; mix-blend-mode: normal; }
+::view-transition-new(root) { animation: vtIn 340ms var(--ease-out) 60ms both; mix-blend-mode: normal; }
+::view-transition-group(dock), ::view-transition-group(ribbon) { animation: none; }
+::view-transition-old(dock), ::view-transition-old(ribbon) { animation: none; opacity: 0; }
+::view-transition-new(dock), ::view-transition-new(ribbon) { animation: none; }
+@keyframes vtOut { to { opacity: 0; } }
+@keyframes vtIn { from { opacity: 0; } }
+/* paper ↔ night, language, settings: the whole screen crossfades as one image */
+html.vt-fade .dock, html.vt-fade .ribbon { view-transition-name: none; }
+html.vt-fade::view-transition-old(root) { animation: none; }
+html.vt-fade::view-transition-new(root) { animation: vtIn 440ms var(--ease-out) both; }
 ::view-transition-group(dia) { animation-duration: 460ms; animation-timing-function: cubic-bezier(.32,.72,0,1); }
 @media (prefers-reduced-motion: reduce) {
   main.fade { animation: none; }
@@ -579,6 +642,8 @@ html.rm .ring.draw > svg path, .paren > button.draw > svg path { animation: none
   .ribbon nav ol { list-style: none; padding: 0; margin: 0; position: relative; }
   .ribbon nav ol::before { content: ""; position: absolute; left: 4px; top: 14px; bottom: 14px; border-left: 1px dashed var(--rule); }
   .ribbon nav .fillline { position: absolute; left: 4px; top: 14px; width: 1px; background: var(--ink); transform-origin: top; transition: transform 300ms var(--ease-out); }
+  html.mo .ribbon nav .fillline { transition: transform 620ms var(--ease-out); }
+  html:not(.mo) .ribbon nav .fillline { transition: none; }
   .ribbon nav a { display: grid; grid-template-columns: 22px 1fr; align-items: baseline; text-decoration: none; padding: 5px 0; font-size: 15.5px; color: var(--ink-2); line-height: 1.3; position: relative; }
   .ribbon nav a .bul { width: 9px; height: 9px; border: 1px solid var(--ink-3); background: var(--paper); align-self: center; transform: rotate(45deg); position: relative; z-index: 1; }
   .ribbon nav a.past .bul { background: var(--ink); border-color: var(--ink); }
@@ -621,7 +686,9 @@ html.rm .ring.draw > svg path, .paren > button.draw > svg path { animation: none
   .cover { max-width: 1180px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 0 72px; padding: 56px var(--gutter) 60px; position: relative; }
   .cover .wm-big { font-size: 128px; margin-top: 30px; }
   .madlib { font-size: 32px; }
-  .madlib input[type="text"], .madlib select { font-size: 32px; }
+  .madlib input[type="text"], .madlib select, .pick-b { font-size: 32px; }
+  .pick-l li { font-size: 28px; min-height: 52px; }
+  .cover-tools { display: flex; align-items: center; gap: 2px; position: absolute; top: 14px; right: calc(var(--gutter) - 10px); z-index: 5; }
   .madlib .paren button { font-size: 29px; }
   .foot { max-width: 1180px; margin: 64px auto 0; padding: 0 var(--gutter) 30px; }
   .colo { grid-template-columns: 1fr 1fr 1.25fr; gap: 48px; align-items: start; }
@@ -727,7 +794,9 @@ details.why .why-b { display: block; margin: 6px 0 4px; padding-left: 10px; bord
 .galley .gk { display: block; font-variant-caps: all-small-caps; letter-spacing: .06em; font-weight: 600; color: var(--red); font-size: 14px; }
 .galley .gl-board .dia-board { box-shadow: 0 0 0 1px var(--ink), 0 0 0 3px var(--paper), 0 0 0 4px var(--ink); margin: 4px; }
 .feed { list-style: none; padding: 0; margin: 16px 0 0; }
-.feed li { display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule-2); font-size: 14.5px; line-height: 1.35; color: var(--ink-2); animation: inkIn 320ms var(--ease-out) both; }
+.feed li { display: grid; grid-template-columns: 2.2em 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid var(--rule-2); font-size: 14.5px; line-height: 1.35; color: var(--ink-2); }
+html.mo .feed li { animation: feedIn 380ms var(--ease-out) both; }
+@keyframes feedIn { from { opacity: 0; transform: translateY(-4px); filter: blur(2px); } }
 .feed li .gn { font: italic 400 14px var(--serif); color: var(--ink-3); font-variant-numeric: lining-nums tabular-nums; }
 .feed li.pat { color: var(--ink); }
 .feed li.pat .gn::before { content: "§"; color: var(--red); font-style: normal; }
@@ -791,3 +860,91 @@ html.rm .ascii .c { transition: opacity 200ms; } html.rm .ascii.sifting .c.ink {
 :root[data-theme="dark"] .cb { --cb-hl-last: oklch(0.69 0.165 27 / 0.22); }
 :root[data-theme="dark"] .dia-board { box-shadow: 0 0 0 1px var(--ink-3), 0 0 0 3px var(--paper), 0 0 0 4.5px var(--ink-3); }
 @media (max-width: 999.98px) { .sift { grid-template-columns: minmax(0, 1fr) 98px; } }
+
+/* =================== Motion =================== */
+/* One language, taken from the Maia figure: parts fade up a few pixels out of a soft blur, once, as they come
+ * into view (motion.js marks them); rules, leaders and bars draw from the left; the games grid fills row by row.
+ * Everything here hangs off html.mo, which only exists when motion is allowed; hidden states exist only for
+ * elements JS has marked, so a page without JS, without the observer or with reduced motion is fully visible. */
+
+/* entrance units (data-rv = u: rise · b: rise + blur, for type · x: draw from the left · g: games grid) */
+html.mo [data-rv]:is([data-rv="u"], [data-rv="b"]):not(.rv-in) { opacity: 0; transform: translateY(var(--rise)); }
+html.mo [data-rv="b"]:not(.rv-in) { filter: blur(var(--blur)); }
+html.mo [data-rv="x"]:not(.rv-in) { transform: scaleX(0); }
+html.mo [data-rv="x"] { transform-origin: 0 50%; }
+html.mo [data-rv].rv-in { transition: opacity var(--dur-in) var(--ease-out) var(--rv-d, 0ms), transform var(--dur-rise) var(--ease-out) var(--rv-d, 0ms), filter 620ms var(--ease-out) var(--rv-d, 0ms); }
+html.mo [data-rv="x"].rv-in { transition: transform var(--dur-draw) var(--ease-draw) var(--rv-d, 0ms); }
+/* table of contents: the row rises, then its leader dots run out to the number */
+html.mo .tl[data-rv]:not(.rv-in) .ld { clip-path: inset(0 100% 0 0); }
+html.mo .tl[data-rv].rv-in .ld { transition: clip-path var(--dur-draw) var(--ease-draw) calc(var(--rv-d, 0ms) + 140ms); }
+/* sieve figure and Maia split bars: the bar is drawn after its row arrives */
+html.mo .sv-rows li[data-rv]:not(.rv-in) .bar i { transform: scaleX(0); }
+html.mo .sv-rows .bar i { transform-origin: 0 50%; }
+html.mo .sv-rows li[data-rv].rv-in .bar i { transition: transform var(--dur-draw) var(--ease-draw) calc(var(--rv-d, 0ms) + 120ms); }
+html.mo .split[data-rv]:not(.rv-in) .bar { clip-path: inset(0 100% 0 0); }
+html.mo .split[data-rv].rv-in .bar { transition: clip-path 900ms var(--ease-draw) calc(var(--rv-d, 0ms) + 100ms); }
+
+/* the games grid: cells fade in row by row (a slight wave across each row), the win% curves draw after */
+.grid10 > .cell:nth-child(n+11) { --r: 1; } .grid10 > .cell:nth-child(n+21) { --r: 2; } .grid10 > .cell:nth-child(n+31) { --r: 3; }
+.grid10 > .cell:nth-child(n+41) { --r: 4; } .grid10 > .cell:nth-child(n+51) { --r: 5; } .grid10 > .cell:nth-child(n+61) { --r: 6; }
+.grid10 > .cell:nth-child(n+71) { --r: 7; } .grid10 > .cell:nth-child(n+81) { --r: 8; } .grid10 > .cell:nth-child(n+91) { --r: 9; }
+.grid10 > .cell:nth-child(10n+2) { --c: 1; } .grid10 > .cell:nth-child(10n+3) { --c: 2; } .grid10 > .cell:nth-child(10n+4) { --c: 3; }
+.grid10 > .cell:nth-child(10n+5) { --c: 4; } .grid10 > .cell:nth-child(10n+6) { --c: 5; } .grid10 > .cell:nth-child(10n+7) { --c: 6; }
+.grid10 > .cell:nth-child(10n+8) { --c: 7; } .grid10 > .cell:nth-child(10n+9) { --c: 8; } .grid10 > .cell:nth-child(10n+10) { --c: 9; }
+html.mo .grid10[data-rv="g"]:not(.rv-in) { opacity: 0; }
+html.mo .grid10[data-rv="g"].rv-in > .cell { --gd: calc(var(--rv-d, 0ms) + var(--r, 0) * 55ms + var(--c, 0) * 9ms); animation: cellIn 520ms var(--ease-out) var(--gd) backwards; }
+html.mo .grid10[data-rv="g"].rv-in > .cell.s-d path { stroke-dasharray: 1; animation: lineDraw 900ms var(--ease-draw) calc(var(--gd) + 120ms) backwards; }
+@keyframes cellIn { from { opacity: 0; transform: translateY(3px); } }
+@keyframes lineDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+/* figures that draw once (clock scatter, a game's win% curve and time bars): wipe left to right, marks after */
+.fig .wipe-r { clip-path: inset(0 0 0 100%); }
+html.mo [data-draw].dr-wait .wipe { clip-path: inset(0 100% 0 0); }
+html.mo [data-draw].dr-wait .wipe-r { clip-path: inset(0 0 0 0); }
+html.mo [data-draw].dr-wait .late { opacity: 0; filter: blur(3px); }
+html.mo [data-draw].dr-in .wipe, html.mo [data-draw].dr-in .wipe-r { transition: clip-path 900ms var(--ease-draw) 80ms; }
+html.mo [data-draw].dr-in .late { transition: opacity 420ms var(--ease-out) 760ms, filter 520ms var(--ease-out) 760ms; }
+
+/* content that replaces content: a short fade up out of a blur (galley caption, wait headline, preview) */
+html.mo .sw-in { animation: swIn 380ms var(--ease-out) both; }
+@keyframes swIn { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } }
+html.mo .gprev.sw-in { animation: swFade 200ms var(--ease-out) both; }
+@keyframes swFade { from { opacity: .35; } }
+html.mo .done-cta:not([hidden]) { animation: swIn 480ms var(--ease-out) both; }
+html.mo .formerr { animation: swIn 360ms var(--ease-out) both; }
+
+/* exercise feedback: right settles in, the tick lands; wrong arrives with a small sideways settle, no shake */
+html.mo .ex-msg.ok.sw-in .mk { display: inline-block; animation: markIn 460ms var(--ease-out) 60ms both; }
+@keyframes markIn { from { opacity: 0; transform: scale(.7); } }
+html.mo .ex-msg.no.sw-in { animation: settle 420ms var(--ease-out) both; }
+@keyframes settle { from { opacity: 0; transform: translateX(6px); filter: blur(2px); } }
+
+/* dock indicator, segmented controls */
+html.mo .dock .dk-ind { transition: transform 460ms var(--ease-out), opacity var(--dur-mod); }
+html.mo .seg button { transition: transform var(--dur-mod) var(--ease-out); }
+
+/* presses: everything you tap gives a little (scale .97), released on the same curve */
+html.mo :is(.opt, .seg button, .themebtn, .lang button, .dots a, .paren > button, .paren > a, .dia-nav a) { transition: transform var(--dur-mod) var(--ease-out); }
+html.mo :is(.opt, .seg button, .themebtn, .lang button, .dots a, .paren > button, .paren > a, .dia-nav a):active { transform: scale(.97); }
+
+/* hover on rows: a soft ink wash fades in (and out faster) */
+@media (hover: hover) {
+  .glist li a, .pref li:has(> a) { position: relative; isolation: isolate; }
+  .glist li a::before, .pref li:has(> a)::before { content: ""; position: absolute; inset: 0 -10px; z-index: -1; pointer-events: none; background: color-mix(in oklch, var(--ink) 4.5%, transparent); opacity: 0; transition: opacity 120ms ease-out; }
+  .glist li a:hover::before, .pref li:has(> a):hover::before { opacity: 1; transition-duration: 200ms; }
+  html:not(.mo) .glist li a::before, html:not(.mo) .pref li:has(> a)::before { transition: none; }
+}
+
+/* skeletons breathe while they wait */
+html.mo .skel { animation: breathe 1.6s ease-in-out infinite alternate; }
+@keyframes breathe { to { opacity: .55; } }
+
+/* ---------- theme switch (paper ↔ night), after pdepablo.com ----------
+ * html.theming lives ~0.5s: all colour properties ease in place. Ink and paper cross at mid-grey, so the
+ * page dims and relights instead of showing two overlapping snapshots. Other transitions pause meanwhile. */
+html.theming, html.theming *, html.theming *::before, html.theming *::after {
+  transition-property: background-color, color, border-color, outline-color, text-decoration-color, fill, stroke, box-shadow, caret-color !important;
+  transition-duration: 480ms !important;
+  transition-timing-function: cubic-bezier(.45, 0, .25, 1) !important;
+  transition-delay: 0s !important;
+}

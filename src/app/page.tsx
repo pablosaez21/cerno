@@ -11,7 +11,7 @@ export default function Home() {
       <link
         rel="stylesheet"
         precedence="default"
-        href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=Funnel+Sans:wght@400..600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300..700;1,7..72,300..700&family=Funnel+Sans:wght@400..600&family=IBM+Plex+Mono:wght@400;500&display=swap"
       />
       <link rel="stylesheet" precedence="default" href="folio/styles.css" />
       <link rel="stylesheet" precedence="default" href="folio/figurines.css" />
