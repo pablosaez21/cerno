@@ -181,7 +181,7 @@
     const rep = (D.repertoireFixes || []);
     const html = `<div class="spread"><div class="row"><div class="v">
       <p class="kicker">${t("chapter")}</p>
-      <p class="chno" aria-hidden="true">N</p>
+      <p class="chno" aria-hidden="true">N${F.icon("level", "chico")}</p>
       <h1 class="title">${t("lv.title")}</h1>
       <p class="lede">${t("lv.lede")}</p>
       ${o && o.ci95 ? `<p class="claim" style="margin-top:14px">${t("lv.overall", { gap: sign(o.gap), lo: sign(o.ci95[0]), hi: sign(o.ci95[1]) })}</p>` : ""}

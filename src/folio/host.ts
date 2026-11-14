@@ -12,7 +12,7 @@ import { runAnalysis, type RunProgress, type SourceInput } from "./run";
 
 export const FOLIO_KEY = "folio";
 /** Load order matters: each script reads the globals the previous ones set. */
-export const FOLIO_SCRIPTS = ["vendor/chess.min.js", "labels.js", "board-folio.js", "i18n.js", "model.js", "core.js", "motion.js", "views.js", "train.js", "sieve.js", "cerno.js", "ascii.js"];
+export const FOLIO_SCRIPTS = ["vendor/chess.min.js", "labels.js", "board-folio.js", "i18n.js", "model.js", "core.js", "icons.js", "motion.js", "views.js", "train.js", "sieve.js", "cerno.js", "ascii.js"];
 
 export interface SavedStudy {
   version: number;

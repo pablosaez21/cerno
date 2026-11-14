@@ -267,7 +267,7 @@
     const di = DOCK.findIndex(([k]) => k === meta.nav), dFrom = F._dockIdx != null && F._dockIdx >= 0 ? F._dockIdx : di;
     dock.innerHTML = DOCK.map(([k, h, ic]) => {
       const on = meta.nav === k;
-      const icon = ic === "fgN" ? `<i class="fg fg-N"></i>` : ic;
+      const icon = F.icon(k) || (ic === "fgN" ? `<i class="fg fg-N"></i>` : ic);
       return `<a href="${h}" ${on ? 'aria-current="page"' : ""}><span class="dk-ic" aria-hidden="true">${icon}</span>${F.t("nav." + k)}</a>`;
     }).join("") + `<span class="dk-ind" aria-hidden="true" style="--i:${Math.max(0, dFrom)}${di < 0 ? ";opacity:0" : ""}"></span>`;
     // the red indicator slides from the previous item to this one
@@ -290,7 +290,7 @@
     rb.innerHTML = `<a class="wm" href="#/">Cerno</a>
       <div class="by">${F.t("brand.sub", { n: M.N, user: `<i>${M.user}</i>` })}</div>
       <nav aria-label="${F.t("toc.title")}"><span class="fillline" style="height:calc(100% - 28px);transform:scaleY(${fillFrom})"></span><ol>${items
-        .map((it, i) => `<li><a href="${it[0]}" class="${i < curIdx ? "past" : ""} ${it[4] ? "gap" : ""}" ${i === curIdx ? 'aria-current="page"' : ""}><span class="bul"></span><span>${it[1] !== "" ? `<span class="rn">${it[1]}</span>` : ""}${it[2]}</span></a></li>`)
+        .map((it, i) => `<li><a href="${it[0]}" class="${i < curIdx ? "past" : ""} ${it[4] ? "gap" : ""}" ${i === curIdx ? 'aria-current="page"' : ""}><span class="bul">${F.icon(it[3].replace("ch:", ""))}</span><span>${it[1] !== "" ? `<span class="rn">${it[1]}</span>` : ""}${it[2]}</span></a></li>`)
         .join("")}</ol></nav>
       <div class="rb-foot"><a href="#/settings">${F.t("nav.settings")}</a>${F.langSwitch()}${F.themeBtn()}</div>`;
     // the ribbon's ink line grows or shrinks to the new chapter instead of jumping
