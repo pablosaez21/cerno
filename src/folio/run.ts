@@ -11,6 +11,7 @@ import { MAIA_MODELS, MaiaClient } from "@/core/maia-browser";
 import { evaluatePeers, predictPeers, type PeerSkeleton } from "@/core/peer-analysis";
 import type { Decision } from "@/core/peers";
 import type { PeerInput } from "@/core/report";
+import { eloLadder, type FolioElo } from "@/core/folio-data";
 import { fetchChesscomGames, fetchLichessGames, readPgnFile } from "@/core/sources";
 import type { GameRecord, TimeClass } from "@/core/types";
 
@@ -31,6 +32,8 @@ export interface RunInput {
   level?: boolean;
   /** Stage 1: called when the Stockfish passes end, before the peer profile (plan: two-stage delivery). */
   onBase?: (analyzed: AnalyzedGame[], elapsedMs: number) => void;
+  /** Positions that get Maia's Elo ladder, chosen from the finished analysis (Maia is still loaded then). */
+  ladder?: (analyzed: AnalyzedGame[], peers: PeerInput | undefined) => { gameId: string; ply: number; why: "exercise" | "evidence" }[];
 }
 
 export interface RunTimings {
@@ -41,6 +44,8 @@ export interface RunTimings {
   maiaMs?: number;
   /** Candidate searches after the Stockfish passes. */
   candidatesMs?: number;
+  /** Maia's Elo ladder for the shown positions. */
+  ladderMs?: number;
   totalMs: number;
   /** When the base report (without the profile) was ready. */
   baseReadyMs?: number;
@@ -50,7 +55,7 @@ export interface RunTimings {
   maia?: { backend: string; model: string; bytes: number; mode: "full" | "reduced" } | { error: string };
 }
 
-export type RunProgress = Progress | { phase: "fetch" | "maia-download" | "peers-maia" | "peers-candidates"; done: number; total: number };
+export type RunProgress = Progress | { phase: "fetch" | "maia-download" | "peers-maia" | "peers-candidates" | "ladder"; done: number; total: number; backend?: "webgpu" | "wasm" };
 
 export async function fetchGames(input: RunInput, signal?: AbortSignal): Promise<GameRecord[]> {
   const opts = { max: input.max, timeClasses: input.timeClasses, signal };
@@ -65,7 +70,7 @@ export async function runAnalysis(
   input: RunInput,
   onProgress: (p: RunProgress) => void,
   signal?: AbortSignal,
-): Promise<{ games: GameRecord[]; analyzed: AnalyzedGame[]; peers?: PeerInput; timings: RunTimings }> {
+): Promise<{ games: GameRecord[]; analyzed: AnalyzedGame[]; peers?: PeerInput; ladder?: FolioElo; timings: RunTimings }> {
   const t0 = performance.now();
   const workers = input.workers ?? defaultPoolSize(navigator.hardwareConcurrency);
   const pool = new EnginePool(() => workerTransport(), workers);
@@ -78,6 +83,7 @@ export async function runAnalysis(
       : MaiaClient.load(model, { onProgress: (loaded, total) => onProgress({ phase: "maia-download", done: loaded, total: total ?? model.bytes }) }).catch((e: Error) => e);
   onProgress({ phase: "fetch", done: 0, total: input.max });
   const games = await fetchGames(input, signal);
+  onProgress({ phase: "fetch", done: games.length, total: games.length });
   const t1 = performance.now();
   const cache = await IdbCache.open();
   let cachedGames = 0;
@@ -86,6 +92,7 @@ export async function runAnalysis(
     const maia = await maiaPromise;
     const client = maia instanceof MaiaClient ? maia : undefined;
     const full = client?.backend === "webgpu";
+    if (client) onProgress({ phase: "maia-download", done: model.bytes, total: model.bytes, backend: client.backend });
 
     // Cached decisions per game; Maia runs only for the others.
     const cachedDecisions: Decision[] = [];
@@ -126,7 +133,9 @@ export async function runAnalysis(
     input.onBase?.(analyzed, Math.round(t2 - t0));
 
     let peers: PeerInput | undefined;
+    let ladder: FolioElo | undefined;
     let candidatesMs: number | undefined;
+    let ladderMs: number | undefined;
     if (client) {
       try {
         let sk = skeletons;
@@ -145,6 +154,16 @@ export async function runAnalysis(
           for (const [id, ds] of byGame) await cache?.setPeers(peerKey(model.id, id), ds);
         }
         peers = { decisions: [...cachedDecisions, ...decisions], model: model.id, mode: full ? "full" : "reduced" };
+        if (input.ladder) {
+          const tl = performance.now();
+          ladder = await eloLadder(input.ladder(analyzed, peers), analyzed, peers.decisions, {
+            predict: (q) => client.predict(q),
+            model: model.id,
+            signal,
+            onProgress: (done, total) => onProgress({ phase: "ladder", done, total }),
+          });
+          ladderMs = Math.round(performance.now() - tl);
+        }
       } finally {
         client.terminate();
       }
@@ -155,11 +174,13 @@ export async function runAnalysis(
       games,
       analyzed,
       peers,
+      ladder,
       timings: {
         fetchMs: Math.round(t1 - t0),
         analysisMs: Math.round(t2 - t1),
         maiaMs,
         candidatesMs,
+        ladderMs,
         totalMs: Math.round(t3 - t0),
         baseReadyMs: Math.round(t2 - t0),
         workers,

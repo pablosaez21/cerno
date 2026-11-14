@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Cerno",
-  description: "Encuentra tus debilidades en tus últimas partidas.",
+  description: "Tus últimas partidas, analizadas en tu navegador: qué te cuesta puntos y qué entrenar.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

@@ -8,7 +8,7 @@ import { guessPgnPlayer, type PgnPlayerGuess } from "@/core/sources";
 import type { TimeClass } from "@/core/types";
 import { MaiaBench } from "./maia-bench";
 import { ReportView } from "./report-view";
-import { runAnalysis, type RunTimings, type SourceInput } from "./run";
+import { runAnalysis, type RunTimings, type SourceInput } from "@/folio/run";
 
 const CLASSES: TimeClass[] = ["bullet", "blitz", "rapid", "classical", "daily"];
 export const LAST_REPORT_KEY = "lastReport";
