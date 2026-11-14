@@ -975,3 +975,9 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .cover .wm-big { display: flex; align-items: center; gap: .14em; }
 .wm-big .mark.big { width: .56em; height: .56em; flex: none; margin-top: .06em; }
 .foot-cover .foot-end { margin-top: 18px; }
+
+/* Load mode on the cover: the sentence goes on, each option carries its estimate */
+.madlib .loadrow { margin-top: 10px; }
+.madlib .loadrow .paren button { font-size: 19px; }
+.paren .est { margin-left: .4em; font: italic 400 .8em var(--serif); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.paren .est:empty { display: none; }

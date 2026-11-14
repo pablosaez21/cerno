@@ -54,6 +54,8 @@ export interface RunTimings {
   /** When the base report (without the profile) was ready. */
   baseReadyMs?: number;
   workers: number;
+  /** Stockfish nodes searched in every stage (for the time estimate). */
+  nodes: number;
   games: number;
   cachedGames: number;
   maia?: { backend: string; model: string; bytes: number; mode: "full" | "reduced" } | { error: string };
@@ -190,6 +192,7 @@ export async function runAnalysis(
         totalMs: Math.round(t3 - t0),
         baseReadyMs: Math.round(t2 - t0),
         workers,
+        nodes: pool.nodes,
         games: games.length,
         cachedGames,
         maia: client ? { backend: client.backend, model: model.id, bytes: model.bytes, mode: full ? "full" : "reduced" } : maia instanceof Error ? { error: maia.message } : undefined,

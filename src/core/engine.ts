@@ -154,6 +154,8 @@ export class EngineRunner {
  */
 export class EnginePool {
   private runners: EngineRunner[] = [];
+  /** Nodes searched by every run so far (for the time estimate; never read by the analysis). */
+  nodes = 0;
 
   constructor(
     private readonly createTransport: () => UciTransport,
@@ -187,6 +189,7 @@ export class EnginePool {
         for (const req of requestsOf(task)) {
           if (signal?.aborted) return;
           const ev = await runner.analyse(req);
+          this.nodes += ev.nodes;
           await onResult(task, req, ev);
         }
       }
@@ -204,4 +207,18 @@ export class EnginePool {
 export function defaultPoolSize(cores: number | undefined, cap = 12): number {
   const c = cores && cores > 0 ? cores : 4;
   return Math.max(1, Math.min(cap, c - 1));
+}
+
+/**
+ * How hard the analysis loads the computer. "full" is all cores but one; "soft" uses half,
+ * so the rest stay free for the user's other work. The report is the same in both
+ * (fixed nodes, one thread per engine, `ucinewgame` per task: see pool-size.test.ts).
+ */
+export type LoadMode = "soft" | "full";
+
+export function poolSizeFor(mode: LoadMode, cores: number | undefined, cap = 12): number {
+  const full = defaultPoolSize(cores, cap);
+  if (mode === "full") return full;
+  const c = cores && cores > 0 ? cores : 4;
+  return Math.max(1, Math.min(full, Math.floor(c / 2)));
 }
