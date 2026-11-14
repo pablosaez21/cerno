@@ -972,3 +972,6 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 
 /* the Cerno mark beside the wordmark (icons.js F.mark) */
 .wm .mark { width: .92em; height: .92em; display: inline-block; vertical-align: -.1em; margin-right: .34em; }
+.cover .wm-big { display: flex; align-items: center; gap: .14em; }
+.wm-big .mark.big { width: .56em; height: .56em; flex: none; margin-top: .06em; }
+.foot-cover .foot-end { margin-top: 18px; }

@@ -49,7 +49,7 @@
     const html = `<div class="cover">
       <div class="cover-tools">${F.langSwitch()}${F.themeBtn()}</div>
       <div>
-        <h1 class="wm-big">Cerno</h1>
+        <h1 class="wm-big">${F.mark("big")}Cerno</h1>
         <hr class="rule2">
         <form class="madlib" id="coverForm" autocomplete="off" novalidate>
           ${t("cover.title.a")} <span class="fld pick" data-pick><span class="vh" id="cnl">${t("cover.games")}</span><button type="button" class="pick-b" id="cn" aria-haspopup="listbox" aria-expanded="false" aria-controls="cnlist" aria-labelledby="cnl cn"><span class="pick-v">${st.n}</span><svg viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg></button><input type="hidden" name="n" value="${st.n}"><ul class="pick-l" role="listbox" id="cnlist" aria-labelledby="cnl" tabindex="-1">${[25, 50, 100, 200].map((v) => `<li role="option" id="cn-${v}" data-v="${v}" aria-selected="${v === st.n}"><span class="ring">${v}${v === st.n ? F.ringSvg(v) : ""}</span></li>`).join("")}</ul></span>
@@ -71,7 +71,7 @@
       </div>
     </div>`;
     return {
-      html, noDock: true, noRibbon: true, noHead: true, hideWm: true, title: "Cerno", where: "",
+      html, noDock: true, noRibbon: true, noHead: true, hideWm: true, coverFoot: true, title: "Cerno", where: "",
       after(root) {
         const form = root.querySelector("#coverForm");
         root.querySelectorAll("[data-src]").forEach((b) => b.addEventListener("click", () => { F._srcChanged = !F.reduced(); st.src = b.dataset.src; st.err = null; F._keepScroll = true; F.render(); }));
@@ -99,7 +99,7 @@
   F.route(/^\/cover\/second$/, () => {
     const html = `<div class="cover"><div class="cover-tools">${F.langSwitch()}${F.themeBtn()}</div><div>
       <p class="kicker"><span class="red">${t("ed2.kicker")}</span></p>
-      <h1 class="wm-big">Cerno</h1>
+      <h1 class="wm-big">${F.mark("big")}Cerno</h1>
       <hr class="rule2">
       <p class="madlib" style="font-size:inherit">${t("brand.sub", { n: M.N, user: `<i>${M.user}</i>` })}</p>
       <div class="ed-sheet"><span class="demo-tag stamp" style="position:absolute;top:-10px;right:12px;background:var(--paper)">${t("demoTag")}</span>
