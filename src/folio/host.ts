@@ -5,12 +5,14 @@ import { DEFAULT_SETTINGS } from "@/core/analyze";
 import { IdbCache } from "@/core/browser";
 import { buildFolioData, FOLIO_DATA_VERSION, ladderTargets, type FolioData, type FolioElo } from "@/core/folio-data";
 import { buildReport, type Report } from "@/core/report";
+import type { AnalyzedGame } from "@/core/analyze";
 import type { TimeClass } from "@/core/types";
+import { liveCurve, liveDone, type LiveGame } from "./live";
 import { runAnalysis, type RunProgress, type SourceInput } from "./run";
 
 export const FOLIO_KEY = "folio";
 /** Load order matters: each script reads the globals the previous ones set. */
-export const FOLIO_SCRIPTS = ["vendor/chess.min.js", "labels.js", "board-folio.js", "i18n.js", "model.js", "core.js", "motion.js", "views.js", "train.js", "sieve.js", "cerno.js", "ascii.js"];
+export const FOLIO_SCRIPTS = ["vendor/chess.min.js", "labels.js", "board-folio.js", "i18n.js", "model.js", "core.js", "icons.js", "motion.js", "views.js", "train.js", "sieve.js", "cerno.js", "ascii.js"];
 
 export interface SavedStudy {
   version: number;
@@ -31,6 +33,16 @@ export interface LiveState {
   progress: number;
   stages: Record<string, { state: StageState; done: number; total: number }>;
   error?: string;
+  /** Stockfish workers in use. */
+  workers?: number;
+  /** Game ids in the order played (oldest first): one square each on the wait's grid. */
+  grid?: string[];
+  /** Per game: what the wait shows of it so far. */
+  byId: Record<string, LiveGame>;
+  /** Findings of the games finished so far (rebuilt every few seconds), then of the study. */
+  findings?: FolioData["findings"];
+  /** The finished study, for the wait's last frame (level marks, the costliest mistake, what to train). */
+  final?: Pick<FolioData, "findings" | "recommendations" | "errors"> & { exercises: number };
 }
 
 export interface StartInput {
@@ -42,8 +54,11 @@ export interface StartInput {
 }
 
 const EMPTY_ELO: FolioElo = { meta: { model: "", population: "", maiaElos: [], note: "" }, positions: {} };
-/** Share of a first run's time per stage (measured: pass 1 ~55 %, pass 2 ~5 %, candidates ~35 %). */
+/** Share of a first run's time per stage, WebGPU (measured: pass 1 ~55 %, pass 2 ~5 %, candidates ~35 %; Maia runs alongside pass 1). */
 const WEIGHTS: Record<string, number> = { pass1: 0.55, pass2: 0.06, cand: 0.34, ladder: 0.03, book: 0.02 };
+/** Without WebGPU Maia runs on the processor after Stockfish and takes most of the time
+ *  (measured once, 25 games, Chromium: Stockfish ~45 s, Maia ~105 s, candidates ~15 s). */
+const WEIGHTS_WASM: Record<string, number> = { pass1: 0.22, pass2: 0.03, maia: 0.58, cand: 0.1, ladder: 0.04, book: 0.03 };
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -77,7 +92,7 @@ export async function bootFolio(base = "folio/"): Promise<void> {
 function createApp() {
   const listeners = new Set<() => void>();
   let abort: AbortController | undefined;
-  const live: LiveState = { status: "idle", startedAt: 0, progress: 0, stages: {} };
+  const live: LiveState = { status: "idle", startedAt: 0, progress: 0, stages: {}, byId: {} };
   const emit = () => listeners.forEach((fn) => fn());
   const set = (k: string, state: StageState, done = 0, total = 0) => (live.stages[k] = { state, done, total });
   const frac = (k: string) => {
@@ -87,7 +102,7 @@ function createApp() {
     return s.total ? s.done / s.total : 0;
   };
   const recompute = () => {
-    live.progress = Object.entries(WEIGHTS).reduce((a, [k, wgt]) => a + wgt * frac(k), 0);
+    live.progress = Object.entries(live.backend === "wasm" ? WEIGHTS_WASM : WEIGHTS).reduce((a, [k, wgt]) => a + wgt * frac(k), 0);
   };
   const finishBefore = (k: string) => {
     const order = ["fetch", "pass1", "pass2", "cand", "ladder", "book"];
@@ -136,7 +151,20 @@ function createApp() {
   async function run(input: StartInput) {
     abort?.abort();
     abort = new AbortController();
-    Object.assign(live, { status: "running", user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined });
+    Object.assign(live, { status: "running", user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined, workers: undefined, grid: undefined, byId: {}, findings: undefined, final: undefined });
+    // Findings of the finished games, rebuilt at most every 2 s: the report is pure, no engine work.
+    const complete: AnalyzedGame[] = [];
+    let rebuild: ReturnType<typeof setTimeout> | undefined;
+    const rebuildFindings = () => {
+      rebuild = undefined;
+      if (live.status !== "running" || !complete.length) return;
+      try {
+        live.findings = buildFolioData(buildReport(complete, input.user, DEFAULT_SETTINGS), complete, []).findings;
+        emit();
+      } catch {
+        // A partial sample the report cannot take yet: wait for more games.
+      }
+    };
     for (const k of ["fetch", "model", "pass1", "pass2", "maia", "cand", "ladder", "book"]) set(k, "wait");
     set("fetch", "run");
     emit();
@@ -149,6 +177,24 @@ function createApp() {
           source,
           max: input.n,
           timeClasses: input.timeClasses as TimeClass[],
+          onGames: (games, workers) => {
+            live.workers = workers;
+            // fetched newest first, numbered in the order played
+            games.forEach((g, i) => (live.byId[g.id] = { id: g.id, no: games.length - i, result: g.result, state: "q" }));
+            live.grid = games.map((g) => g.id).reverse();
+            emit();
+          },
+          onGame: ({ pass, game }) => {
+            const lg = live.byId[game.game.id];
+            if (!lg) return;
+            if (pass === 1) Object.assign(lg, { state: "c", curve: liveCurve(game) });
+            else {
+              Object.assign(lg, liveDone(game), { state: "d" });
+              complete.push(game);
+              rebuild ??= setTimeout(rebuildFindings, 2000);
+            }
+            emit();
+          },
           // The report is built once, when Maia can still draw the ladder for the positions it shows.
           ladder: (analyzed, peers) => {
             report = buildReport(analyzed, input.user, DEFAULT_SETTINGS, peers);
@@ -168,6 +214,9 @@ function createApp() {
         data = buildFolioData(report, res.analyzed, res.peers?.decisions ?? []);
       }
       for (const k of ["maia", "cand", "ladder"]) if (live.stages[k]?.state === "wait") set(k, "skip");
+      if (rebuild) clearTimeout(rebuild);
+      live.findings = data.findings;
+      live.final = { findings: data.findings, recommendations: data.recommendations, errors: data.errors, exercises: Object.values(data.exercises).flat().length };
       const study: SavedStudy = { version: FOLIO_DATA_VERSION, data, elo: res.ladder ?? EMPTY_ELO };
       const cache = await IdbCache.open();
       await cache?.setMeta(FOLIO_KEY, study);
