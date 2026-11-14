@@ -41,6 +41,8 @@ The Maia-3 model is not in git. `npm run build` downloads `maia3-5m.onnx` (21 MB
 
 Measured on an Apple M5 (10 cores, 9 Stockfish workers, Maia on WebGPU), Chromium, empty cache: 100 blitz games with the full peer profile take 4 min 44 s, and the base report is ready at 2 min 49 s. A second run of the same games comes from the cache.
 
+The cover offers two loads: half the cores (preselected, the computer stays usable) or all but one. The report is the same with any worker count (fixed nodes, one thread per engine, `ucinewgame` per game; `src/core/__tests__/pool-size.test.ts` checks it with the real engine). Each option shows a time measured on the device: a ~1 s Stockfish calibration per worker count, corrected by how much slower a whole analysis runs (0.68 of it on the M5), then replaced by the speed of the device's own last analysis (`src/folio/pace.ts`).
+
 Validation (measured, see REPORT.md): synthetic players with planted weaknesses (unbiased; 6.7% of null players get any discovery; power 0.87 for a -200 Elo middlegame gap), 16 external Lichess players (the overall gap correlates 0.38 with results beyond rating), and a holdout of the reference player's older games. `scripts/peers/` reproduces each one.
 
 ## Checks

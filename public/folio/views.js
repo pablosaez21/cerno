@@ -34,7 +34,12 @@
   F.route(/^\/cover\/?(error|down)?$/, (e) => cover(e));
   function cover(err) {
     const last = F.store.get("lastInput", null);
-    const st = F.coverState || (F.coverState = { src: (last && last.src) || "chesscom", user: (last && last.user) || M.user, n: (last && last.n) || 100, tc: (last && last.tc) || { bullet: false, blitz: true, rapid: true, daily: false }, err: null, msg: "" });
+    const st = F.coverState || (F.coverState = { src: (last && last.src) || "chesscom", user: (last && last.user) || M.user, n: (last && last.n) || 100, tc: (last && last.tc) || { bullet: false, blitz: true, rapid: true, daily: false }, load: last && last.load, err: null, msg: "" });
+    const loads = window.CernoApp.loads(st.n);
+    if (!st.load) st.load = loads.initial;
+    const loadBtn = (k) => `<button type="button" data-load="${k}" aria-pressed="${st.load === k}" class="${st.load === k && F._loadChanged ? "draw" : ""}">${t("cover.load." + k)}<span class="est" data-est="${k}">${loads[k].text}</span>${st.load === k ? F.ringSvg(k.length + 3) : ""}</button>`;
+    // One worker count for both (small machines): nothing to choose.
+    const loadHtml = loads.soft.workers === loads.full.workers ? "" : `<div class="loadrow">${t("cover.load")} <span class="paren" role="group" aria-label="${t("cover.load")}">${loadBtn("soft")}${loadBtn("full")}</span></div>`;
     if (err === "error") st.err = "notfound";
     if (err === "down") st.err = "down";
     const srcBtn = (k, label) => `<button type="button" data-src="${k}" aria-pressed="${st.src === k}" class="${st.src === k && F._srcChanged ? "draw" : ""}">${label}${st.src === k ? F.ringSvg(k.length) : ""}</button>`;
@@ -59,6 +64,7 @@
           <fieldset class="tcs" style="border:0;padding:0;margin:8px 0 0"><legend class="vh">${t("cover.tc")}</legend>
             ${["bullet", "blitz", "rapid", "daily"].map((k) => `<label><input type="checkbox" name="tc" value="${k}" ${st.tc[k] ? "checked" : ""}>${t("cover.tc." + k)}</label>`).join("")}
           </fieldset>`}
+          ${loadHtml}
           <div style="margin-top:22px" class="btnrow"><button class="btn primary" type="submit">${t("cover.go")} <span class="arr">→</span></button></div>
         </form>
         ${errHtml}
@@ -73,8 +79,12 @@
       html, noDock: true, noRibbon: true, noHead: true, hideWm: true, coverFoot: true, title: "Cerno", where: "",
       after(root) {
         const form = root.querySelector("#coverForm");
-        root.querySelectorAll("[data-src]").forEach((b) => b.addEventListener("click", () => { F._srcChanged = !F.reduced(); st.src = b.dataset.src; st.err = null; F._keepScroll = true; F.render(); }));
-        F.picker(root.querySelector("[data-pick]"), (v) => { st.n = v; });
+        root.querySelectorAll("[data-src]").forEach((b) => b.addEventListener("click", () => { F._srcChanged = !F.reduced(); F._loadChanged = false; st.src = b.dataset.src; st.err = null; F._keepScroll = true; F.render(); }));
+        // Estimates follow the game count, and appear once this device has been measured.
+        const showEst = () => { const l = window.CernoApp.loads(st.n); root.querySelectorAll("[data-est]").forEach((e) => (e.textContent = l[e.dataset.est].text)); };
+        F.picker(root.querySelector("[data-pick]"), (v) => { st.n = v; showEst(); });
+        root.querySelectorAll("[data-load]").forEach((b) => b.addEventListener("click", () => { F._loadChanged = !F.reduced(); F._srcChanged = false; st.load = b.dataset.load; F._keepScroll = true; F.render(); }));
+        if (root.querySelector("[data-est]")) window.CernoApp.calibrate().then((fresh) => fresh && root.isConnected && showEst());
         form.addEventListener("input", () => { st.user = form.user ? form.user.value : st.user; form.querySelectorAll("[name=tc]").forEach((c) => (st.tc[c.value] = c.checked)); });
         const retry = root.querySelector("[data-retry]");
         retry && retry.addEventListener("click", () => { st.err = null; F._keepScroll = true; F.render(); });
@@ -85,9 +95,9 @@
           if (!u) { st.err = "notfound"; st.user = u; F._keepScroll = true; F.render(); return; }
           if (st.src === "pgn" && !(pgn && pgn.value.trim())) { st.err = "run"; st.msg = t("err.noPgn"); F._keepScroll = true; F.render(); return; }
           st.err = null; st.user = u;
-          F.store.set("lastInput", { src: st.src, user: u, n: st.n, tc: st.tc });
+          F.store.set("lastInput", { src: st.src, user: u, n: st.n, tc: st.tc, load: st.load });
           const tcs = Object.keys(st.tc).filter((k) => st.tc[k]);
-          window.CernoApp.start({ src: st.src, user: u, n: st.n, timeClasses: tcs, pgn: pgn ? pgn.value : "" });
+          window.CernoApp.start({ src: st.src, user: u, n: st.n, timeClasses: tcs, pgn: pgn ? pgn.value : "", load: st.load });
           F.go("#/analysing");
         });
       },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EngineRunner, parseInfo, terminalEval, toWhitePov, defaultPoolSize, type UciTransport } from "../engine";
+import { EngineRunner, parseInfo, terminalEval, toWhitePov, defaultPoolSize, poolSizeFor, type UciTransport } from "../engine";
 
 describe("UCI parsing", () => {
   it("reads score, multipv and pv", () => {
@@ -30,6 +30,12 @@ describe("UCI parsing", () => {
     expect(defaultPoolSize(1)).toBe(1);
     expect(defaultPoolSize(32)).toBe(12);
     expect(defaultPoolSize(undefined)).toBe(3);
+  });
+
+  it("soft load uses half the cores, never more than full load", () => {
+    // Apple M5 (10 cores), M4 Pro (14), a 4-core laptop, a 2-core phone, unknown.
+    expect([10, 14, 4, 2, undefined].map((c) => [poolSizeFor("soft", c), poolSizeFor("full", c)])).toEqual([[5, 9], [7, 12], [2, 3], [1, 1], [2, 3]]);
+    expect(poolSizeFor("soft", 64)).toBe(12);
   });
 });
 
