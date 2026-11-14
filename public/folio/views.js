@@ -66,7 +66,7 @@
       </div>
       <div class="cover-r">
         <p class="defn">${es() ? "<b>cernō</b>: cribar, distinguir." : "<b>cernō</b>: to sift, to discern."}</p>
-        <figure class="fig cover-grid">${M.empty ? F.blankGrid(100) : F.gameGrid({ state: () => "q", pips: false })}<figcaption>${t("cover.sieve")}</figcaption></figure>
+        <figure class="fig cover-grid">${M.empty ? F.blankGrid(100) : F.gameGrid({ state: () => "q", pips: false })}</figure>
       </div>
     </div>`;
     return {
