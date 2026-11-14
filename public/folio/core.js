@@ -607,7 +607,7 @@
     if (cover) {
       ft.innerHTML = `<div class="foot foot-cover">
       <div class="checker" aria-hidden="true">${"<i></i>".repeat(32)}</div>
-      <div class="foot-end"><span>${F.t("foot.line", {})}</span><a href="#" data-top>${F.t("foot.top")} ↑</a></div>
+      <div class="foot-end"><span>${F.t("foot.lineCover")}</span><a href="#" data-top>${F.t("foot.top")} ↑</a></div>
       ${F.asciiTail ? F.asciiTail({ classic: true }) : ""}
     </div>`;
       F.mountTail && F.mountTail(ft);
