@@ -589,7 +589,7 @@
     "foot.line": (p) => `Cerno · made on this device · AGPL-3.0`,
     "foot.tail": (p) => `cerno, set in your moves · tap to sift`,
     "foot.asciiCapClassic": "Ex libris · Morphy, Paris 1858 · tap to replay",
-    "foot.tailClassic": "cerno, set in Morphy’s moves · tap to sift",
+    "foot.tailClassic": "cerno, set in the moves of the Opera game · tap to sift",
     "foot.tailAria": "The word cerno, lettered with your own moves",
     "why.label": "Why?",
     /* the sieve */
@@ -675,7 +675,7 @@
     "foot.line": (p) => `Cerno · hecho en este dispositivo · AGPL-3.0`,
     "foot.tail": (p) => `cerno, escrito con tus jugadas · tócalo para cribar`,
     "foot.asciiCapClassic": "Ex libris · Morphy, París 1858 · tócala",
-    "foot.tailClassic": "cerno, escrito con las jugadas de Morphy · tócalo para cribar",
+    "foot.tailClassic": "cerno, escrito con las jugadas de la partida de la Ópera · tócalo para cribar",
     "foot.tailAria": "La palabra cerno, escrita con tus propias jugadas",
     "why.label": "¿Por qué?",
     "clk.why": (p) => `Solo blitz 3+2: los ${p.rapid} errores de partidas rápidas van con otro reloj. Por debajo de 30 s (banda rayada) no se pregunta a Maia.`,
