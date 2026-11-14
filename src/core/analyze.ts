@@ -65,6 +65,17 @@ export interface Progress {
   cachedGames: number;
 }
 
+/**
+ * One game finished a pass: 1 = every position has its pass-1 eval (`deep` still empty);
+ * 2 = the game is complete, exactly as `analyzeGames` will return it. Cached games arrive
+ * as pass 2 at once. For live views only: the analysis never depends on it, and an error
+ * thrown by the listener is ignored.
+ */
+export interface GameDone {
+  pass: 1 | 2;
+  game: AnalyzedGame;
+}
+
 export const evalKey = (s: AnalysisSettings, nodes: number, multiPv: number, fen: string) =>
   `${s.engineId}|${nodes}|${multiPv}|${positionKey(fen)}`;
 export const gameKey = (s: AnalysisSettings, id: string) =>
@@ -77,11 +88,19 @@ export async function analyzeGames(
     cache?: EvalCache;
     settings?: AnalysisSettings;
     onProgress?: (p: Progress) => void;
+    onGame?: (e: GameDone) => void;
     signal?: AbortSignal;
   },
 ): Promise<AnalyzedGame[]> {
   const s = deps.settings ?? DEFAULT_SETTINGS;
   const cache = deps.cache;
+  const tell = (pass: 1 | 2, game: AnalyzedGame) => {
+    try {
+      deps.onGame?.({ pass, game });
+    } catch {
+      // A live view must not stop the analysis.
+    }
+  };
   const results = new Map<string, AnalyzedGame>();
   const pending: { game: GameRecord; parsed: ParsedGame; evals: (PositionEval | undefined)[] }[] = [];
 
@@ -101,6 +120,7 @@ export async function analyzeGames(
     pending.push({ game, parsed, evals: [] });
   }
   const cachedGames = results.size;
+  for (const g of results.values()) tell(2, g);
 
   // ---- Pass 1. Each distinct position is searched once, by the first game that
   // has it (9% of the positions of 100 games repeat across games); the result is
@@ -119,6 +139,23 @@ export async function analyzeGames(
   }
   const total1 = owner.size;
   let done1 = 0;
+  // Per game, the positions still without an eval; a game is told as soon as it has them all.
+  const missing = pending.map(() => 0);
+  const waiting = new Map<string, number[]>();
+  pending.forEach((p, pi) =>
+    fensOf(p).forEach((fen, i) => {
+      if (p.evals[i]) return;
+      missing[pi]++;
+      const k = positionKey(fen);
+      waiting.set(k, [...(waiting.get(k) ?? []), pi]);
+    }),
+  );
+  const pass1Done = (pi: number) => {
+    const p = pending[pi];
+    fensOf(p).forEach((fen, i) => (p.evals[i] ??= found.get(positionKey(fen))));
+    tell(1, { game: p.game, parsed: p.parsed, evals: [...p.evals] as PositionEval[], deep: {} });
+  };
+  missing.forEach((m, pi) => m === 0 && pass1Done(pi));
   deps.onProgress?.({ phase: "pass1", done: 0, total: total1, cachedGames });
   await deps.pool.run(
     pending.map((p, pi) => ({ p, pi })),
@@ -134,7 +171,10 @@ export async function analyzeGames(
         .map((fen) => ({ fen, nodes: s.pass1Nodes, multiPv: 1 }));
     },
     async (_t, req, ev) => {
-      found.set(positionKey(req.fen), ev);
+      const k = positionKey(req.fen);
+      found.set(k, ev);
+      for (const pi of waiting.get(k) ?? []) if (--missing[pi] === 0) pass1Done(pi);
+      waiting.delete(k);
       await cache?.setEval(evalKey(s, s.pass1Nodes, 1, req.fen), ev);
       done1++;
       deps.onProgress?.({ phase: "pass1", done: done1, total: total1, cachedGames });
@@ -169,7 +209,16 @@ export async function analyzeGames(
     jobs.push(job);
   }
   let done2 = 0;
+  const finished = new Map<Job, AnalyzedGame>();
+  const left = new Map<Job, number>();
+  const pass2Done = (j: Job) => {
+    const g: AnalyzedGame = { game: j.p.game, parsed: j.p.parsed, evals: j.p.evals as PositionEval[], deep: j.deep as Record<number, DeepEval> };
+    finished.set(j, g);
+    tell(2, g);
+  };
+  for (const j of jobs) if (j.requests.length) left.set(j, j.requests.length);
   deps.onProgress?.({ phase: "pass2", done: 0, total: total2, cachedGames });
+  for (const j of jobs) if (!j.requests.length) pass2Done(j);
   await deps.pool.run(
     jobs.filter((j) => j.requests.length),
     (j) => j.requests,
@@ -180,6 +229,9 @@ export async function analyzeGames(
         else if (req.multiPv === 1 && ply.fenAfter === req.fen && !d.after) d.after = ev;
       }
       await cache?.setEval(evalKey(s, req.nodes, req.multiPv, req.fen), ev);
+      const l = left.get(j)! - 1;
+      left.set(j, l);
+      if (l === 0) pass2Done(j);
       done2++;
       deps.onProgress?.({ phase: "pass2", done: done2, total: total2, cachedGames });
     },
@@ -188,7 +240,7 @@ export async function analyzeGames(
   if (deps.signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
   for (const j of jobs) {
-    const analyzed: AnalyzedGame = {
+    const analyzed: AnalyzedGame = finished.get(j) ?? {
       game: j.p.game,
       parsed: j.p.parsed,
       evals: j.p.evals as PositionEval[],

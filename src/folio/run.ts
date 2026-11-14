@@ -2,7 +2,7 @@
 // With WebGPU, Maia runs on the GPU while Stockfish runs on the CPU (full mode:
 // every move of both sides). Without it, only the player's judged moves are
 // compared (reduced mode: no profile).
-import { analyzeGames, DEFAULT_SETTINGS, gameKey, type AnalyzedGame, type Progress } from "@/core/analyze";
+import { analyzeGames, DEFAULT_SETTINGS, gameKey, type AnalyzedGame, type GameDone, type Progress } from "@/core/analyze";
 import { IdbCache, workerTransport } from "@/core/browser";
 import { classifyGame } from "@/core/classify";
 import { defaultPoolSize, EnginePool } from "@/core/engine";
@@ -30,6 +30,10 @@ export interface RunInput {
   workers?: number;
   /** Run Maia-3. Default true. */
   level?: boolean;
+  /** The games to analyse, once downloaded (for live views). */
+  onGames?: (games: GameRecord[], workers: number) => void;
+  /** Each game after pass 1 and when complete (for live views; see GameDone). */
+  onGame?: (e: GameDone) => void;
   /** Stage 1: called when the Stockfish passes end, before the peer profile (plan: two-stage delivery). */
   onBase?: (analyzed: AnalyzedGame[], elapsedMs: number) => void;
   /** Positions that get Maia's Elo ladder, chosen from the finished analysis (Maia is still loaded then). */
@@ -83,6 +87,7 @@ export async function runAnalysis(
       : MaiaClient.load(model, { onProgress: (loaded, total) => onProgress({ phase: "maia-download", done: loaded, total: total ?? model.bytes }) }).catch((e: Error) => e);
   onProgress({ phase: "fetch", done: 0, total: input.max });
   const games = await fetchGames(input, signal);
+  input.onGames?.(games, workers);
   onProgress({ phase: "fetch", done: games.length, total: games.length });
   const t1 = performance.now();
   const cache = await IdbCache.open();
@@ -122,6 +127,7 @@ export async function runAnalysis(
       cache,
       settings: DEFAULT_SETTINGS,
       signal,
+      onGame: input.onGame,
       onProgress: (p) => {
         cachedGames = p.cachedGames;
         onProgress(p);
