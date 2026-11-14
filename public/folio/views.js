@@ -62,7 +62,6 @@
           <div style="margin-top:22px" class="btnrow"><button class="btn primary" type="submit">${t("cover.go")} <span class="arr">→</span></button></div>
         </form>
         ${errHtml}
-        <p class="assure">${t("cover.time")} ${t("cover.local")}</p>
         ${M.empty ? "" : `<p class="assure"><a class="link" href="#/contents">${t("cover.open", { user: esc(M.user), n: M.N, date: D.sample.to ? F.date(D.sample.to) : "" })}</a></p>`}
       </div>
       <div class="cover-r">
