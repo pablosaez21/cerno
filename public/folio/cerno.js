@@ -160,7 +160,7 @@
   };
 
   /* ---------- an empty grid for the cover before any analysis ---------- */
-  F.blankGrid = (k) => `<div class="grid10" role="img" aria-label="${t("sv.grid")}">${'<span class="cell s-q"></span>'.repeat(k)}</div>`;
+  F.blankGrid = (k) => `<div class="grid10" role="img" aria-label="${t("lvx.grid", { n: k })}">${'<span class="cell s-q"></span>'.repeat(k)}</div>`;
 
   /* =============== Chapter N: against your opponents =============== */
   F.route(/^\/level$/, () => {
@@ -211,12 +211,18 @@
   Object.assign(I.en, {
     "lvx.sf": (p) => `Stockfish 19 · ${p.w} workers`, "lvx.maiaCpu": "Maia-3 · processor",
     "lvx.grid": (p) => `Your ${p.n} games, one square each`,
+    "lvx.eta": "· ~{t} left", "lvx.maiaOff": "Maia-3 · not available",
+    "lvx.t.maia": "Asking <em>Maia</em> what players at your rating play.",
+    "lvx.noMaia": "Maia-3 did not run: no level labels. The rest is complete.",
     "lvx.whyWait": (p) => `${p.w} Stockfish workers take the games in order: a fast pass on every move, a deep one on the costly moves. Then Maia-3 looks at your mistakes. Each game is saved as soon as it is done.`,
     "lvx.done": (p) => (p.n ? `Sifted. <em>${["One", "Two", "Three", "Four", "Five"][p.n - 1] || p.n}</em> ${p.n === 1 ? "thing" : "things"} to train.` : "Sifted."),
   });
   Object.assign(I.es, {
     "lvx.sf": (p) => `Stockfish 19 · ${p.w} procesos`, "lvx.maiaCpu": "Maia-3 · procesador",
     "lvx.grid": (p) => `Tus ${p.n} partidas, un cuadro cada una`,
+    "lvx.eta": "· quedan ~{t}", "lvx.maiaOff": "Maia-3 · no disponible",
+    "lvx.t.maia": "Preguntando a <em>Maia</em> qué juegan los de tu Elo.",
+    "lvx.noMaia": "Maia-3 no se ha ejecutado: sin etiquetas de nivel. Lo demás está completo.",
     "lvx.whyWait": (p) => `${p.w} procesos de Stockfish toman las partidas en orden: una pasada rápida en cada jugada y otra profunda en las caras. Después Maia-3 mira tus errores. Cada partida se guarda al terminar.`,
     "lvx.done": (p) => (p.n ? `Cribado. <em>${["Una", "Dos", "Tres", "Cuatro", "Cinco"][p.n - 1] || p.n}</em> ${p.n === 1 ? "cosa" : "cosas"} que entrenar.` : "Cribado."),
   });
@@ -387,7 +393,7 @@
           const mDone = !mRun && mx.some((x) => x.state === "done") && !mx.some((x) => x.state === "wait");
           stage("maia", maiaOff ? "skip" : mRun ? "run" : mDone ? "done" : "",
             maiaOff ? "–" : mRun ? `${n(mRun.done)}/${n(mRun.total)}` : mo.state === "run" && mo.total ? Math.round((100 * mo.done) / mo.total) + " %" : "",
-            maiaOff ? t("sv.s.maiaOff") : L.backend === "wasm" ? t("lvx.maiaCpu") : t("sv.s.maia"));
+            maiaOff ? t("lvx.maiaOff") : L.backend === "wasm" ? t("lvx.maiaCpu") : t("sv.s.maia"));
           stage("pat", bk.state === "done" ? "done" : bk.state === "run" ? "run" : "", String(tot.pat));
           stage("ex", L.final ? "done" : "", L.final ? String(L.final.exercises) : "–");
           $("[data-nogpu]").hidden = L.backend !== "wasm";
@@ -396,12 +402,12 @@
           const elapsed = (L.endedAt || Date.now()) - L.startedAt;
           $("[data-clk]").textContent = fmt(elapsed);
           const p = Math.min(1, L.progress || 0);
-          $("[data-eta]").textContent = L.status === "done" ? t("sv.cached") : L.status === "running" && p > 0.04 ? t("sv.eta", { t: fmt((elapsed * (1 - p)) / p) }) : "";
+          $("[data-eta]").textContent = L.status === "done" ? t("sv.cached") : L.status === "running" && p > 0.04 ? t("lvx.eta", { t: fmt((elapsed * (1 - p)) / p) }) : "";
           $(".progressline").style.transform = `scaleX(${L.status === "done" ? 1 : p})`;
           if (L.status === "error") setLead(t("lvx.lead.error"));
           else if (L.status === "done") setLead(t("lvx.done", { n: L.final ? L.final.recommendations.length : 0 }));
           else if (bk.state === "run") setLead(t("sv.t.pat"));
-          else if (mRun) setLead(t("sv.t.maia"));
+          else if (mRun) setLead(t("lvx.t.maia"));
           else if (fe.state === "done") setLead(t("sv.t.sf", { n: G }));
           else setLead(t("sv.t.dl", { n: N }));
 
@@ -428,7 +434,7 @@
           mem.final = true;
           const front = errs.filter((e) => e.peer && e.peer.level === "below_level").sort((a, c) => c.loss - a.loss)[0] || errs.slice().sort((a, c) => c.loss - a.loss)[0];
           if (front) { const p = posOf(front); const no = (L.byId[front.gameId] || {}).no; mem.galley = { p, no }; showGalley(p, no); }
-          if (maiaOff) line(t("sv.n.noMaia"), "pat");
+          if (maiaOff) line(t("lvx.noMaia"), "pat");
           const fById = {}; L.final.findings.forEach((f) => (fById[f.id] = f));
           L.final.recommendations.slice().reverse().forEach((r) => {
             const f = fById[r.findingId]; if (!f) return;
