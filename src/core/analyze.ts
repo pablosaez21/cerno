@@ -4,6 +4,8 @@
 //   Pass 2: only the player's moves that lose win probability in pass 1, with
 //           a larger budget and MultiPV, before and after the move.
 import { positionKey } from "./chess";
+import type { ExplanationProbes } from "./explain";
+import { enrichExplanations } from "./explanation-analysis";
 import type { AnalyseRequest, EnginePool } from "./engine";
 import { parseGameMoves, type ParsedGame } from "./game";
 import type { GameRecord, PositionEval } from "./types";
@@ -46,6 +48,7 @@ export interface EvalCache {
 export interface DeepEval {
   before: PositionEval;
   after: PositionEval;
+  explanation?: ExplanationProbes;
 }
 
 export interface AnalyzedGame {
@@ -55,6 +58,8 @@ export interface AnalyzedGame {
   evals: PositionEval[];
   /** Pass-2 evals keyed by ply. */
   deep: Record<number, DeepEval>;
+  /** Additive cache upgrade: original evaluations remain reusable. */
+  explanationVersion?: number;
 }
 
 export interface Progress {
@@ -67,7 +72,8 @@ export interface Progress {
 
 /**
  * One game finished a pass: 1 = every position has its pass-1 eval (`deep` still empty);
- * 2 = the game is complete, exactly as `analyzeGames` will return it. Cached games arrive
+ * 2 = the game's original two passes are complete. Explanation probes can still
+ * enrich its optional `deep[].explanation` before `analyzeGames` returns. Cached games arrive
  * as pass 2 at once. For live views only: the analysis never depends on it, and an error
  * thrown by the listener is ignored.
  */
@@ -247,8 +253,13 @@ export async function analyzeGames(
       deep: j.deep as Record<number, DeepEval>,
     };
     results.set(j.p.game.id, analyzed);
-    await cache?.setGame(gameKey(s, j.p.game.id), analyzed);
   }
+  await enrichExplanations([...results.values()], {
+    pool: deps.pool, settings: s, cache, signal: deps.signal,
+    onGame: () => {}, // Base games were already delivered, once, for the live view.
+    onProgress: (done, total) => deps.onProgress?.({ phase: "pass2", done: done2 + done, total: total2 + total, cachedGames }),
+  });
+  for (const g of results.values()) await cache?.setGame(gameKey(s, g.game.id), g);
   deps.onProgress?.({ phase: "done", done: 1, total: 1, cachedGames });
   return games.map((g) => results.get(g.id)).filter((g): g is AnalyzedGame => !!g);
 }

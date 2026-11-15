@@ -433,6 +433,7 @@ table.bk a { text-decoration: none; }
 .desk-only { display: none; }
 table.bk td.r { white-space: nowrap; }
 .ex-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; max-width: 420px; }
+.ex-btns .holdbtn { white-space: normal; text-align: center; min-height: 44px; }
 .score .pair { white-space: nowrap; }
 .ruler-k { flex-wrap: wrap; gap: 2px 12px; }
 @media (max-width: 999px) {
@@ -444,6 +445,7 @@ table.bk td.r { white-space: nowrap; }
 .ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ex-no { font: italic 400 34px/1 var(--serif); font-variant-numeric: lining-nums; }
 .ex-board { position: relative; }
+.ex-board .dia-board { scroll-margin-top: 72px; }
 .ex-msg { min-height: 3.2em; margin-top: 14px; font-size: 18px; line-height: 1.4; }
 .ex-msg.ok { color: var(--ink); }
 .ex-msg.no { color: var(--red); }
@@ -462,6 +464,17 @@ table.bk td.r { white-space: nowrap; }
 html.mo .sol { transition: transform 760ms cubic-bezier(.2, .8, .2, 1), opacity 200ms; }
 .sol.up { transform: rotate(0deg); color: var(--ink); user-select: auto; }
 .sol .sl { font-size: 19px; }
+.ex-why-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.ex-why-row > div { min-width: 0; }
+.ex-why-row .btn { min-height: 44px; min-width: 64px; }
+.ex-why-row .btn[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+.ex-why-fact { margin-top: 4px; }
+.ex-why-controls:not([hidden]) { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; padding-top: 12px; }
+.ex-why-controls .btn { min-height: 44px; padding: 0; }
+.ex-why-controls p { text-align: center; }
+.ex-why-controls > div { text-align: center; }
+.ex-why-controls [data-why-toggle] { min-height: 44px; padding: 4px 12px; margin-top: 4px; }
+.ex-why-limit { margin-top: 12px; }
 .holdbtn { position: relative; overflow: hidden; }
 .holdbtn .fill { position: absolute; inset: 0; background: var(--ink); transform: scaleX(0); transform-origin: left; opacity: .12; pointer-events: none; }
 .holdbtn.holding .fill { transform: scaleX(1); transition: transform 650ms linear; }

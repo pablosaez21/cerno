@@ -94,6 +94,9 @@ describe("report", () => {
     expect(ex.solution.uci[0]).toBe("d2d4");
     expect(ex.played.uci).toBe("c3d5");
     expect(ex.orientation).toBe("white");
+    expect(ex.explanation).toEqual(report.errors.find((e) => e.gameId === "C")!.explanation);
+    expect(ex.explanation?.played.uci.slice(0, 2)).toEqual(["c3d5", "d8d5"]);
+    expect(ex.explanation?.played.facts).toContainEqual(expect.objectContaining({ kind: "hanging", role: "knight", square: "d5" }));
   });
 
   it("never emits a finding without evidence", () => {

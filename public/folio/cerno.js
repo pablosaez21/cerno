@@ -86,7 +86,7 @@
     "lv.trait.less": (p) => `Menos ${p.what} que los jugadores de tu nivel: ${p.obs} frente a ${p.exp}.`,
     "cls.phase:opening": "Apertura", "cls.phase:middlegame": "Medio juego", "cls.phase:endgame": "Final",
     "cls.standing:ahead": "Yendo por delante", "cls.standing:level": "Con la partida igualada", "cls.standing:behind": "Yendo por detrás",
-    "cls.demand:forcing": "Posiciones forzantes", "cls.demand:pawn": "Decisiones de peones", "cls.demand:piece": "Decisiones de piezas",
+    "cls.demand:forcing": "Cuando toca capturar o dar jaque", "cls.demand:pawn": "Cuando toca mover un peón", "cls.demand:piece": "Cuando toca mover una pieza",
     "cls.choice:one_good": "Una sola buena jugada", "cls.choice:several_good": "Varias buenas jugadas",
     "cls.clock:>=60": "60 s o más en el reloj", "cls.clock:30-60": "Entre 30 y 60 s", "cls.clock:<30": "Menos de 30 s", "cls.all": "Todas las decisiones",
     "st.capture": "capturas", "st.check": "jaques", "st.pawn_move": "jugadas de peón", "st.equal_trade": "cambios iguales", "st.queen_trade": "cambios de damas",
@@ -122,9 +122,9 @@
   });
   I.recTitle.en["phase:opening"] = "Fix your openings"; I.recTitle.es["phase:opening"] = "Arregla tus aperturas";
   I.recTitle.en["phase:middlegame"] = "Play the middlegame like your opponents"; I.recTitle.es["phase:middlegame"] = "Juega el medio juego como tus rivales";
-  I.recTitle.en["demand:pawn"] = "Decide better with pawns"; I.recTitle.es["demand:pawn"] = "Decide mejor con los peones";
-  I.recTitle.en["demand:piece"] = "Decide better with pieces"; I.recTitle.es["demand:piece"] = "Decide mejor con las piezas";
-  I.recTitle.en["standing:level"] = "Hold level positions"; I.recTitle.es["standing:level"] = "Sostén las posiciones igualadas";
+  I.recTitle.en["demand:pawn"] = "Take care with pawn moves"; I.recTitle.es["demand:pawn"] = "Cuida las jugadas de peón";
+  I.recTitle.en["demand:piece"] = "Take care with piece moves"; I.recTitle.es["demand:piece"] = "Cuida las jugadas de pieza";
+  I.recTitle.en["standing:level"] = "Hold equal positions"; I.recTitle.es["standing:level"] = "Aguanta las posiciones igualadas";
   I.recTitle.en["choice:one_good"] = "Find the only move"; I.recTitle.es["choice:one_good"] = "Encuentra la única jugada";
 
   /* ---------- labels for the v3 kinds ---------- */

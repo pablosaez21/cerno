@@ -392,7 +392,7 @@
     "f.trainThis": "Entrenarla",
     "f.openGame": "Ver partida",
     "f.playRef": "Lo que pasó",
-    "f.playBest": "La línea mejor",
+    "f.playBest": "La mejor línea",
     "f.reset": "Reiniciar",
     "f.youPlayed": "jugaste", "f.better": "mejor",
     "f.noCurve": "Esta posición no tiene curva de Maia (en este prototipo solo la tienen las 137 más importantes).",
@@ -572,7 +572,7 @@
     "fig.maia.onBoard": "Maia’s likeliest moves at {elo}. Thicker = more players.",
     "ex.prompt": "Find the move. You played {move} (−{loss}).",
     "ex.yourTurn": "Drag or tap a piece.",
-    "ex.reveal": "Hold: solution",
+    "ex.reveal": "Solution (hold)",
     "ex.revealHold": "",
     "ex.maiaLine": "At {elo}: {pct} find a good move, {played} play {san}.",
     "ex.game": "{w}–{b}, {date}. {move} was played.",
@@ -661,7 +661,7 @@
     "fig.maia.onBoard": "Lo que más juega Maia con {elo}. Más gruesa = más jugadores.",
     "ex.prompt": "Encuentra la jugada. Jugaste {move} (−{loss}).",
     "ex.yourTurn": "Arrastra o toca una pieza.",
-    "ex.reveal": "Mantén: solución",
+    "ex.reveal": "Solución (mantén pulsado)",
     "ex.revealHold": "",
     "ex.maiaLine": "Con {elo}: el {pct} encuentra una buena jugada, el {played} juega {san}.",
     "ex.game": "{w}–{b}, {date}. Se jugó {move}.",
@@ -741,16 +741,60 @@
       advantage_not_converted: (p) => `${p.games} veces estabas al 85 % o más tras la apertura y no ganaste.`,
       fast_critical: (p) => `${p.occ} errores, en ${p.games} partidas, llegaron en posiciones con una sola buena jugada, y los hiciste en menos de la mitad de tu tiempo habitual.`,
       endgame_type: (p) => `${p.occ} errores en finales de ${p.type} a lo largo de ${p.games} partidas, sin táctica de por medio.`,
-      opening_line: (p) => `Jugaste la ${p.family} ${p.color} en ${p.games} partidas y puntuaste un ${p.score} (${p.rec}). De media sales de la apertura con un ${p.after} de probabilidad de victoria${p.weakExit ? ", y sales del libro antes que en el resto de tu repertorio" : ""}.`,
+      opening_line: (p) => `Jugaste la ${p.family} ${p.color} en ${p.games} partidas y sacaste el ${p.score} de los puntos (${p.rec}). De media sales de la apertura con un ${p.after} de probabilidad de victoria${p.weakExit ? ", y sales del libro antes que en el resto de tu repertorio" : ""}.`,
       repeated_mistake: (p) => `La misma posición salió en ${p.games} partidas y jugaste ${p.played} todas las veces. ${p.best} era mejor.`,
     },
   };
 
   /* Recommendation titles (rule-based) */
   const recTitle = {
-    en: { allowed_tactic: "Stop handing over tactics", missed_tactic: "See the tactics you are given", middlegame_no_tactic: "Find the quiet better move" },
-    es: { allowed_tactic: "Deja de regalar tácticas", missed_tactic: "Ve las tácticas que te dan", middlegame_no_tactic: "Encuentra la jugada tranquila mejor" },
+    en: { allowed_tactic: "Stop handing over tactics", missed_tactic: "Spot your tactical chances", middlegame_no_tactic: "Play better when there is no tactic" },
+    es: { allowed_tactic: "Deja de regalar tácticas", missed_tactic: "Atento a tus tácticas", middlegame_no_tactic: "Juega mejor cuando no hay táctica" },
   };
+
+  /* Exercise explanations. All parameters are computed facts, never generated prose. */
+  Object.assign(en, {
+    "why.played": "Your move", "why.best": "The best move", "why.scope": "In the engine’s line:",
+    "why.watch": "Watch", "why.pause": "Pause", "why.watchLabel": "Replay: {line}",
+    "why.prev": "Previous move", "why.next": "Next move", "why.start": "Initial position",
+    "why.unknown": "The engine prefers this line but does not explain why. Compare the two lines on the board.",
+    "why.gain": "You win {main}.", "why.lose": "You lose {main}.",
+    "why.gainTrade": "You win {main} for {other}.", "why.loseTrade": "You lose {main} for {other}.",
+    "why.materialEven": "You lose no material.", "why.materialPoints": "Material balance changes by {net} pawns, including promotions.",
+    "why.mate.for": "You give mate in {moves}.", "why.mate.against": "You are mated in {moves}.", "why.backRank": "The king’s own pieces box it in on the back rank.",
+    "why.hanging": "You leave {piece} on {square} undefended. {reply} takes it.",
+    "why.hangingMoved": "You move {piece} to {square}, where it is undefended. {reply} takes it.",
+    "why.removedDefender": "Moving {piece} from {from} leaves {victim} on {square} undefended: {reply}.",
+    "why.fork": "{move} attacks {targets} at the same time.",
+    "why.freeCapture": "You take {piece} on {square}.", "why.undefended": "It is undefended.", "why.moreValuable": "It is worth more than your {piece}.",
+    "why.castlingLost": "In this line you move the king and lose the right to castle.",
+    "why.newAttack": "You attack {piece} on {square}.",
+    "why.threat.already_present": "The threat of {move} was already there if you passed the turn.",
+    "why.threat.not_found": "Before your move, the engine found no short threat if you passed the turn.",
+    "why.role.pawn": "pawn", "why.role.knight": "knight", "why.role.bishop": "bishop", "why.role.rook": "rook", "why.role.queen": "queen", "why.role.king": "king",
+    "why.roles.pawn": "pawns", "why.roles.knight": "knights", "why.roles.bishop": "bishops", "why.roles.rook": "rooks", "why.roles.queen": "queens",
+  });
+  Object.assign(es, {
+    "why.played": "Tu jugada", "why.best": "La buena", "why.scope": "En la línea del motor:",
+    "why.watch": "Verlo", "why.pause": "Pausa", "why.watchLabel": "Reproducir: {line}",
+    "why.prev": "Jugada anterior", "why.next": "Jugada siguiente", "why.start": "Posición inicial",
+    "why.unknown": "El motor prefiere esta línea, pero no dice por qué. Compara las dos en el tablero.",
+    "why.gain": "Ganas {main}.", "why.lose": "Pierdes {main}.",
+    "why.gainTrade": "Ganas {main} por {other}.", "why.loseTrade": "Pierdes {main} por {other}.",
+    "why.materialEven": "No pierdes material.", "why.materialPoints": "El balance de material cambia en {net} peones, contando las coronaciones.",
+    "why.mate.for": "Das mate en {moves}.", "why.mate.against": "Te dan mate en {moves}.", "why.backRank": "Las propias piezas encierran al rey en la última fila.",
+    "why.hanging": "Dejas {piece} de {square} sin defensa. {reply} captura la pieza.",
+    "why.hangingMoved": "Llevas {piece} a {square}, donde nadie la defiende. {reply} captura la pieza.",
+    "why.removedDefender": "Al mover {piece} de {from}, dejas {victim} de {square} sin defensa: {reply}.",
+    "why.fork": "{move} ataca a la vez {targets}.",
+    "why.freeCapture": "Capturas {piece} de {square}.", "why.undefended": "Nadie defiende esa pieza.", "why.moreValuable": "Vale más que tu {piece}.",
+    "why.castlingLost": "En esta línea mueves el rey y pierdes el derecho a enrocar.",
+    "why.newAttack": "Atacas {piece} de {square}.",
+    "why.threat.already_present": "La amenaza de {move} ya estaba si pasabas el turno.",
+    "why.threat.not_found": "Si pasabas el turno, el motor no veía una amenaza corta.",
+    "why.role.pawn": "peón", "why.role.knight": "caballo", "why.role.bishop": "alfil", "why.role.rook": "torre", "why.role.queen": "dama", "why.role.king": "rey",
+    "why.roles.pawn": "peones", "why.roles.knight": "caballos", "why.roles.bishop": "alfiles", "why.roles.rook": "torres", "why.roles.queen": "damas",
+  });
 
   function fill(s, p) {
     if (typeof s === "function") return s(p || {});

@@ -61,6 +61,7 @@
       played: e.played, best: e.best,
       solution: { uci: e.bestLineUci || [e.best.uci], san: e.bestLine || [e.best.san] },
       refutation: e.refutationUci ? { uci: e.refutationUci, san: e.refutation } : null,
+      explanation: e.explanation || null,
       loss: e.loss, judgement: e.judgement, winBefore: e.winBefore, winAfter: e.winAfter,
       level: e.peer ? e.peer.level : null, peer: e.peer || null, outOfScope: e.outOfScope || null,
       category: e.category, phase: e.phase, tactic: e.tactic || null, clockBefore: e.clockBefore, timeSpent: e.timeSpent,
@@ -77,6 +78,7 @@
       return Object.assign({}, p, {
         id: x.id, no: c.no + "." + (i + 1), idx: i, fen: x.fen, orientation: x.orientation, turn: x.fen.split(" ")[1],
         played: x.played, solution: x.solution, loss: x.loss, tags: x.tags, level: x.level || p.level || null,
+        explanation: x.explanation || p.explanation || null,
         curve: E[x.gameId + "#" + x.ply] || null, game: M.gameById[x.gameId], gameId: x.gameId, ply: x.ply,
       });
     });
