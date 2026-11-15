@@ -34,7 +34,7 @@
   F.route(/^\/cover\/?(error|down)?$/, (e) => cover(e));
   function cover(err) {
     const last = F.store.get("lastInput", null);
-    const st = F.coverState || (F.coverState = { src: (last && last.src) || "chesscom", user: (last && last.user) || M.user, n: (last && last.n) || 100, tc: (last && last.tc) || { bullet: false, blitz: true, rapid: true, daily: false }, load: last && last.load, err: null, msg: "" });
+    const st = F.coverState || (F.coverState = { src: (last && last.src) || "chesscom", user: (last && last.user) || M.user, n: (last && last.n) || 100, tc: (last && last.tc) || { bullet: false, blitz: true, rapid: true, daily: false }, load: null, err: null, msg: "" });
     const loads = window.CernoApp.loads(st.n);
     if (!st.load) st.load = loads.initial;
     const loadBtn = (k) => `<button type="button" data-load="${k}" aria-pressed="${st.load === k}" class="${st.load === k && F._loadChanged ? "draw" : ""}">${t("cover.load." + k)}<span class="est" data-est="${k}">${loads[k].text}</span>${st.load === k ? F.ringSvg(k.length + 3) : ""}</button>`;

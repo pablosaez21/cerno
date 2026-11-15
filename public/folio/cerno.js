@@ -53,7 +53,7 @@
     "demoTag": "Replay",
     "sv.t.done": () => `Sifted. <em>${D.recommendations.length}</em> things to train.`,
     "method.play_vs_maia": "Play these positions against Maia-3 at your opponents' rating",
-    "lvx.title": "Analysing", "lvx.cancel": "Cancel", "lvx.open": "Open the study",
+    "lvx.title": "Analysing", "lvx.cancel": "Cancel", "lvx.diag": "Copy diagnostics", "lvx.diagDone": "Copied", "lvx.open": "Open the study",
     "lvx.s.fetch": "Games", "lvx.s.model": "Maia-3 model", "lvx.s.pass1": "Stockfish, every position", "lvx.s.pass2": "Stockfish, the costly moves",
     "lvx.s.maia": "Maia-3, five ratings", "lvx.s.cand": "Candidate moves", "lvx.s.ladder": "Elo ladder", "lvx.s.book": "Typesetting",
     "lvx.lead.fetch": "Reading your games.", "lvx.lead.pass1": "Stockfish reads every position.", "lvx.lead.pass2": "A second, deeper look at the costly moves.",
@@ -109,7 +109,7 @@
     "demoTag": "Repetición",
     "sv.t.done": () => `Cribado. <em>${D.recommendations.length}</em> cosas que entrenar.`,
     "method.play_vs_maia": "Juega estas posiciones contra Maia-3 al Elo de tus rivales",
-    "lvx.title": "Analizando", "lvx.cancel": "Cancelar", "lvx.open": "Abrir el estudio",
+    "lvx.title": "Analizando", "lvx.cancel": "Cancelar", "lvx.diag": "Copiar diagnóstico", "lvx.diagDone": "Copiado", "lvx.open": "Abrir el estudio",
     "lvx.s.fetch": "Partidas", "lvx.s.model": "Modelo Maia-3", "lvx.s.pass1": "Stockfish, cada posición", "lvx.s.pass2": "Stockfish, las jugadas caras",
     "lvx.s.maia": "Maia-3, cinco niveles", "lvx.s.cand": "Jugadas candidatas", "lvx.s.ladder": "Escalera de Elo", "lvx.s.book": "Composición",
     "lvx.lead.fetch": "Leyendo tus partidas.", "lvx.lead.pass1": "Stockfish lee cada posición.", "lvx.lead.pass2": "Segunda mirada, más profunda, a las jugadas caras.",
@@ -274,7 +274,7 @@
       <div class="w-k counters">${["games", "moves", "judged", "mist", "pat", "train"].map(ctr).join("")}</div>
       <div class="w-f"><ul class="feed" aria-label="${t("sv.found")}"></ul></div>
       </div>
-      <div class="ts-ctrl" role="group"><span style="flex:1"></span><button type="button" class="btn sm ghost" data-cancel>${t("lvx.cancel")}</button><span class="progressline" aria-hidden="true"></span></div>
+      <div class="ts-ctrl" role="group"><button type="button" class="btn sm ghost" data-diag>${t("lvx.diag")}</button><span style="flex:1"></span><button type="button" class="btn sm ghost" data-cancel>${t("lvx.cancel")}</button><span class="progressline" aria-hidden="true"></span></div>
     </div>`;
     return {
       html, noDock: true, noRibbon: true, noFooter: true, where: t("lvx.title"), title: t("lvx.title"),
@@ -387,7 +387,7 @@
           const fe = S("fetch"), p1 = S("pass1"), p2 = S("pass2"), mx = ["maia", "cand", "ladder"].map(S), mo = S("model"), bk = S("book");
           const curves = ids ? ids.filter((id) => L.byId[id].state !== "q").length : 0;
           stage("dl", fe.state === "done" ? "done" : "run", L.games ? `${L.games}/${L.games}` : "");
-          stage("sf", p2.state === "done" ? "done" : p1.state === "run" || p2.state === "run" ? "run" : "", `${curves}/${G}`, t("lvx.sf", { w: L.workers || "–" }));
+          stage("sf", p2.state === "done" ? "done" : p1.state === "run" || p2.state === "run" ? "run" : "", `${curves}/${G}`, t("lvx.sf", { w: L.limit || L.workers || "–" }));
           const maiaOff = mx.every((x) => x.state === "skip");
           const mRun = mx.find((x) => x.state === "run");
           const mDone = !mRun && mx.some((x) => x.state === "done") && !mx.some((x) => x.state === "wait");
@@ -446,6 +446,13 @@
         const clock = setInterval(draw, 1000);
         draw();
         $("[data-cancel]").addEventListener("click", () => app.cancel());
+        // Copied, never sent: the person pastes it where they choose.
+        const dg = $("[data-diag]");
+        dg.addEventListener("click", () => {
+          const txt = app.diagnostic ? app.diagnostic() : "";
+          if (!txt || !navigator.clipboard) return;
+          navigator.clipboard.writeText(txt).then(() => { dg.textContent = t("lvx.diagDone"); setTimeout(() => dg.isConnected && (dg.textContent = t("lvx.diag")), 1600); }, () => {});
+        });
         $("[data-open]").addEventListener("click", (e) => { e.preventDefault(); app.openStudy(); });
         F.onLeave(() => { off(); clearInterval(clock); clearTimeout(drawT); cancelAnimationFrame(tick); });
       },

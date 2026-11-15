@@ -1,7 +1,8 @@
-// Time estimate for each load mode, shown on the cover before an analysis.
-// It is a measurement on this device, not a fixed figure: a ~2 s Stockfish calibration
-// gives the nodes per second with each worker count (efficiency cores make that far from
-// linear), and every finished analysis replaces it with the speed it really had.
+// Worker count and time estimate for each load mode, shown on the cover before an analysis.
+// Both are measurements on this device, not fixed figures: a few seconds of Stockfish give the
+// nodes per second with 1, 2, 3… workers (efficiency cores make that far from linear), which picks
+// the default count (softPoolSize); every finished analysis replaces the estimate's speed with the
+// one it really had.
 import { poolSizeFor, type LoadMode } from "@/core/engine";
 
 /** Load mode selected on the cover until the user picks one. */
@@ -27,6 +28,8 @@ export interface Pace {
   cores: number;
   /** Nodes per second with N workers (keyed by N) in the short calibration. */
   calib: Record<number, number>;
+  /** Set once the calibration has gone from 1 worker up to where they slow down (calibrateRamp). */
+  ramp?: boolean;
   /** Nodes per second with N workers over a whole analysis (tails, Maia alongside, the page drawing). */
   run: Record<number, number>;
   /** Stockfish nodes per new game in this user's last analysis. */
@@ -57,8 +60,9 @@ export function npsFor(pace: Pace, workers: number): number | undefined {
 export function estimates(pace: Pace | undefined, cores: number | undefined, games: number, maiaOnCpu = false): Record<LoadMode, ModeEstimate> {
   const out = {} as Record<LoadMode, ModeEstimate>;
   for (const mode of ["soft", "full"] as LoadMode[]) {
-    const workers = poolSizeFor(mode, cores);
-    const nps = pace && pace.cores === cores ? npsFor(pace, workers) : undefined;
+    const mine = pace && pace.cores === cores ? pace : undefined;
+    const workers = poolSizeFor(mode, cores, mine?.ramp ? mine.calib : undefined);
+    const nps = mine ? npsFor(mine, workers) : undefined;
     out[mode] = { workers, secs: nps ? estimateSecs(games, nps, pace?.nodesPerGame, maiaOnCpu, workers) : undefined };
   }
   return out;
@@ -66,9 +70,16 @@ export function estimates(pace: Pace | undefined, cores: number | undefined, gam
 
 const fresh = (pace: Pace | undefined, cores: number): Pace => (pace && pace.cores === cores ? pace : { cores, calib: {}, run: {} });
 
-export function calibrated(pace: Pace | undefined, cores: number, nps: Record<number, number>): Pace {
+export function calibrated(pace: Pace | undefined, cores: number, nps: Record<number, number>, ramp = false): Pace {
   const base = fresh(pace, cores);
-  return { ...base, calib: { ...base.calib, ...nps } };
+  // A new ramp replaces the old figures: mixing two sessions would bend the curve that picks the count.
+  return { ...base, calib: ramp ? nps : { ...base.calib, ...nps }, ramp: ramp || base.ramp };
+}
+
+/** Worker count for a load mode on this device, from its calibration when there is one. */
+export function workersFor(mode: LoadMode, pace: Pace | undefined, cores: number): number {
+  const mine = pace && pace.cores === cores && pace.ramp ? pace : undefined;
+  return poolSizeFor(mode, cores, mine?.calib);
 }
 
 /** What an analysis teaches: its real speed, if enough new games were searched to trust it. */

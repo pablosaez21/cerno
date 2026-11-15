@@ -1,8 +1,9 @@
-// A short Stockfish measurement for the cover's time estimate: the nodes per second this
-// device reaches with each worker count. Same engine, node budget and one-thread-per-worker
-// setup as pass 1, about a second per count. Nothing from it reaches the analysis.
+// A short Stockfish measurement: the nodes per second this device reaches with each worker count.
+// It picks the default worker count (softPoolSize) and gives the cover's time estimate. Same engine,
+// node budget and one-thread-per-worker setup as pass 1, about half a second per count. Nothing
+// from it reaches the analysis: the report is the same with any worker count.
 import { workerTransport } from "@/core/browser";
-import { EnginePool } from "@/core/engine";
+import { EnginePool, fastWorkers } from "@/core/engine";
 
 const FENS = [
   "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
@@ -17,24 +18,30 @@ const FENS = [
 const NODES = 60_000;
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
-/** Nodes per second with each worker count, or undefined if aborted. */
-export async function calibrate(counts: number[], signal?: AbortSignal): Promise<Record<number, number> | undefined> {
-  const sizes = [...new Set(counts)].sort((a, b) => a - b);
-  const pool = new EnginePool(() => workerTransport(), sizes[sizes.length - 1]);
+/**
+ * Nodes per second with 1, 2, 3… workers, up to `max`, stopping at the first worker that adds less
+ * than FAST_SHARE of one worker's speed (the slow cores start there): the CPU is never loaded
+ * further than needed to find that point. About 4 s on an Apple M5. Undefined if aborted.
+ */
+export async function calibrateRamp(max: number, signal?: AbortSignal): Promise<Record<number, number> | undefined> {
+  const pool = new EnginePool(() => workerTransport(), Math.max(1, max));
   try {
     await pool.start();
-    // Warm-up, not measured: compile and touch memory in every worker.
-    await pool.run(range(pool.size), (i) => [{ fen: FENS[i % FENS.length], nodes: NODES, multiPv: 1 }], () => {}, signal);
     const out: Record<number, number> = {};
-    for (const n of sizes) {
-      // n tasks: only n workers get one, the rest stay idle.
-      let nodes = 0;
-      const t0 = performance.now();
-      await pool.run(range(n), (i) => FENS.map((_, j) => ({ fen: FENS[(i + j) % FENS.length], nodes: NODES, multiPv: 1 })), (_t, _r, ev) => void (nodes += ev.nodes), signal);
-      if (signal?.aborted) return undefined;
-      out[n] = Math.round(nodes / ((performance.now() - t0) / 1000));
+    for (let n = 1; n <= pool.size; n++) {
+      // Warm-up of the n workers, not measured: the newest one compiles and touches memory.
+      await pool.run(range(n), (i) => [{ fen: FENS[i % FENS.length], nodes: NODES, multiPv: 1 }], () => {}, signal);
+      // Twice, keeping the faster: another program's burst slows a measurement down, never up.
+      for (let rep = 0; rep < 2; rep++) {
+        let nodes = 0;
+        const t0 = performance.now();
+        await pool.run(range(n), (i) => FENS.map((_, j) => ({ fen: FENS[(i + j) % FENS.length], nodes: NODES, multiPv: 1 })), (_t, _r, ev) => void (nodes += ev.nodes), signal);
+        if (signal?.aborted) return undefined;
+        out[n] = Math.max(out[n] ?? 0, Math.round(nodes / ((performance.now() - t0) / 1000)));
+      }
+      if (n > 1 && fastWorkers(out)! < n) break;
     }
-    return signal?.aborted ? undefined : out;
+    return out;
   } finally {
     pool.stop();
   }

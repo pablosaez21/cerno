@@ -151,17 +151,56 @@ export class EngineRunner {
 /**
  * A fixed set of single-threaded engines. Tasks are sequences of requests run
  * on one engine in order, so consecutive positions of one game share the hash.
+ *
+ * `setLimit(n)` caps how many engines search at once, between two searches: an engine over the
+ * cap keeps its task and waits for a turn. The order of requests on each engine does not change,
+ * so the results are the same with any limit, also when it changes mid-run (pool-size.test.ts).
  */
 export class EnginePool {
   private runners: EngineRunner[] = [];
   /** Nodes searched by every run so far (for the time estimate; never read by the analysis). */
   nodes = 0;
+  private cap: number;
+  private searching = 0;
+  private waiting: (() => void)[] = [];
 
   constructor(
     private readonly createTransport: () => UciTransport,
     readonly size: number,
     private readonly hashMb = 16,
-  ) {}
+  ) {
+    this.cap = size;
+  }
+
+  /** Engines that may search at once (1..size). */
+  get limit(): number {
+    return this.cap;
+  }
+
+  setLimit(n: number): void {
+    this.cap = Math.max(1, Math.min(this.size, Math.round(n)));
+    this.wake();
+  }
+
+  private wake(): void {
+    while (this.searching < this.cap && this.waiting.length) {
+      this.searching++;
+      this.waiting.shift()!();
+    }
+  }
+
+  private acquire(): Promise<void> {
+    if (this.searching < this.cap) {
+      this.searching++;
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => this.waiting.push(resolve));
+  }
+
+  private release(): void {
+    this.searching--;
+    this.wake();
+  }
 
   async start(): Promise<void> {
     this.runners = await Promise.all(
@@ -188,7 +227,13 @@ export class EnginePool {
         await runner.newGame();
         for (const req of requestsOf(task)) {
           if (signal?.aborted) return;
-          const ev = await runner.analyse(req);
+          await this.acquire();
+          let ev: PositionEval;
+          try {
+            ev = await runner.analyse(req);
+          } finally {
+            this.release();
+          }
           this.nodes += ev.nodes;
           await onResult(task, req, ev);
         }
@@ -210,15 +255,54 @@ export function defaultPoolSize(cores: number | undefined, cap = 12): number {
 }
 
 /**
- * How hard the analysis loads the computer. "full" is all cores but one; "soft" uses half,
- * so the rest stay free for the user's other work. The report is the same in both
- * (fixed nodes, one thread per engine, `ucinewgame` per task: see pool-size.test.ts).
+ * How hard the analysis loads the computer. "soft", the default, is the count measured on this
+ * device by `softPoolSize`; "full" is all cores but one, for a computer left alone. The report is
+ * the same in both (fixed nodes, one thread per engine, `ucinewgame` per task: see pool-size.test.ts).
  */
 export type LoadMode = "soft" | "full";
 
-export function poolSizeFor(mode: LoadMode, cores: number | undefined, cap = 12): number {
-  const full = defaultPoolSize(cores, cap);
-  if (mode === "full") return full;
+/**
+ * A worker is "fast" while adding it adds at least this share of what one worker alone reaches.
+ * Past that point the extra workers land on slower cores (efficiency cores, the second thread of a
+ * core), which a page cannot see any other way. Measured on an Apple M5 (4 fast + 6 efficiency
+ * cores), Chromium, ten calibrations: the 2nd, 3rd and 4th workers added 0.89–1.01, 0.79–0.90 and
+ * 0.53–0.75 of one worker; the 5th 0.19–0.49 (and the 6th to 9th 0.02–0.49 in four full curves).
+ * A share of each worker's own speed (0.76–0.81 with 5) did not separate them.
+ */
+export const FAST_SHARE = 0.5;
+
+/** Fast workers in a calibration (nodes per second keyed by worker count): from 1 up, while each
+ *  added worker adds FAST_SHARE of one worker's speed. One worker's speed is at least half of two's
+ *  (a lone measurement slowed by another program would make every later worker look fast).
+ *  Undefined without the one-worker figure. */
+export function fastWorkers(calib: Record<number, number>): number | undefined {
+  if (!calib[1]) return undefined;
+  const one = Math.max(calib[1], (calib[2] ?? 0) / 2);
+  let fast = 1;
+  for (let n = 2; calib[n]; n++) {
+    if (calib[n] - calib[n - 1] < FAST_SHARE * one) break;
+    fast = n;
+  }
+  return fast;
+}
+
+/**
+ * The default ("soft") worker count: one less than the fast workers, so a fast core stays free for
+ * the rest of the computer, but never less than a third of the cores nor more than half. The floor
+ * is there because the calibration also measures heat: on an Apple M5 it found 4 fast workers cold
+ * and 3 after 20 minutes of analysis (the 4th then added 0.3–0.5 of one), and a figure measured hot
+ * would be kept. A third of the cores is 3 on the M5, the count measured without stalls or CPU
+ * pressure over 100 games; the calibration only raises it, on machines with more fast cores.
+ */
+export function softPoolSize(cores: number | undefined, calib?: Record<number, number>, cap = 12): number {
   const c = cores && cores > 0 ? cores : 4;
-  return Math.max(1, Math.min(full, Math.floor(c / 2)));
+  const full = defaultPoolSize(c, cap);
+  const fast = calib ? fastWorkers(calib) : undefined;
+  const third = Math.floor(c / 3);
+  const n = fast !== undefined ? Math.max(fast - 1, third) : third;
+  return Math.max(1, Math.min(full, Math.floor(c / 2), n));
+}
+
+export function poolSizeFor(mode: LoadMode, cores: number | undefined, calib?: Record<number, number>, cap = 12): number {
+  return mode === "full" ? defaultPoolSize(cores, cap) : softPoolSize(cores, calib, cap);
 }
