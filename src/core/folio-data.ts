@@ -6,6 +6,7 @@
 // only here, every Elo the interface shows is put on the scale of the games' source
 // (`shownElo`): fields named `elo` are shown, fields named `maiaElo*` are Maia's.
 import type { AnalyzedGame } from "./analyze";
+import { explainMove } from "./explain";
 import { eloScale, shownElo, type EloScale, type EloSource } from "./level";
 import { sanLine, type ErrorRow, type Report } from "./report";
 import type { MaiaPrediction } from "./maia";
@@ -73,6 +74,7 @@ export interface FolioPosition {
   bestLineUci: string[];
   refutation?: string[];
   refutationUci?: string[];
+  explanation?: ErrorRow["explanation"];
   winBefore: number;
   winAfter: number;
   loss: number;
@@ -170,6 +172,7 @@ function slimError(e: ErrorRow, source: EloSource): FolioPosition {
     timeSpent: e.timeSpent,
     opening: e.opening,
     timeClass: e.timeClass,
+    explanation: e.explanation,
   };
   if (e.refutation.uci.length) {
     out.refutation = e.refutation.san.slice(0, 8);
@@ -180,6 +183,22 @@ function slimError(e: ErrorRow, source: EloSource): FolioPosition {
   if (e.outOfScope) out.outOfScope = e.outOfScope;
   if (e.peer) out.peer = folioPeer(e.peer, source);
   return out;
+}
+
+/** Old saved studies gain phase-1 explanations on opening, without engine work.
+ * Their shorter stored lines may support fewer facts. Probes arrive on the next
+ * analysis; the original Stockfish and Maia caches remain valid. */
+export function withStoredExplanations(data: FolioData): FolioData {
+  if (data.errors.every((e) => e.explanation)) return data;
+  const errors = data.errors.map((e) => e.explanation ? e : { ...e, explanation: explainMove({
+    fen: e.fen, color: e.color, played: e.played.uci,
+    bestLine: e.bestLineUci, refutation: e.refutationUci ?? [], tactic: e.tactic,
+  }) });
+  const byKey = new Map(errors.map((e) => [`${e.gameId}#${e.ply}`, e.explanation]));
+  const exercises = Object.fromEntries(Object.entries(data.exercises).map(([category, list]) => [category,
+    list.map((e) => e.explanation ? e : { ...e, explanation: byKey.get(`${e.gameId}#${e.ply}`) }),
+  ])) as FolioData["exercises"];
+  return { ...data, errors, exercises };
 }
 
 /** A referenced position that pass 2 did not judge: built from pass 1 (and the peer record when there is one). */

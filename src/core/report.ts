@@ -16,6 +16,7 @@ import {
 } from "./classify";
 import type { EndgameType, Phase } from "./phase";
 import { settledBalance, type Motif, type TacticTag } from "./tactics";
+import { explainMove, type MoveExplanation } from "./explain";
 import { CHESSCOM_TO_LICHESS_OFFSET, type OutOfScope } from "./level";
 import type { Decision } from "./peers";
 import { STYLE_ATTRIBUTES } from "./style";
@@ -231,6 +232,7 @@ export interface Exercise {
   played: { uci: string; san: string };
   /** Solution line from the engine; the first move is the answer. */
   solution: { uci: string[]; san: string[] };
+  explanation?: MoveExplanation;
   loss: number;
   tags: string[];
   level?: LevelTag;
@@ -246,6 +248,7 @@ export interface ErrorRow {
   best?: { uci: string; san: string };
   bestLine: { uci: string[]; san: string[] };
   refutation: { uci: string[]; san: string[] };
+  explanation?: MoveExplanation;
   winBefore: number;
   winAfter: number;
   loss: number;
@@ -747,6 +750,12 @@ export function buildReport(
   const byAvoidable = peers ? [...findings].filter((f) => f.level).sort((a, b) => b.level!.avoidableLoss - a.level!.avoidableLoss) : undefined;
 
   // ---- Exercises
+  const analyzedById = new Map(analyzed.map((g) => [g.game.id, g]));
+  const explanations = new Map(judged.map((m) => [m, explainMove({
+    fen: m.fenBefore, color: m.color, played: m.played.uci,
+    bestLine: m.bestLine, refutation: m.refutation, tactic: m.tactic,
+    probes: analyzedById.get(m.gameId)?.deep[m.ply]?.explanation,
+  })]));
   const exercises = Object.fromEntries(CATEGORIES.map((c) => [c, [] as Exercise[]])) as Record<Category, Exercise[]>;
   // With Maia: ordered by the loss players 200 Elo higher avoid (loss x pGood at +200);
   // without it, by loss.
@@ -766,6 +775,7 @@ export function buildReport(
       orientation: m.color,
       played: m.played,
       solution: { uci, san: sanLine(m.fenBefore, uci) },
+      explanation: explanations.get(m),
       loss: round(m.loss, 1),
       tags: [...(m.tactic ? [m.tactic.tag, ...m.tactic.motifs] : []), ...(m.endgameType ? [`endgame_${m.endgameType}`] : []), ...m.clockTags],
       level: peerOf(m)?.level,
@@ -785,6 +795,7 @@ export function buildReport(
       best: m.best,
       bestLine: { uci: m.bestLine, san: sanLine(m.fenBefore, m.bestLine) },
       refutation: { uci: m.refutation, san: sanLine(afterFen(m), m.refutation) },
+      explanation: explanations.get(m),
       winBefore: round(m.winBefore, 1),
       winAfter: round(m.winAfter, 1),
       loss: round(m.loss, 1),

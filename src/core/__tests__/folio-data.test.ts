@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AnalyzedGame } from "../analyze";
-import { buildFolioData, eloLadder, LADDER_MAIA_ELOS, ladderTargets } from "../folio-data";
+import { buildFolioData, eloLadder, LADDER_MAIA_ELOS, ladderTargets, withStoredExplanations } from "../folio-data";
 import { parseGameMoves } from "../game";
 import type { MaiaPrediction } from "../maia";
 import type { MaiaQuery } from "../maia-ort";
@@ -63,11 +63,25 @@ describe("buildFolioData", () => {
     const e = data.errors.find((x) => x.gameId === "C")!;
     expect(e.bestLineUci).toEqual(["d2d4"]);
     expect(e.refutationUci?.[0]).toBe("d8d5");
+    expect(e.explanation).toBe(report.errors.find((e) => e.gameId === "C")!.explanation);
     // Maia was asked at 1810 (Lichess); the interface shows the Chess.com rating, 360 lower.
     expect(e.peer).toMatchObject({ elo: 1450, maiaEloSelf: 1810, maiaEloOppo: 1820, level: undefined });
     expect(e.peer).not.toHaveProperty("eloSelf");
     expect(e.peer?.pGood).toBeCloseTo(0.6 / 0.95, 3);
     expect(data.eloScale).toEqual({ shown: "chesscom", maiaOffset: 360, maiaOffsetCi95: [313, 399], measuredAt: 1453 });
+  });
+
+  it("backfills old saved studies without engine work and keeps existing explanations", () => {
+    const old = structuredClone(data);
+    for (const e of old.errors) delete e.explanation;
+    for (const xs of Object.values(old.exercises)) for (const e of xs) delete e.explanation;
+    const upgraded = withStoredExplanations(old);
+    const e = upgraded.errors.find((e) => e.gameId === "C")!;
+    expect(e.explanation?.played.facts).toContainEqual(expect.objectContaining({ kind: "hanging", role: "knight" }));
+    expect(upgraded.exercises.tactics.find((e) => e.gameId === "C")!.explanation).toBe(e.explanation);
+    expect(old.errors[0].explanation).toBeUndefined();
+    expect(upgraded.profile).toEqual(old.profile);
+    expect(withStoredExplanations(upgraded)).toBe(upgraded);
   });
 
   it("leaves Lichess and PGN ratings as they are", () => {

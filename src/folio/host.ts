@@ -3,7 +3,7 @@
 // `window.CernoApp`: start an analysis, follow its progress, open the result.
 import { DEFAULT_SETTINGS } from "@/core/analyze";
 import { IdbCache } from "@/core/browser";
-import { buildFolioData, FOLIO_DATA_VERSION, ladderTargets, type FolioData, type FolioElo } from "@/core/folio-data";
+import { buildFolioData, FOLIO_DATA_VERSION, ladderTargets, withStoredExplanations, type FolioData, type FolioElo } from "@/core/folio-data";
 import { buildReport, type Report } from "@/core/report";
 import type { AnalyzedGame } from "@/core/analyze";
 import type { TimeClass } from "@/core/types";
@@ -111,7 +111,7 @@ export async function readStudy(): Promise<SavedStudy | undefined> {
 export async function bootFolio(base = "folio/"): Promise<void> {
   const w = window as unknown as Record<string, unknown>;
   const saved = await readStudy();
-  w.CERNO_DATA = saved?.data ?? null;
+  w.CERNO_DATA = saved ? withStoredExplanations(saved.data) : null;
   w.CERNO_ELO = saved?.elo ?? EMPTY_ELO;
   w.CernoApp = createApp();
   for (const s of FOLIO_SCRIPTS) await loadScript(base + s);
