@@ -22,6 +22,16 @@ await build({
   logLevel: "warning",
   minify: true,
 });
+// The wait screen's live findings, off the page's thread (src/folio/findings-worker.ts).
+await build({
+  entryPoints: ["src/folio/findings-worker.ts"],
+  bundle: true,
+  format: "esm",
+  target: "es2022",
+  outfile: "public/findings-worker.js",
+  logLevel: "warning",
+  minify: true,
+});
 
 const MODELS = {
   "maia3-5m.onnx": "26c8e5ac570b008abe91fa5744de533a45658baa2e8ad1cf57f1ed2543b887b6",

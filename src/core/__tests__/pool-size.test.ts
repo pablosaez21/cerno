@@ -1,7 +1,8 @@
-// The load modes change only how many Stockfish workers run. This checks, with the real engine
-// (Stockfish WASM in worker_threads, no network), that the analysis and the report are the same
-// with 1 worker and with several: nodes are fixed, each engine is single-threaded, and every task
-// starts with `ucinewgame`, so no result depends on which worker ran it or when.
+// The load modes and the pressure brake change only how many Stockfish workers run. This checks,
+// with the real engine (Stockfish WASM in worker_threads, no network), that the analysis and the
+// report are the same with 1 worker, with several, and with several whose limit changes mid-run:
+// nodes are fixed, each engine is single-threaded, and every task starts with `ucinewgame`, so no
+// result depends on which worker ran it or when.
 import { describe, expect, it } from "vitest";
 import { nodeTransport } from "../../../scripts/node-engine";
 import { analyzeGames, DEFAULT_SETTINGS, type AnalyzedGame } from "../analyze";
@@ -31,16 +32,20 @@ const firstMoves = async (qs: { fens: string[] }[]): Promise<MaiaPrediction[]> =
     return { policy: Object.fromEntries(legal.map((m, i) => [m.uci, [0.6, 0.3, 0.1][i] ?? 0])), wdl: [0.3, 0.1, 0.6] };
   });
 
-async function run(workers: number) {
+async function run(workers: number, opts: { flip?: boolean } = {}) {
   const pool = new EnginePool(() => nodeTransport(), workers);
   await pool.start();
+  // The brake: the limit goes 1, 2, …, workers and back every few milliseconds, mid-search.
+  let k = 0;
+  const flip = opts.flip ? setInterval(() => pool.setLimit((k++ % workers) + 1), 15) : undefined;
   try {
     const analyzed: AnalyzedGame[] = await analyzeGames(GAMES, { pool, settings: DEFAULT_SETTINGS });
     const skeletons = await predictPeers(analyzed, { predict: firstMoves });
     const decisions = await evaluatePeers(skeletons, analyzed, { pool, settings: DEFAULT_SETTINGS });
     const report = buildReport(analyzed, "p", DEFAULT_SETTINGS, { decisions, model: "fixed", mode: "full" });
-    return { analyzed, decisions, report };
+    return { analyzed, decisions, report, flips: k };
   } finally {
+    if (flip) clearInterval(flip);
     pool.stop();
   }
 }
@@ -55,5 +60,14 @@ describe("worker count", () => {
     expect(three.analyzed).toEqual(one.analyzed);
     expect(three.decisions).toEqual(one.decisions);
     expect(three.report).toEqual(one.report);
+  }, 180_000);
+
+  it("gives the same with 3 workers whose limit changes mid-run", async () => {
+    const one = await run(1);
+    const braked = await run(3, { flip: true });
+    expect(braked.flips).toBeGreaterThan(20);
+    expect(braked.analyzed).toEqual(one.analyzed);
+    expect(braked.decisions).toEqual(one.decisions);
+    expect(braked.report).toEqual(one.report);
   }, 180_000);
 });

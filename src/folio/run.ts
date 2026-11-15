@@ -15,6 +15,11 @@ import { eloLadder, type FolioElo } from "@/core/folio-data";
 import { fetchChesscomGames, fetchLichessGames, readPgnFile } from "@/core/sources";
 import type { GameRecord, TimeClass } from "@/core/types";
 
+/** Maia queries per GPU or WASM call. Part of the result, not only of the speed: the same queries in
+ *  batches of 64 or 32 give other probabilities (all 3,000 of a sample differed, by up to 0.005, on
+ *  WebGPU, Apple M5), so changing it changes the report. */
+export const MAIA_BATCH = 256;
+
 /** Bump when the decision record changes. */
 export const PEER_VERSION = 1;
 
@@ -28,6 +33,8 @@ export interface RunInput {
   max: number;
   timeClasses: TimeClass[];
   workers?: number;
+  /** The engine pool once it exists, to change how many engines search at once (the brake). */
+  onPool?: (pool: EnginePool) => void;
   /** Run Maia-3. Default true. */
   level?: boolean;
   /** The games to analyse, once downloaded (for live views). */
@@ -80,6 +87,7 @@ export async function runAnalysis(
   const t0 = performance.now();
   const workers = input.workers ?? defaultPoolSize(navigator.hardwareConcurrency);
   const pool = new EnginePool(() => workerTransport(), workers);
+  input.onPool?.(pool);
   const model = MAIA_MODELS["maia3-5m"];
   // Engines and model start while the games download.
   const poolReady = pool.start();
@@ -112,7 +120,7 @@ export async function runAnalysis(
     let maiaMs: number | undefined;
     const runMaia = async (gs: AnalyzedGame[]): Promise<PeerSkeleton[]> => {
       const tm = performance.now();
-      const sk = await predictPeers(gs, { predict: (q) => client!.predict(q), batchSize: 256, onProgress, signal });
+      const sk = await predictPeers(gs, { predict: (q) => client!.predict(q), batchSize: MAIA_BATCH, onProgress, signal });
       maiaMs = Math.round(performance.now() - tm);
       return sk;
     };

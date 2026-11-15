@@ -7,10 +7,13 @@ import { buildFolioData, FOLIO_DATA_VERSION, ladderTargets, type FolioData, type
 import { buildReport, type Report } from "@/core/report";
 import type { AnalyzedGame } from "@/core/analyze";
 import type { TimeClass } from "@/core/types";
-import { poolSizeFor, type LoadMode } from "@/core/engine";
-import { calibrate } from "./calibrate";
+import { defaultPoolSize, type EnginePool, type LoadMode } from "@/core/engine";
+import { calibrateRamp } from "./calibrate";
+import { Diag } from "./diag";
+import type { FindingsIn, FindingsOut } from "./findings-worker";
 import { liveCurve, liveDone, type LiveGame } from "./live";
-import { calibrated, DEFAULT_LOAD, estimates, formatSecs, learn, type Pace } from "./pace";
+import { calibrated, DEFAULT_LOAD, estimates, formatSecs, learn, workersFor, type Pace } from "./pace";
+import { hasPressure, watchPressure } from "./pressure";
 import { runAnalysis, type RunProgress, type SourceInput } from "./run";
 
 export const FOLIO_KEY = "folio";
@@ -38,6 +41,8 @@ export interface LiveState {
   error?: string;
   /** Stockfish workers in use, and the load mode that chose them. */
   workers?: number;
+  /** Engines searching at once when the brake has taken some away (CPU pressure). */
+  limit?: number;
   load?: LoadMode;
   /** Game ids in the order played (oldest first): one square each on the wait's grid. */
   grid?: string[];
@@ -58,6 +63,8 @@ export interface StartInput {
   load?: LoadMode;
   /** Run Maia-3 (default true). Not offered in the interface: for measurements. */
   level?: boolean;
+  /** For measurements: brake off. */
+  brake?: boolean;
 }
 
 const PACE_KEY = "cerno.pace";
@@ -117,6 +124,7 @@ function createApp() {
   const listeners = new Set<() => void>();
   let abort: AbortController | undefined;
   let calibrating: { abort: AbortController; done: Promise<boolean> } | undefined;
+  let diag: Diag | undefined;
   const cores = () => navigator.hardwareConcurrency || 0;
   const live: LiveState = { status: "idle", startedAt: 0, progress: 0, stages: {}, byId: {} };
   const emit = () => listeners.forEach((fn) => fn());
@@ -180,17 +188,62 @@ function createApp() {
     // A calibration still running would share the processor with the analysis: drop it.
     calibrating?.abort.abort();
     const load = input.load ?? DEFAULT_LOAD;
-    const workers = poolSizeFor(load, navigator.hardwareConcurrency);
-    Object.assign(live, { status: "running", user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined, workers: undefined, load, grid: undefined, byId: {}, findings: undefined, final: undefined });
-    // Findings of the finished games, rebuilt now and then: the report is pure, no engine work, but it
-    // runs on the page's thread and grows with the games (up to ~350 ms at 100 games, measured), so
-    // the pause between rebuilds grows with it and the page stays responsive.
+    const workers = workersFor(load, readPace(), cores());
+    Object.assign(live, { status: "running", user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined, workers: undefined, limit: undefined, load, grid: undefined, byId: {}, findings: undefined, final: undefined });
+    diag?.stop();
+    lastTimings = undefined;
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    const runDiag = (diag = new Diag({ userAgent: nav.userAgent, cores: cores(), memoryGb: nav.deviceMemory, load, workers, pressureApi: hasPressure() }, phaseNow));
+    runDiag.start();
+    let pool: EnginePool | undefined;
+    // The brake only in the default mode: "full" is for a computer left alone.
+    const unwatch = watchPressure({
+      max: load === "soft" && input.brake !== false ? workers : undefined,
+      onState: (s) => runDiag.pressureState(s),
+      onLimit: (n) => {
+        pool?.setLimit(n);
+        runDiag.limit(n);
+        live.limit = n < workers ? n : undefined;
+        emit();
+      },
+    });
+    // Findings of the finished games, rebuilt now and then in a worker (findings-worker.ts): on the
+    // page's thread the rebuild took up to ~210 ms at 100 games, a stall every few seconds of pass 2.
+    // Without the worker, the same rebuild runs here, spaced by 25 times what it took.
     const complete: AnalyzedGame[] = [];
     let rebuild: ReturnType<typeof setTimeout> | undefined;
     let rebuildEvery = 2000;
+    let fw: Worker | undefined;
+    try {
+      fw = new Worker("/findings-worker.js", { type: "module" });
+    } catch {
+      fw = undefined;
+    }
+    let fwBusy = false;
+    let fwId = 0;
+    if (fw) {
+      fw.onmessage = (e: MessageEvent<FindingsOut>) => {
+        fwBusy = false;
+        if (e.data.id !== fwId || live.status !== "running") return;
+        if (e.data.findings) live.findings = e.data.findings;
+        emit();
+      };
+      fw.onerror = () => {
+        fw?.terminate();
+        fw = undefined;
+        fwBusy = false;
+      };
+    }
     const rebuildFindings = () => {
       rebuild = undefined;
       if (live.status !== "running" || !complete.length) return;
+      if (fw) {
+        if (!fwBusy) {
+          fwBusy = true;
+          fw.postMessage({ type: "build", id: ++fwId, user: input.user } satisfies FindingsIn);
+        }
+        return;
+      }
       const t0 = performance.now();
       try {
         live.findings = buildFolioData(buildReport(complete, input.user, DEFAULT_SETTINGS), complete, []).findings;
@@ -214,8 +267,10 @@ function createApp() {
           timeClasses: input.timeClasses as TimeClass[],
           workers,
           level: input.level,
+          onPool: (p) => (pool = p),
           onGames: (games, workers) => {
             live.workers = workers;
+            runDiag.info.games = games.length;
             // fetched newest first, numbered in the order played
             games.forEach((g, i) => (live.byId[g.id] = { id: g.id, no: games.length - i, result: g.result, state: "q" }));
             live.grid = games.map((g) => g.id).reverse();
@@ -228,6 +283,7 @@ function createApp() {
             else {
               Object.assign(lg, liveDone(game), { state: "d" });
               complete.push(game);
+              fw?.postMessage({ type: "game", game } satisfies FindingsIn);
               rebuild ??= setTimeout(rebuildFindings, rebuildEvery);
             }
             emit();
@@ -239,9 +295,13 @@ function createApp() {
             return ladderTargets(data);
           },
         },
-        onProgress,
+        (p) => {
+          if (p.phase === "maia-download" && p.backend) runDiag.info.backend = p.backend;
+          onProgress(p);
+        },
         abort.signal,
       );
+      lastTimings = res.timings;
       if (!res.analyzed.length) throw new Error(input.src === "pgn" ? "No hay partidas legibles en ese PGN." : "No hay partidas con esos filtros.");
       finishBefore("book");
       set("book", "run");
@@ -268,9 +328,18 @@ function createApp() {
       live.endedAt = Date.now();
       live.error = e instanceof DOMException && e.name === "AbortError" ? "Cancelado." : e instanceof Error ? e.message : String(e);
     }
+    fw?.terminate();
+    unwatch();
+    runDiag.stop();
     recompute();
     emit();
   }
+  let lastTimings: object | undefined;
+  // What is running now, for the diagnostic: the stages in "run", joined ("pass1+maia").
+  const phaseNow = () => {
+    if (live.status !== "running") return live.status;
+    return ["fetch", "model", "pass1", "pass2", "maia", "cand", "ladder", "book"].filter((k) => live.stages[k]?.state === "run").join("+") || "start";
+  };
 
   return {
     live,
@@ -284,30 +353,39 @@ function createApp() {
     cancel() {
       abort?.abort();
     },
-    /** Workers and estimated time per load mode for n new games; secs is undefined until measured. */
+    /** Workers per load mode for n new games, and the time estimate of the default one (none for
+     *  "full": it is not a faster option to pick, it is for a computer left alone). */
     loads(n: number) {
       const est = estimates(readPace(), cores(), n, !("gpu" in navigator));
-      const show = (m: LoadMode) => ({ ...est[m], text: est[m].secs === undefined ? "" : formatSecs(est[m].secs!) });
-      return { initial: DEFAULT_LOAD, soft: show("soft"), full: show("full") };
+      return {
+        initial: DEFAULT_LOAD,
+        soft: { ...est.soft, text: est.soft.secs === undefined ? "" : formatSecs(est.soft.secs) },
+        full: { ...est.full, text: "" },
+      };
     },
-    /** Measures this device once (about 2 s of Stockfish). Resolves true when new figures were stored. */
+    /** Measures this device once (a few seconds of Stockfish, 1, 2, 3… workers until they slow down).
+     *  Resolves true when new figures were stored. */
     calibrate(): Promise<boolean> {
-      const counts = (["soft", "full"] as LoadMode[]).map((m) => poolSizeFor(m, navigator.hardwareConcurrency));
       const pace = readPace();
-      if (pace && pace.cores === cores() && counts.every((c) => pace.calib[c])) return Promise.resolve(false);
+      if (pace && pace.cores === cores() && pace.ramp) return Promise.resolve(false);
       if (live.status === "running") return Promise.resolve(false);
       if (calibrating) return calibrating.done;
       const ctl = new AbortController();
-      const done = calibrate(counts, ctl.signal)
+      const done = calibrateRamp(defaultPoolSize(cores()), ctl.signal)
         .then((nps) => {
           if (!nps) return false;
-          savePace(calibrated(readPace(), cores(), nps));
+          savePace(calibrated(readPace(), cores(), nps, true));
           return true;
         })
         .catch(() => false)
         .finally(() => (calibrating = undefined));
       calibrating = { abort: ctl, done };
       return done;
+    },
+    /** The last analysis on this device, as text for the clipboard. Nothing is sent anywhere. */
+    diagnostic(): string {
+      if (!diag) return "";
+      return diag.text({ status: live.status, error: live.error, timings: lastTimings });
     },
     /** Reload so every script starts again from the new study. */
     openStudy() {
