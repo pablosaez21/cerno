@@ -135,6 +135,20 @@
     clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("in"), 1800);
   };
 
+  /* ---------- confirm: one sentence, two buttons, in the export sheet's window ---------- */
+  // Resolves true for `yes`; false for `no`, Escape or a click outside.
+  F.confirmSheet = ({ text, yes, no }) => new Promise((resolve) => {
+    const dlg = document.createElement("dialog");
+    dlg.className = "xp xp-ask";
+    dlg.setAttribute("aria-labelledby", "xp-ask-t");
+    dlg.innerHTML = `<form method="dialog" class="xp-in"><p class="xp-q" id="xp-ask-t">${text}</p>
+      <div class="xp-opts"><button class="xp-o" value="no" autofocus>${no}</button><button class="xp-o" value="yes">${yes}</button></div></form>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close("no"); });
+    dlg.addEventListener("close", () => { resolve(dlg.returnValue === "yes"); dlg.remove(); });
+    dlg.showModal();
+  });
+
   /* ---------- hand-drawn ring for UI words ---------- */
   F.ringSvg = (seed = 1) => {
     let h = seed * 9301 + 49297;

@@ -239,27 +239,31 @@
   async function exportPdf(onProgress) {
     if (building) return;
     building = true;
-    const html = document.documentElement;
-    const theme = html.getAttribute("data-theme"), title = document.title;
+    // The book carries its own paper colours (styles.css, #pv-book): the page keeps its theme.
+    const title = document.title;
     try {
-      html.setAttribute("data-theme", "light"); // paper, never night, on a printed page
       const n = await buildPdf(onProgress);
       const root = document.getElementById("pv-book");
       await whenReady(root);
       onProgress(n);
+      // Cleaned up on "afterprint", or when the print media query stops matching (a second
+      // signal for browsers that do not send the event); whichever comes first.
+      const mq = window.matchMedia ? window.matchMedia("print") : null;
+      let printed = false;
+      const onMq = (e) => { if (e.matches) printed = true; else if (printed) done(); };
       const done = () => {
         window.removeEventListener("afterprint", done);
+        if (mq && mq.removeEventListener) mq.removeEventListener("change", onMq);
         document.body.classList.remove("pv-printing");
-        if (theme == null) html.removeAttribute("data-theme"); else html.setAttribute("data-theme", theme);
         document.title = title;
         root.remove();
       };
       document.title = fileBase();
       document.body.classList.add("pv-printing");
       window.addEventListener("afterprint", done);
+      if (mq && mq.addEventListener) mq.addEventListener("change", onMq);
       window.print();
     } catch (e) {
-      if (theme == null) html.removeAttribute("data-theme"); else html.setAttribute("data-theme", theme);
       document.title = title;
       throw e;
     } finally {
