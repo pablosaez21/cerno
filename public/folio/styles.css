@@ -1,7 +1,9 @@
 /* Cerno-Folio. A chess book typeset in the browser.
  * Paper and ink, one red pencil. Radius 0. Hairlines. Motion: quiet, bookish. */
 
-:root {
+/* The print book (#pv-book, export.js) declares the paper tokens itself: a PDF is always paper,
+ * whatever theme the page is in, and the page never changes theme to print it. */
+:root, #pv-book {
   /* hueso B: warm bone paper (#f5efe3 / #efe7da / #e6ded0) */
   --paper: #f5efe3;
   --paper-2: #efe7da;
@@ -855,10 +857,10 @@ html.rm .ascii .c { transition: opacity 200ms; } html.rm .ascii.sifting .c.ink {
   .sift .counters { margin-top: 12px; }
 }
 /* night: the printed hatch would swallow black pieces, so the board becomes a cool, low-chroma two-tone */
-:root[data-theme="dark"][data-board="print"] .cb { background: none; --cb-light: oklch(0.74 0.012 250); --cb-dark: oklch(0.55 0.02 252); }
-:root[data-theme="dark"][data-board="print"] .cb-sq.d { background: var(--cb-dark); }
-:root[data-theme="dark"] .cb { --cb-hl-last: oklch(0.69 0.165 27 / 0.22); }
-:root[data-theme="dark"] .dia-board { box-shadow: 0 0 0 1px var(--ink-3), 0 0 0 3px var(--paper), 0 0 0 4.5px var(--ink-3); }
+:root[data-theme="dark"][data-board="print"] .cb:not(#pv-book *) { background: none; --cb-light: oklch(0.74 0.012 250); --cb-dark: oklch(0.55 0.02 252); }
+:root[data-theme="dark"][data-board="print"] .cb-sq.d:not(#pv-book *) { background: var(--cb-dark); }
+:root[data-theme="dark"] .cb:not(#pv-book *) { --cb-hl-last: oklch(0.69 0.165 27 / 0.22); }
+:root[data-theme="dark"] .dia-board:not(#pv-book *) { box-shadow: 0 0 0 1px var(--ink-3), 0 0 0 3px var(--paper), 0 0 0 4.5px var(--ink-3); }
 @media (max-width: 999.98px) { .sift { grid-template-columns: minmax(0, 1fr) 98px; } }
 
 /* =================== Motion =================== */
@@ -985,7 +987,7 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 /* =================== Export: the book on A4 landscape sheets (export.js) =================== */
 /* One sheet = one desktop spread. The rules below repeat the desktop layout under .pv-page so a sheet
  * looks the same whatever the window was when it was laid out (export.js measures on screen). */
-#pv-book { position: absolute; left: -40000px; top: 0; width: 297mm; pointer-events: none; }
+#pv-book { position: absolute; left: -40000px; top: 0; width: 297mm; pointer-events: none; color: var(--ink); background: var(--paper); }
 .pv-stage { position: absolute; left: -40000px; top: 0; width: 267mm; }
 .pv-page {
   width: 297mm; height: 209.8mm; overflow: hidden; display: flex; flex-direction: column;
@@ -1053,6 +1055,8 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 @page { size: A4 landscape; margin: 0; }
 @media print {
   html, body { background: var(--paper) !important; padding: 0 !important; margin: 0 !important; }
+  /* printing the book: paper behind it too, also in the dark theme */
+  html:has(body.pv-printing), body.pv-printing { background: #f5efe3 !important; color-scheme: light; }
   body.pv-printing > :not(#pv-book) { display: none !important; }
   body.pv-printing #pv-book { position: static; left: auto; width: auto; }
   .pv-page { break-after: page; page-break-after: always; }
@@ -1071,4 +1075,6 @@ dialog.xp::backdrop { background: oklch(0.21 0.012 260 / 0.35); }
 .xp-o:disabled { opacity: .5; cursor: progress; }
 @media (hover: hover) { .xp-o:hover:not(:disabled) { background: var(--paper-2); } }
 .xp-st { margin-top: 12px; min-height: 1.3em; }
+.xp-q { font: 400 20px/1.35 var(--serif); text-wrap: pretty; }
+.xp-ask .xp-o { font-size: 20px; min-height: 56px; }
 .runhead .xbtn, .rb-foot .xbtn { appearance: none; border: 0; background: none; cursor: pointer; font: 500 13px var(--sans); color: var(--ink-2); min-height: 44px; padding: 0 8px; }

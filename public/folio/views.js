@@ -83,7 +83,14 @@
         // Estimates follow the game count, and appear once this device has been measured.
         const showEst = () => { const l = window.CernoApp.loads(st.n); root.querySelectorAll("[data-est]").forEach((e) => (e.textContent = l[e.dataset.est].text)); };
         F.picker(root.querySelector("[data-pick]"), (v) => { st.n = v; showEst(); });
-        root.querySelectorAll("[data-load]").forEach((b) => b.addEventListener("click", () => { F._loadChanged = !F.reduced(); F._srcChanged = false; st.load = b.dataset.load; F._keepScroll = true; F.render(); }));
+        const setLoad = (k) => { F._loadChanged = !F.reduced(); F._srcChanged = false; st.load = k; F._keepScroll = true; F.render(); };
+        // "Flat out" is asked every time: it is never remembered, and the computer suffers for it.
+        root.querySelectorAll("[data-load]").forEach((b) => b.addEventListener("click", async () => {
+          const k = b.dataset.load;
+          if (k === st.load) return;
+          if (k === "full" && !(await F.confirmSheet({ text: t("cover.full.warn"), yes: t("cover.full.yes"), no: t("cover.full.no") }))) return;
+          setLoad(k);
+        }));
         if (root.querySelector("[data-est]")) window.CernoApp.calibrate().then((fresh) => fresh && root.isConnected && showEst());
         form.addEventListener("input", () => { st.user = form.user ? form.user.value : st.user; form.querySelectorAll("[name=tc]").forEach((c) => (st.tc[c.value] = c.checked)); });
         const retry = root.querySelector("[data-retry]");
