@@ -981,3 +981,94 @@ html.theming, html.theming *, html.theming *::before, html.theming *::after {
 .madlib .loadrow .paren button { font-size: 19px; }
 .paren .est { margin-left: .4em; font: italic 400 .8em var(--serif); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .paren .est:empty { display: none; }
+
+/* =================== Export: the book on A4 landscape sheets (export.js) =================== */
+/* One sheet = one desktop spread. The rules below repeat the desktop layout under .pv-page so a sheet
+ * looks the same whatever the window was when it was laid out (export.js measures on screen). */
+#pv-book { position: absolute; left: -40000px; top: 0; width: 297mm; pointer-events: none; }
+.pv-stage { position: absolute; left: -40000px; top: 0; width: 267mm; }
+.pv-page {
+  width: 297mm; height: 209.8mm; overflow: hidden; display: flex; flex-direction: column;
+  padding: 9mm 15mm 7mm; background: var(--paper); color: var(--ink); font-size: 18px; position: relative;
+}
+.pv-page, .pv-page *, .pv-stage, .pv-stage * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.pv-head, .pv-foot {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 24px; flex: none;
+  font-variant-caps: all-small-caps; letter-spacing: .07em; font-size: 14.5px; color: var(--ink-2); font-variant-numeric: lining-nums;
+}
+.pv-head { border-bottom: 1px solid var(--rule); padding-bottom: 6px; margin-bottom: 8mm; }
+.pv-foot { border-top: 1px solid var(--rule); padding-top: 6px; margin-top: 6mm; }
+.pv-org { color: var(--ink); font: italic 500 17px/1 var(--serif); font-variant-caps: normal; letter-spacing: -.01em; display: inline-flex; align-items: center; }
+.pv-org .mark { width: 15px; height: 15px; margin-right: 7px; }
+.pv-no { color: var(--ink); }
+.pv-body { flex: 1 1 auto; min-height: 0; overflow: hidden; position: relative; }
+
+/* the desktop spread, fixed */
+.pv-page .spread, .pv-stage .spread { max-width: none; margin: 0; padding: 0; position: relative; }
+.pv-page .spread::before, .pv-stage .spread::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; border-left: 1px solid var(--rule-2); }
+.pv-page .page, .pv-stage .page { max-width: none; margin: 0; padding: 0; }
+.pv-page .row, .pv-stage .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 56px; align-items: start; }
+.pv-page .row + .row, .pv-stage .row + .row { margin-top: 40px; }
+.pv-page .row > .v, .pv-stage .row > .v { grid-column: 1; grid-row: 1; min-width: 0; }
+.pv-page .row > .r, .pv-stage .row > .r { grid-column: 2; grid-row: 1; margin-top: 0; position: static; min-width: 0; }
+.pv-page .row.full, .pv-stage .row.full { display: block; background: none; }
+.pv-page .row.full > .v, .pv-stage .row.full > .v { position: relative; z-index: 1; background: var(--paper); }
+.pv-page .row .dia:not(.small), .pv-stage .row .dia:not(.small) { max-width: 330px; }
+.pv-page .desk-only, .pv-stage .desk-only { display: block; }
+.pv-page .title, .pv-stage .title { font-size: 46px; }
+.pv-page .chno, .pv-stage .chno { font-size: 72px; }
+.pv-page .chno .chico, .pv-stage .chno .chico { width: 52px; height: 52px; }
+.pv-page .verdict, .pv-stage .verdict { font-size: 34px; }
+.pv-page .lede, .pv-stage .lede { font-size: 19px; }
+.pv-page .prose, .pv-page .claim, .pv-stage .prose, .pv-stage .claim { font-size: 17.5px; }
+.pv-page .strip, .pv-stage .strip { grid-template-columns: repeat(4, 1fr); }
+.pv-page .figs b, .pv-stage .figs b { font-size: 32px; }
+.pv-page .tl, .pv-stage .tl { min-height: 0; }
+.pv-page .toc .sub .tl, .pv-stage .toc .sub .tl { padding-top: 3px; padding-bottom: 3px; }
+.pv-page .tl .ld, .pv-stage .tl .ld { background: none; border-bottom: 1.5px dotted var(--ink-3); top: -.3em; height: auto; }
+/* what only works on screen */
+.pv-page :is(.btnrow, .btn, .paren, .dia-tools, .dia-line, .scrubhint, .more, .gprev, details.why > summary),
+.pv-stage :is(.btnrow, .btn, .paren, .dia-tools, .dia-line, .scrubhint, .more, .gprev, details.why > summary) { display: none !important; }
+.pv-page details.why, .pv-stage details.why { display: inline; }
+.pv-page a, .pv-stage a { text-decoration: none; color: inherit; }
+.pv-page .link, .pv-stage .link { text-decoration: underline; text-decoration-color: var(--rule); }
+
+/* cover */
+.pv-cover { padding: 18mm 18mm 12mm; }
+.pv-cov { height: 100%; display: grid; grid-template-columns: 1.1fr .9fr; grid-template-rows: 1fr auto; gap: 0 64px; align-items: center; }
+.pv-cov .wm-big { display: flex; align-items: center; gap: .14em; font: italic 300 120px/0.9 var(--serif); letter-spacing: -.035em; margin: 0; }
+.pv-cov .title { font-size: 40px; margin-top: 36px; }
+.pv-cov .meta { margin-top: 14px; font-size: 18px; color: var(--ink-2); }
+.pv-cov-r { min-width: 0; }
+.pv-cov-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px solid var(--rule); padding-top: 8px; font-variant-caps: all-small-caps; letter-spacing: .07em; font-size: 15px; color: var(--ink-2); font-variant-numeric: lining-nums; }
+
+/* contents */
+.pv-toc .title { margin-bottom: 10px; }
+.pv-toc > .toc { columns: 2; column-gap: 56px; }
+.pv-toc > .toc > li { break-inside: avoid; }
+.pv-toc .toc .ch { margin-top: 12px; }
+.pv-toc .toc .ch > .tl { padding: 3px 0; }
+.pv-toc .toc .sub .tl { padding: 2px 0 2px 1.75em; }
+
+@page { size: A4 landscape; margin: 0; }
+@media print {
+  html, body { background: var(--paper) !important; padding: 0 !important; margin: 0 !important; }
+  body.pv-printing > :not(#pv-book) { display: none !important; }
+  body.pv-printing #pv-book { position: static; left: auto; width: auto; }
+  .pv-page { break-after: page; page-break-after: always; }
+  .pv-page:last-child { break-after: auto; page-break-after: auto; }
+}
+
+/* the export sheet */
+dialog.xp { border: 1px solid var(--ink); border-radius: 0; padding: 0; background: var(--paper); color: var(--ink); width: min(440px, calc(100vw - 32px)); }
+dialog.xp::backdrop { background: oklch(0.21 0.012 260 / 0.35); }
+.xp-in { padding: 20px 22px 18px; }
+.xp-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.xp-x { appearance: none; border: 0; background: none; font: 400 26px/1 var(--serif); color: var(--ink-2); min-width: 44px; min-height: 44px; cursor: pointer; margin-right: -12px; }
+.xp-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.xp-o { appearance: none; border: 1px solid var(--ink); background: none; border-radius: 0; padding: 16px 14px; text-align: center; cursor: pointer; font: 400 24px/1.1 var(--serif); color: var(--ink); min-height: 72px; transition: background-color var(--dur-fast); }
+.xp-o:active { transform: scale(.98); }
+.xp-o:disabled { opacity: .5; cursor: progress; }
+@media (hover: hover) { .xp-o:hover:not(:disabled) { background: var(--paper-2); } }
+.xp-st { margin-top: 12px; min-height: 1.3em; }
+.runhead .xbtn, .rb-foot .xbtn { appearance: none; border: 0; background: none; cursor: pointer; font: 500 13px var(--sans); color: var(--ink-2); min-height: 44px; padding: 0 8px; }

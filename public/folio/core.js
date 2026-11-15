@@ -261,7 +261,7 @@
     document.title = (meta.title ? meta.title.replace(/<[^>]+>/g, "") + " · " : "") + "Cerno";
     // running head (mobile)
     const rh = document.getElementById("runhead");
-    rh.innerHTML = `${meta.hideWm ? "<span></span>" : `<a class="wm" href="#/contents">${F.mark()}Cerno</a>`}<div class="where">${meta.where ? `<span class="sep">/</span>${meta.where}` : ""}</div>${F.langSwitch()}${F.themeBtn()}`;
+    rh.innerHTML = `${meta.hideWm ? "<span></span>" : `<a class="wm" href="#/contents">${F.mark()}Cerno</a>`}<div class="where">${meta.where ? `<span class="sep">/</span>${meta.where}` : ""}</div>${F.exportBtn ? F.exportBtn("xbtn") : ""}${F.langSwitch()}${F.themeBtn()}`;
     // dock
     const dock = document.getElementById("dock");
     const di = DOCK.findIndex(([k]) => k === meta.nav), dFrom = F._dockIdx != null && F._dockIdx >= 0 ? F._dockIdx : di;
@@ -292,7 +292,7 @@
       <nav aria-label="${F.t("toc.title")}"><span class="fillline" style="height:calc(100% - 28px);transform:scaleY(${fillFrom})"></span><ol>${items
         .map((it, i) => `<li><a href="${it[0]}" class="${i < curIdx ? "past" : ""} ${it[4] ? "gap" : ""}" ${i === curIdx ? 'aria-current="page"' : ""}><span class="bul">${F.icon(it[3].replace("ch:", ""))}</span><span>${it[1] !== "" ? `<span class="rn">${it[1]}</span>` : ""}${it[2]}</span></a></li>`)
         .join("")}</ol></nav>
-      <div class="rb-foot"><a href="#/settings">${F.t("nav.settings")}</a>${F.langSwitch()}${F.themeBtn()}</div>`;
+      <div class="rb-foot"><a href="#/settings">${F.t("nav.settings")}</a>${F.exportBtn ? F.exportBtn("xbtn") : ""}${F.langSwitch()}${F.themeBtn()}</div>`;
     // the ribbon's ink line grows or shrinks to the new chapter instead of jumping
     if (fillFrom !== fill) { const fl = rb.querySelector(".fillline"); void fl.offsetWidth; fl.style.transform = `scaleY(${fill})`; }
     F._rbFill = fill;

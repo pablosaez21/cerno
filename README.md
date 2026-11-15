@@ -21,7 +21,7 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-`/` is the app, typeset as an annotated chess book: contents, one chapter per area, the chapter against your opponents, exercises, the games and the method. Its scripts and styles are plain files in `public/folio/`. `src/folio/host.ts` loads them, runs the analysis and saves the last study in IndexedDB. `src/core/folio-data.ts` turns the report into the data the interface reads and computes Maia's Elo ladder (17 ratings) for the positions it shows.
+`/` is the app, typeset as an annotated chess book: contents, one chapter per area, the chapter against your opponents, exercises, the games and the method. Its scripts and styles are plain files in `public/folio/`. `src/folio/host.ts` loads them, runs the analysis and saves the last study in IndexedDB. `src/core/folio-data.ts` turns the report into the data the interface reads and computes Maia's Elo ladder (17 ratings) for the positions it shows. «Export» (`public/folio/export.js`) gives the study as a PDF, laid out by the app itself on A4 landscape sheets (cover, contents with page numbers, running head and page numbers; the browser's print dialog saves it), or as Markdown for AI agents (same chapters, every diagram as FEN).
 
 `/lab` is a debug page with the raw report and timings. `/review` shows 30 random errors from the last lab report so a player can mark whether each label is right.
 
