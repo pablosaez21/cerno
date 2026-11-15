@@ -655,7 +655,7 @@
       <div class="set-group"><div class="lab">${t("set.notation")}</div><div class="opts">${opt("notation", "fig", t("set.notation.fig") + " · " + F.state.notation === "fig" ? "" : "", `<span>${t("set.notation.fig")} <span class="san"><i class="fg fg-N"></i>f3</span></span>`)}${opt("notation", "letters", "", `<span>${t("set.notation.letters")} <span class="san">Nf3</span></span>`)}</div></div>
       <div class="set-group"><div class="lab">${t("set.motion")}</div><div class="opts">${opt("motion", "auto", t("set.motion.auto"))}${opt("motion", "reduced", t("set.motion.reduced"))}</div></div>
       <div class="set-group"><div class="lab">${t("set.data")}</div><div class="btnrow">
-        <a class="btn sm" href="#/">${t("set.newRun")}</a>${M.empty ? "" : `<a class="btn sm" href="#/typesetting">${t("set.replay")}</a>`}<button class="btn sm ghost" data-reset>${t("set.resetEx")}</button><button class="btn sm ghost" data-forget>${t("set.forget")}</button></div>
+        <a class="btn sm" href="#/">${t("set.newRun")}</a>${M.empty ? "" : `<a class="btn sm" href="#/typesetting">${t("set.replay")}</a>`}${F.exportBtn ? F.exportBtn("btn sm") : ""}<button class="btn sm ghost" data-reset>${t("set.resetEx")}</button><button class="btn sm ghost" data-forget>${t("set.forget")}</button></div>
         <p class="small muted" style="margin-top:8px">${t("set.dataNote")}</p></div>
     </div>`;
     return {
