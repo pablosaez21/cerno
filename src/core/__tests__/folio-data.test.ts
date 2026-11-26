@@ -48,6 +48,9 @@ describe("buildFolioData", () => {
   it("keeps the report sections and adds the viewer fields of each game", () => {
     expect(data.findings).toBe(report.findings);
     expect(data.meta).toMatchObject({ contractVersion: 3, folioVersion: 2, builtAt: 123 });
+    // The player card: blitz record and the latest blitz rating as the source gives it; no profile in reduced mode.
+    expect(data.card).toMatchObject({ player: "alice", record: { games: 4, win: 0, draw: 0, loss: 4 }, rating: { value: 1450, source: "chesscom" } });
+    expect(data.card!.profile).toBeUndefined();
     const c = data.games.find((g) => g.id === "C")!;
     expect(c.plies).toHaveLength(8);
     expect(c.winCurve).toHaveLength(9);

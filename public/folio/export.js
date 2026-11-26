@@ -30,7 +30,9 @@
 
   /* ---------- the book's parts, in reading order ---------- */
   function parts() {
-    const list = [{ path: "/preface", no: "", label: t("toc.preface") }];
+    const list = [];
+    if (D.card) list.push({ path: "/card", no: "", label: t("pc.title") });
+    list.push({ path: "/preface", no: "", label: t("toc.preface") });
     for (const c of M.chapters) list.push({ path: "/chapter/" + c.area, no: String(c.no), label: F.catName(c.area), area: c.area });
     if (M.sections.profile || D.profile) list.push({ path: "/level", no: "N", label: t("lv.title"), area: "profile" });
     list.push({ path: "/clock", no: "I", label: `${t("interlude")}: ${t("clk.title").toLowerCase()}`, area: "clock" });

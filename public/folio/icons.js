@@ -9,6 +9,7 @@
   const fine = [1, 2, 3, 4].map((i) => { const v = (3.5 + (i * 17) / 5).toFixed(2); return `M${v} 3.5v17M3.5 ${v}h17`; }).join("");
   const ICONS = {
     contents: `${mesh}<rect class="rf" x="9.9" y="15.5" width="4.2" height="4.2"/>`,
+    card: `<path d="M12 3.5l8.1 5.9-3.1 9.6H7L3.9 9.4z" ${ink}/><path d="M12 8.6l3.6 2.6-1.4 4.3H9.8l-1.4-4.3z" ${red}/>`,
     preface: `<path d="M6 3.5h12v17l-6-4-6 4z" ${ink}/><path d="M12 7.2v4.6M9.7 9.5h4.6" ${red}/>`,
     tactics: `${mesh}<path d="M12 17.5l-4.5-9M12 17.5l4.5-9M6 10.5l1.5-2 2.3.6M18 10.5l-1.5-2-2.3.6" ${red}/>`,
     strategy: `${mesh}<path d="M6.3 17.7L17.7 6.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="1.6 2.2" stroke-linecap="round"/><circle class="rf" cx="17.7" cy="6.3" r="1.8"/>`,
