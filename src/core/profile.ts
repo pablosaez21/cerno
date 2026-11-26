@@ -2,7 +2,7 @@
 // per-move Maia fields of judged errors.
 // Population: Lichess blitz players of the same Elo according to Maia-3.
 // Control: the player's opponents in the same games.
-import { ALL_CLASS, BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, CLOCK_CLASSES, eloShift, PRIMARY_CLASSES, profileStats, SECONDARY_CLASSES, type ClassStat, type ProfileStats } from "./peer-stats";
+import { ALL_CLASS, BOOTSTRAP_RESAMPLES, BOOTSTRAP_SEED, CLOCK_CLASSES, COMBINED_CLASSES, eloShift, PRIMARY_CLASSES, profileStats, SECONDARY_CLASSES, type ClassStat, type ProfileStats } from "./peer-stats";
 import { PEER_COVERAGE, PEER_ELO_DELTAS, PEER_MAX_MOVES, type Decision } from "./peers";
 import { repertoire, type RepertoireNode } from "./repertoire";
 import { styleTraits, type StyleTrait } from "./style";
@@ -54,6 +54,8 @@ export interface Profile {
   warnings: string[];
   overall: ProfileClass;
   classes: ProfileClass[];
+  /** Unions of primary classes for the player card (`demand:quiet`); graded apart, never findings. */
+  combined: ProfileClass[];
   secondary: ProfileClass[];
   /** Clock family: graded within its own family; includes moves under 30 s (Maia calibrated there too). */
   clock: { paired: PairedStat[]; classes: ProfileClass[] };
@@ -234,6 +236,7 @@ export function buildProfile(
     warnings,
     overall: ext(stats.overall, [ALL_CLASS]),
     classes: stats.classes.map((c) => ext(c, PRIMARY_CLASSES)),
+    combined: stats.combined.map((c) => ext(c, COMBINED_CLASSES)),
     secondary: stats.secondary.map((c) => ext(c, SECONDARY_CLASSES)),
     clock: { paired: pairedClock(decisions), classes: stats.clock.map((c) => ext(c, CLOCK_CLASSES, true)) },
     style: styleTraits(decisions),

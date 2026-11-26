@@ -126,6 +126,17 @@ export const PRIMARY_CLASSES: ClassDef[] = [
 ];
 export const ALL_CLASS: ClassDef = { id: "all", family: "all", test: () => true };
 
+/**
+ * Unions of primary classes, for the player card. `demand:quiet` = pawn + piece demand:
+ * the engine's best move neither captures nor checks. Graded like a primary class
+ * (Benjamini-Hochberg over the 11 primary p-values plus its own) without entering the
+ * primary family's correction, so primary grades, findings and recommendations do not move.
+ * Not a finding and not a recommendation target.
+ */
+export const COMBINED_CLASSES: ClassDef[] = [
+  { id: "demand:quiet", family: "demand", test: (d) => d.demand === "pawn" || d.demand === "piece" },
+];
+
 /** Descriptive classes: no grades. */
 export const SECONDARY_CLASSES: ClassDef[] = [
   { id: "moves:1-10", family: "moves", test: (d) => d.moveNumber <= 10 },
@@ -309,6 +320,18 @@ export function gradeClasses(overall: ClassStat, primary: ClassStat[]): void {
   }
 }
 
+/** Grades for combined classes: each one's q comes from BH over the tested primary p-values plus its own. */
+export function gradeCombined(primary: ClassStat[], combined: ClassStat[]): void {
+  const ps = primary.filter((c) => !c.insufficient).map((c) => c.p!);
+  for (const c of combined) {
+    if (c.insufficient) continue;
+    const q = benjaminiHochberg([...ps, c.p!])[ps.length];
+    c.q = Math.round(q * 10000) / 10000;
+    const [lo, hi] = c.ci80!;
+    c.grade = c.q <= BH_Q && !c.atEdge ? "A" : lo > 0 || hi < 0 ? "B" : "C";
+  }
+}
+
 /** Grades for a separate family (BH within it), same rules as the primary family. */
 export function gradeFamily(stats: ClassStat[]): void {
   const tested = stats.filter((c) => !c.insufficient);
@@ -324,6 +347,8 @@ export interface ProfileStats {
   games: number;
   overall: ClassStat;
   classes: ClassStat[];
+  /** Unions of primary classes (COMBINED_CLASSES), graded apart. */
+  combined: ClassStat[];
   secondary: ClassStat[];
   clock: ClassStat[];
 }
@@ -338,11 +363,13 @@ export function profileStats(decisions: Decision[], opts: { resamples?: number; 
   const overall = classStat(ALL_CLASS, inScope, gameIds, boot);
   const classes = PRIMARY_CLASSES.map((c) => ({ ...classStat(c, inScope, gameIds, boot), tau: CLASS_TAU[c.id] }));
   gradeClasses(overall, classes);
+  const combined = COMBINED_CLASSES.map((c) => classStat(c, inScope, gameIds, boot));
+  gradeCombined(classes, combined);
   const secondary = SECONDARY_CLASSES.map((c) => classStat(c, inScope, gameIds, boot));
   // Clock family: all decisions, graded within its own family (BH over its 3 classes).
   const clock = CLOCK_CLASSES.map((c) => classStat(c, decisions, gameIds, boot, { minDecisions: 50, minGames: 10 }));
   gradeFamily(clock);
-  return { games: gameIds.length, overall, classes, secondary, clock };
+  return { games: gameIds.length, overall, classes, combined, secondary, clock };
 }
 
 export { DELTA_ZERO };

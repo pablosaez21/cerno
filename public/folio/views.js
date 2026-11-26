@@ -149,6 +149,7 @@
       <ul class="toc">${subs(c.area).map(subLine).join("")}${c.area === "openings" && repeated.length ? `<li class="sub"><a class="tl" href="#/chapter/openings#repeated"><span class="no"></span><span class="t">${t("ch.repeated")} <span class="faint">(${repeated.length})</span></span><span class="ld"></span><span class="v">${pp(repeated.reduce((s, f) => s + f.impact, 0))}</span></a></li>` : ""}${exLine(c)}</ul></li>`;
     const toc = `<div class="colhead"><span></span><span>${t("toc.colShare")} · ${t("toc.colImpact")}</span></div>
       <ul class="toc">
+        ${D.card ? `<li class="ch"><a class="tl" href="#/card"><span class="no"></span><span class="t">${t("pc.title")}</span><span class="ld"></span><span class="v"></span></a></li>` : ""}
         <li class="ch"><a class="tl" href="#/preface"><span class="no"></span><span class="t">${t("toc.preface")}</span><span class="ld"></span><span class="v">3</span></a></li>
         ${M.chapters.map(chLine).join("")}
         ${M.sections.profile ? `<li class="ch"><a class="tl" href="#/level"><span class="no">N</span><span class="t">${t("lv.title")}</span><span class="ld"></span><span class="v"></span></a><ul class="toc">${M.sections.profile.map(subLine).join("")}</ul></li>` : ""}

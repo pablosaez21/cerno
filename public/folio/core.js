@@ -291,6 +291,7 @@
     const rb = document.getElementById("ribbon");
     const items = [
       ["#/contents", "", F.t("toc.title"), "contents"],
+      ...(M.D.card ? [["#/card", "", F.t("pc.title"), "card"]] : []),
       ["#/preface", "", F.t("nav.preface"), "preface"],
       ...M.chapters.map((c) => ["#/chapter/" + c.area, c.no, F.catName(c.area), "ch:" + c.area]),
       ...(M.sections.profile ? [["#/level", "N", F.t("lv.title"), "level"]] : []),

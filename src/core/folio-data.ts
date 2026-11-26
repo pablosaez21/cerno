@@ -6,6 +6,7 @@
 // only here, every Elo the interface shows is put on the scale of the games' source
 // (`shownElo`): fields named `elo` are shown, fields named `maiaElo*` are Maia's.
 import type { AnalyzedGame } from "./analyze";
+import { playerCard, type PlayerCard } from "./card";
 import { eloScale, shownElo, type EloScale, type EloSource } from "./level";
 import { sanLine, type ErrorRow, type Report } from "./report";
 import type { MaiaPrediction } from "./maia";
@@ -109,6 +110,8 @@ export interface FolioData {
   /** The scale of every Elo the interface shows, and its distance to Maia's. */
   eloScale: EloScale;
   player: Report["player"];
+  /** The player card (page before the preface): five axes against the opponents, type, rating. Absent in studies saved before it existed. */
+  card?: PlayerCard;
   sample: Report["sample"];
   settings: Report["settings"];
   categories: Report["categories"];
@@ -286,6 +289,7 @@ export function buildFolioData(report: Report, analyzed: AnalyzedGame[], decisio
     meta: { source: `Cerno report v${report.version}`, contractVersion: report.version, folioVersion: FOLIO_DATA_VERSION, builtAt },
     eloScale: eloScale(studySource),
     player: report.player,
+    card: playerCard(report, analyzed),
     sample: report.sample,
     settings: report.settings,
     categories: report.categories,

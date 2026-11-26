@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { benjaminiHochberg, bootstrapIndices, classStat, eloShift, gamesToConfirm, gradeClasses, gradeFamily, percentile, profileStats, ALL_CLASS, type ClassStat } from "../peer-stats";
+import { benjaminiHochberg, bootstrapIndices, classStat, eloShift, gamesToConfirm, gradeClasses, gradeCombined, gradeFamily, percentile, profileStats, ALL_CLASS, type ClassStat } from "../peer-stats";
 import { simulate } from "../peer-sim";
 import { finishDecision, PEER_ELO_DELTAS, type Decision } from "../peers";
 import { rng } from "../review";
@@ -23,6 +23,31 @@ describe("family grades", () => {
     const fam = [c("a", 0.001, [-200, -100]), c("b", 0.2, [-80, -5]), c("c", 0.8, [-40, 60])];
     gradeFamily(fam);
     expect(fam.map((x) => x.grade)).toEqual(["A", "B", "C"]);
+  });
+});
+
+describe("combined classes", () => {
+  const c = (id: string, p: number, ci80: [number, number]) => ({ id, family: "demand", decisions: 200, opponentDecisions: 200, games: 30, p, ci80, atEdge: false, cost: {} }) as unknown as ClassStat;
+
+  it("grades a combined class with BH over the primary p-values plus its own, leaving the primary grades alone", () => {
+    const primary = [c("a", 0.001, [-200, -100]), c("b", 0.03, [-120, -10]), c("x", 0.5, [-60, 50])];
+    gradeClasses(c("all", 0.2, [-50, 30]), primary);
+    const before = primary.map((x) => [x.q, x.grade]);
+    const quiet = c("demand:quiet", 0.04, [-150, -20]);
+    gradeCombined(primary, [quiet]);
+    expect(primary.map((x) => [x.q, x.grade])).toEqual(before);
+    // BH over [0.001, 0.03, 0.5, 0.04]: q(0.04) = min(0.04 * 4/3, 0.5) = 0.0533.
+    expect(quiet.q).toBeCloseTo(0.0533, 4);
+    expect(quiet.grade).toBe("A");
+  });
+
+  it("is B when its q is above 0.10 but the 80% interval excludes 0, C otherwise, and skips insufficient classes", () => {
+    const primary = [c("a", 0.5, [-60, 50])];
+    const b = c("demand:quiet", 0.2, [-90, -5]);
+    const cc = c("demand:quiet", 0.6, [-90, 40]);
+    const none = { ...c("demand:quiet", 0.01, [-90, -40]), insufficient: true } as ClassStat;
+    gradeCombined(primary, [b, cc, none]);
+    expect([b.grade, cc.grade, none.grade]).toEqual(["B", "C", undefined]);
   });
 });
 
@@ -106,6 +131,14 @@ describe("profile statistics on synthetic players", () => {
     const overall = classStat(ALL_CLASS, base, gameIds, bootstrapIndices(gameIds.length, 50), { minDecisions: 100, minGames: 10 });
     gradeClasses(overall, []);
     expect(["A", "B", "C"]).toContain(overall.grade);
+  });
+
+  it("adds the quiet class (pawn + piece demand) to the profile, graded apart", () => {
+    const stats = profileStats(base, { resamples: 50 })!;
+    const quiet = stats.combined.find((c) => c.id === "demand:quiet")!;
+    const sum = ["demand:pawn", "demand:piece"].map((id) => stats.classes.find((c) => c.id === id)!.decisions).reduce((a, b) => a + b, 0);
+    expect(quiet.decisions).toBe(sum);
+    expect(stats.classes.map((c) => c.id)).not.toContain("demand:quiet");
   });
 
   it("needs at least 30 games for a profile", () => {
