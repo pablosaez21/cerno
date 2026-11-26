@@ -20,6 +20,8 @@ export interface DiagInfo {
   workers: number;
   games?: number;
   backend?: string;
+  /** Maia loaded after the Stockfish passes (a phone, see mobile.ts). */
+  maiaAfter?: boolean;
   pressureApi: boolean;
 }
 
@@ -99,7 +101,7 @@ export class Diag {
       `núcleos (hardwareConcurrency): ${i.cores}`,
       `memoria (deviceMemory): ${i.memoryGb ?? "?"} GB`,
       `modo: ${i.load} · motores: ${i.workers}`,
-      `Maia: ${i.backend ?? "?"}`,
+      `Maia: ${i.backend ?? "?"}${i.maiaAfter ? " · después de Stockfish" : ""}`,
       `partidas: ${i.games ?? "?"}`,
       `presión de CPU (API): ${i.pressureApi ? "sí" : "no"}`,
       `estado: ${extra.status ?? "?"}${extra.error ? ` (${extra.error})` : ""}`,

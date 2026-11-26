@@ -849,7 +849,10 @@ html.rm .ascii .c { transition: opacity 200ms; } html.rm .ascii.sifting .c.ink {
 @media (max-width: 999.98px) {
   .sift { display: grid; grid-template-columns: minmax(0, 1fr) 104px; column-gap: 16px; grid-template-areas: "a g" "c c" "k k" "b b" "f f" "d d" "e e"; }
   .sift > .col, .sift .galley { display: contents; }
-  .sift .w-a { grid-area: a; } .sift .gl-board { grid-area: g; align-self: start; margin-top: 30px; }
+  .sift .w-a { grid-area: a; } .sift .gl-board { grid-area: g; align-self: start; margin-top: 30px; width: 100%; min-width: 0; }
+  /* the board takes the column's width, never its content's (it overflowed the screen on an iPhone) */
+  .sift .gl-board .dia, .sift .gl-board .dia-frame { width: 100%; min-width: 0; }
+  .sift .gl-board .dia-frame { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
   .sift .galley figcaption { grid-area: c; margin-top: 10px; font-size: 14px; min-height: 2.8em; }
   .sift .galley .gk { display: inline; margin-right: 6px; }
   .sift .w-k { grid-area: k; } .sift .w-b { grid-area: b; } .sift .w-f { grid-area: f; } .sift .w-d { grid-area: d; } .sift > .ts-ctrl { grid-area: e; }

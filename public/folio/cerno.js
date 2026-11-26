@@ -63,6 +63,10 @@
     "lvx.games": (p) => `${p.n} games`, "lvx.elapsed": "elapsed",
     "lvx.noGpu": "No WebGPU: Maia-3 runs on the processor and only checks your judged moves. No profile against your opponents.",
     "lvx.idle": "No analysis running.",
+    "lvx.crash.t": "The browser closed the page",
+    "lvx.crash.sf": "It ran out of memory halfway through. The games already read are saved.",
+    "lvx.crash.maia": "It ran out of memory loading Maia-3. Stockfish’s work is saved. On this device the analysis goes on without Maia: no level labels and no comparison with your opponents.",
+    "lvx.crash.go": "Carry on", "lvx.crash.goNoMaia": "Carry on without Maia",
   });
   Object.assign(I.es, {
     "lv.title": "Frente a tus rivales",
@@ -119,6 +123,10 @@
     "lvx.games": (p) => `${p.n} partidas`, "lvx.elapsed": "transcurrido",
     "lvx.noGpu": "Sin WebGPU: Maia-3 va por el procesador y solo revisa tus jugadas marcadas. Sin perfil frente a rivales.",
     "lvx.idle": "No hay ningún análisis en marcha.",
+    "lvx.crash.t": "El navegador cerró la página",
+    "lvx.crash.sf": "Se quedó sin memoria a mitad del análisis. Las partidas ya leídas están guardadas.",
+    "lvx.crash.maia": "Se quedó sin memoria al cargar Maia-3. Lo de Stockfish está guardado. En este dispositivo el análisis sigue sin Maia: sin etiquetas de nivel ni comparación con tus rivales.",
+    "lvx.crash.go": "Seguir", "lvx.crash.goNoMaia": "Seguir sin Maia",
   });
   I.recTitle.en["phase:opening"] = "Fix your openings"; I.recTitle.es["phase:opening"] = "Arregla tus aperturas";
   I.recTitle.en["phase:middlegame"] = "Play the middlegame like your opponents"; I.recTitle.es["phase:middlegame"] = "Juega el medio juego como tus rivales";
@@ -252,6 +260,19 @@
     const app = window.CernoApp;
     const L0 = app && app.live;
     if (!L0 || L0.status === "idle") return { html: `<div class="page"><p class="lede">${t("lvx.idle")}</p><a class="btn" href="#/">${t("set.newRun")}</a></div>`, noDock: true, noRibbon: true, title: t("lvx.title") };
+    // The browser killed the page mid-run and reloaded it (src/folio/mobile.ts).
+    if (L0.status === "crashed") {
+      const cr = L0.crash || { stage: "stockfish", resumable: false };
+      const go = cr.resumable ? `<button type="button" class="btn primary" data-resume>${t(cr.stage === "maia" ? "lvx.crash.goNoMaia" : "lvx.crash.go")} <span class="arr">→</span></button>` : "";
+      return {
+        html: `<div class="page"><p class="kicker">${t("lvx.title")} · ${esc(L0.user || "")}</p><h1 class="title">${t("lvx.crash.t")}</h1><p class="lede">${t(cr.stage === "maia" ? "lvx.crash.maia" : "lvx.crash.sf")}</p><div class="btnrow" style="margin-top:22px">${go}<a class="btn${go ? " ghost" : ""}" href="#/">${t("set.newRun")}</a></div></div>`,
+        noDock: true, noRibbon: true, title: t("lvx.title"),
+        after(root) {
+          const b = root.querySelector("[data-resume]");
+          b && b.addEventListener("click", () => { app.resume(); F.render(); });
+        },
+      };
+    }
     if (!mem || mem.run !== L0.startedAt) mem = { run: L0.startedAt, lines: [], seen: new Set(), pats: new Set(), galley: null, galleyAt: 0, drawn: new Set(), final: false };
     const N = L0.max || 100;
     const ctr = (k) => `<div class="ctr" data-k="${k}"><b class="num">0</b><span>${t("sv.c." + k)}</span></div>`;

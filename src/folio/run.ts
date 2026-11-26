@@ -37,6 +37,9 @@ export interface RunInput {
   onPool?: (pool: EnginePool) => void;
   /** Run Maia-3. Default true. */
   level?: boolean;
+  /** Load Maia-3 only once the Stockfish passes end, instead of alongside them (phones: both at once
+   *  do not fit in memory, see mobile.ts). Same queries and batches, so the same report. */
+  maiaAfterStockfish?: boolean;
   /** The games to analyse, once downloaded (for live views). */
   onGames?: (games: GameRecord[], workers: number) => void;
   /** Each game after pass 1 and when complete (for live views; see GameDone). */
@@ -91,10 +94,11 @@ export async function runAnalysis(
   const model = MAIA_MODELS["maia3-5m"];
   // Engines and model start while the games download.
   const poolReady = pool.start();
-  const maiaPromise =
+  const loadMaia = () =>
     input.level === false
       ? undefined
       : MaiaClient.load(model, { onProgress: (loaded, total) => onProgress({ phase: "maia-download", done: loaded, total: total ?? model.bytes }) }).catch((e: Error) => e);
+  const maiaEarly = input.maiaAfterStockfish ? undefined : loadMaia();
   onProgress({ phase: "fetch", done: 0, total: input.max });
   const games = await fetchGames(input, signal);
   input.onGames?.(games, workers);
@@ -104,16 +108,18 @@ export async function runAnalysis(
   let cachedGames = 0;
   try {
     await poolReady;
-    const maia = await maiaPromise;
-    const client = maia instanceof MaiaClient ? maia : undefined;
-    const full = client?.backend === "webgpu";
+    let maia = await maiaEarly;
+    let client = maia instanceof MaiaClient ? maia : undefined;
+    let full = client?.backend === "webgpu";
     if (client) onProgress({ phase: "maia-download", done: model.bytes, total: model.bytes, backend: client.backend });
 
-    // Cached decisions per game; Maia runs only for the others.
+    // Cached decisions per game; Maia runs only for the others. Read before Maia loads: a run that
+    // loads it later must not look its decisions up in the cache by whether it is loaded yet.
     const cachedDecisions: Decision[] = [];
     const fresh: GameRecord[] = [];
+    const withMaia = input.level !== false;
     for (const g of games) {
-      const c = client ? await cache?.getPeers(peerKey(model.id, g.id)) : undefined;
+      const c = withMaia ? await cache?.getPeers(peerKey(model.id, g.id)) : undefined;
       if (c) cachedDecisions.push(...c);
       else fresh.push(g);
     }
@@ -144,9 +150,18 @@ export async function runAnalysis(
       },
     });
     // Full mode: Maia on the GPU in parallel with Stockfish on the CPU.
-    const [analyzed, skeletons] = await Promise.all([stockfish, full ? runMaia(parsedOnly) : Promise.resolve(undefined)]);
+    const [analyzed, alongside] = await Promise.all([stockfish, full ? runMaia(parsedOnly) : Promise.resolve(undefined)]);
     const t2 = performance.now();
     input.onBase?.(analyzed, Math.round(t2 - t0));
+    let skeletons = alongside;
+    if (input.maiaAfterStockfish) {
+      // Stockfish's results are in the cache now: if Maia does not fit, they are not lost.
+      maia = await loadMaia();
+      client = maia instanceof MaiaClient ? maia : undefined;
+      full = client?.backend === "webgpu";
+      if (client) onProgress({ phase: "maia-download", done: model.bytes, total: model.bytes, backend: client.backend });
+      if (full) skeletons = await runMaia(parsedOnly);
+    }
 
     let peers: PeerInput | undefined;
     let ladder: FolioElo | undefined;
