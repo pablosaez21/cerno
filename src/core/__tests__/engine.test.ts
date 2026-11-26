@@ -124,6 +124,27 @@ describe("EnginePool limit", () => {
     expect(pool.limit).toBe(3);
   });
 
+  it("replaces an engine between tasks once it has run recycleAfter searches", async () => {
+    const terminated: number[] = [];
+    let made = 0;
+    const counted = (): UciTransport => {
+      const id = made++;
+      return { ...slow(), terminate: () => terminated.push(id) };
+    };
+    const pool = new EnginePool(counted, 2, 16, 4);
+    await pool.start();
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let done = 0;
+    // 6 tasks of 3 searches on 2 engines: each engine passes 4 searches after its 2nd task.
+    await pool.run(Array.from({ length: 6 }, (_, i) => i), () => Array.from({ length: 3 }, () => ({ fen, nodes: 1, multiPv: 1 })), () => void done++);
+    expect(done).toBe(18);
+    expect(pool.started).toBe(4);
+    expect(terminated.sort()).toEqual([0, 1]);
+    // A task is never split: the swap happens before a task starts, never inside one.
+    pool.stop();
+    expect(terminated.sort()).toEqual([0, 1, 2, 3]);
+  });
+
   it("keeps the limit between 1 and the pool size", () => {
     const pool = new EnginePool(slow, 3);
     pool.setLimit(0);

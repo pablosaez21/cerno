@@ -75,6 +75,8 @@ export function terminalEval(fen: string): PositionEval | undefined {
 export class EngineRunner {
   private listener: ((line: string) => void) | undefined;
   private currentMultiPv = 1;
+  /** Searches run on this engine (terminal positions do not reach it). */
+  searches = 0;
 
   constructor(private readonly transport: UciTransport) {
     transport.onLine((line) => this.listener?.(line));
@@ -119,6 +121,7 @@ export class EngineRunner {
       this.currentMultiPv = req.multiPv;
     }
     const whiteToMove = req.fen.split(" ")[1] === "w";
+    this.searches++;
     const done = this.waitFor("bestmove");
     this.transport.send(`position fen ${req.fen}`);
     this.transport.send(`go nodes ${req.nodes}`);
@@ -149,12 +152,23 @@ export class EngineRunner {
 }
 
 /**
+ * Searches after which an engine is replaced by a fresh one, between two tasks. Stockfish WASM in
+ * WebKit grows by ~17 MB every 100 searches of 60k nodes (one engine, Playwright WebKit, macOS
+ * `footprint`; not in Node), and a fresh engine stops the growth: 3 engines went 271 → 423 MB in
+ * 400 searches each, then held at 211–220 MB for 600 more after the swap. On an iPhone the growth
+ * alone gets the page killed in a long analysis. Each task starts with `ucinewgame`, so a fresh
+ * engine gives the same results (pool-size.test.ts); a swap costs one engine start.
+ */
+export const RECYCLE_AFTER = 300;
+
+/**
  * A fixed set of single-threaded engines. Tasks are sequences of requests run
  * on one engine in order, so consecutive positions of one game share the hash.
  *
  * `setLimit(n)` caps how many engines search at once, between two searches: an engine over the
  * cap keeps its task and waits for a turn. The order of requests on each engine does not change,
  * so the results are the same with any limit, also when it changes mid-run (pool-size.test.ts).
+ * An engine that has run `recycleAfter` searches is replaced between two tasks (RECYCLE_AFTER).
  */
 export class EnginePool {
   private runners: EngineRunner[] = [];
@@ -164,12 +178,23 @@ export class EnginePool {
   private searching = 0;
   private waiting: (() => void)[] = [];
 
+  /** Engines started so far, swaps included. */
+  started = 0;
+
   constructor(
     private readonly createTransport: () => UciTransport,
     readonly size: number,
     private readonly hashMb = 16,
+    private readonly recycleAfter = RECYCLE_AFTER,
   ) {
     this.cap = size;
+  }
+
+  private async spawn(): Promise<EngineRunner> {
+    const r = new EngineRunner(this.createTransport());
+    this.started++;
+    await r.init(this.hashMb);
+    return r;
   }
 
   /** Engines that may search at once (1..size). */
@@ -203,13 +228,7 @@ export class EnginePool {
   }
 
   async start(): Promise<void> {
-    this.runners = await Promise.all(
-      Array.from({ length: this.size }, async () => {
-        const r = new EngineRunner(this.createTransport());
-        await r.init(this.hashMb);
-        return r;
-      }),
-    );
+    this.runners = await Promise.all(Array.from({ length: this.size }, () => this.spawn()));
   }
 
   /** Runs every task; `onResult` fires per position as soon as it is ready. */
@@ -220,10 +239,21 @@ export class EnginePool {
     signal?: AbortSignal,
   ): Promise<void> {
     let next = 0;
-    const worker = async (runner: EngineRunner) => {
+    const worker = async (slot: number) => {
       while (next < tasks.length) {
         if (signal?.aborted) return;
         const task = tasks[next++];
+        let runner = this.runners[slot];
+        if (!runner) return; // stopped
+        if (runner.searches >= this.recycleAfter) {
+          runner.terminate();
+          runner = await this.spawn();
+          if (!this.runners.length) {
+            runner.terminate(); // stopped while it started
+            return;
+          }
+          this.runners[slot] = runner;
+        }
         await runner.newGame();
         for (const req of requestsOf(task)) {
           if (signal?.aborted) return;
@@ -239,7 +269,7 @@ export class EnginePool {
         }
       }
     };
-    await Promise.all(this.runners.map(worker));
+    await Promise.all(this.runners.map((_, slot) => worker(slot)));
   }
 
   stop(): void {

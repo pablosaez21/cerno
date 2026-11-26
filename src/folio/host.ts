@@ -12,6 +12,7 @@ import { calibrateRamp } from "./calibrate";
 import { Diag } from "./diag";
 import type { FindingsIn, FindingsOut } from "./findings-worker";
 import { liveCurve, liveDone, type LiveGame } from "./live";
+import { blockMaia, clearRun, isSmallDevice, maiaBlocked, markRun, markStage, takeCrash, unblockMaia, type RunStage } from "./mobile";
 import { calibrated, DEFAULT_LOAD, estimates, formatSecs, learn, workersFor, type Pace } from "./pace";
 import { hasPressure, watchPressure } from "./pressure";
 import { runAnalysis, type RunProgress, type SourceInput } from "./run";
@@ -28,7 +29,10 @@ export interface SavedStudy {
 
 type StageState = "wait" | "run" | "done" | "skip";
 export interface LiveState {
-  status: "idle" | "running" | "done" | "error";
+  /** "crashed": the page died mid-run (the browser killed it, on a phone for lack of memory) and was reloaded. */
+  status: "idle" | "running" | "done" | "error" | "crashed";
+  /** After "crashed": where the run was, and whether it can be resumed (not a pasted PGN: its text is not kept). */
+  crash?: { stage: RunStage; resumable: boolean };
   user?: string;
   max?: number;
   games?: number;
@@ -84,6 +88,14 @@ function savePace(p: Pace | undefined) {
   }
 }
 
+const storage = (k: "sessionStorage" | "localStorage"): Storage | undefined => {
+  try {
+    return window[k];
+  } catch {
+    return undefined;
+  }
+};
+
 const EMPTY_ELO: FolioElo = { meta: { model: "", population: "", maiaElos: [], note: "" }, positions: {} };
 /** Share of a first run's time per stage, WebGPU (measured: pass 1 ~55 %, pass 2 ~5 %, candidates ~35 %; Maia runs alongside pass 1). */
 const WEIGHTS: Record<string, number> = { pass1: 0.55, pass2: 0.06, cand: 0.34, ladder: 0.03, book: 0.02 };
@@ -113,7 +125,10 @@ export async function bootFolio(base = "folio/"): Promise<void> {
   const saved = await readStudy();
   w.CERNO_DATA = saved?.data ?? null;
   w.CERNO_ELO = saved?.elo ?? EMPTY_ELO;
-  w.CernoApp = createApp();
+  const app = createApp();
+  w.CernoApp = app;
+  // A run the browser killed: open on the page that explains it, wherever the reload landed.
+  if (app.live.status === "crashed") location.hash = "#/analysing";
   for (const s of FOLIO_SCRIPTS) await loadScript(base + s);
   const F = w.F as { render: () => void };
   window.addEventListener("hashchange", () => F.render());
@@ -126,7 +141,17 @@ function createApp() {
   let calibrating: { abort: AbortController; done: Promise<boolean> } | undefined;
   let diag: Diag | undefined;
   const cores = () => navigator.hardwareConcurrency || 0;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const small = isSmallDevice({ userAgent: nav.userAgent, maxTouchPoints: nav.maxTouchPoints, deviceMemory: nav.deviceMemory });
   const live: LiveState = { status: "idle", startedAt: 0, progress: 0, stages: {}, byId: {} };
+  // A run the browser killed: say so, and on this device leave Maia out from now on if it was Maia.
+  const crashed = takeCrash<StartInput>(storage("sessionStorage"));
+  if (crashed) {
+    if (crashed.stage === "maia") blockMaia(storage("localStorage"));
+    Object.assign(live, { status: "crashed", user: crashed.input.user, max: crashed.input.n, startedAt: crashed.startedAt, crash: { stage: crashed.stage, resumable: crashed.input.src !== "pgn" } });
+  }
+  // A reload or a navigation the person chose is not a crash; a killed page never fires this.
+  window.addEventListener("pagehide", () => clearRun(storage("sessionStorage")));
   const emit = () => listeners.forEach((fn) => fn());
   const set = (k: string, state: StageState, done = 0, total = 0) => (live.stages[k] = { state, done, total });
   const frac = (k: string) => {
@@ -152,6 +177,8 @@ function createApp() {
         } else set("fetch", "run");
         break;
       case "maia-download":
+        // Only when Maia comes after Stockfish is a death here Maia's (alongside, it could be either).
+        if (small) markStage(storage("sessionStorage"), "maia");
         if (p.backend) live.backend = p.backend;
         set("model", p.done >= p.total ? "done" : "run", p.done, p.total);
         break;
@@ -189,11 +216,14 @@ function createApp() {
     calibrating?.abort.abort();
     const load = input.load ?? DEFAULT_LOAD;
     const workers = workersFor(load, readPace(), cores());
-    Object.assign(live, { status: "running", user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined, workers: undefined, limit: undefined, load, grid: undefined, byId: {}, findings: undefined, final: undefined });
+    const level = input.level ?? (maiaBlocked(storage("localStorage")) ? false : undefined);
+    Object.assign(live, { status: "running", crash: undefined, user: input.user, max: input.n, games: undefined, backend: undefined, startedAt: Date.now(), endedAt: undefined, progress: 0, stages: {}, error: undefined, workers: undefined, limit: undefined, load, grid: undefined, byId: {}, findings: undefined, final: undefined });
+    lastInput = input;
+    // The pasted PGN is not kept: it can be large, and a resume asks for it again.
+    markRun(storage("sessionStorage"), { ...input, pgn: undefined }, live.startedAt);
     diag?.stop();
     lastTimings = undefined;
-    const nav = navigator as Navigator & { deviceMemory?: number };
-    const runDiag = (diag = new Diag({ userAgent: nav.userAgent, cores: cores(), memoryGb: nav.deviceMemory, load, workers, pressureApi: hasPressure() }, phaseNow));
+    const runDiag = (diag = new Diag({ userAgent: nav.userAgent, cores: cores(), memoryGb: nav.deviceMemory, load, workers, maiaAfter: small, pressureApi: hasPressure() }, phaseNow));
     runDiag.start();
     let pool: EnginePool | undefined;
     // The brake only in the default mode: "full" is for a computer left alone.
@@ -266,7 +296,8 @@ function createApp() {
           max: input.n,
           timeClasses: input.timeClasses as TimeClass[],
           workers,
-          level: input.level,
+          level,
+          maiaAfterStockfish: small,
           onPool: (p) => (pool = p),
           onGames: (games, workers) => {
             live.workers = workers;
@@ -303,6 +334,8 @@ function createApp() {
       );
       lastTimings = res.timings;
       if (!res.analyzed.length) throw new Error(input.src === "pgn" ? "No hay partidas legibles en ese PGN." : "No hay partidas con esos filtros.");
+      // Without Maia its stages did not run: mark them before finishBefore would call them done.
+      if (!res.peers) for (const k of ["maia", "cand", "ladder"]) set(k, "skip");
       finishBefore("book");
       set("book", "run");
       emit();
@@ -328,6 +361,7 @@ function createApp() {
       live.endedAt = Date.now();
       live.error = e instanceof DOMException && e.name === "AbortError" ? "Cancelado." : e instanceof Error ? e.message : String(e);
     }
+    clearRun(storage("sessionStorage"));
     fw?.terminate();
     unwatch();
     runDiag.stop();
@@ -335,6 +369,7 @@ function createApp() {
     emit();
   }
   let lastTimings: object | undefined;
+  let lastInput: StartInput | undefined = crashed?.input;
   // What is running now, for the diagnostic: the stages in "run", joined ("pass1+maia").
   const phaseNow = () => {
     if (live.status !== "running") return live.status;
@@ -352,6 +387,11 @@ function createApp() {
     },
     cancel() {
       abort?.abort();
+    },
+    /** After a crash: the same analysis again. What Stockfish finished is in the cache; Maia is
+     *  left out if it was Maia that did not fit (see the crash handling above). */
+    resume() {
+      if (lastInput && lastInput.src !== "pgn") void run(lastInput);
     },
     /** Workers per load mode for n new games, and the time estimate of the default one (none for
      *  "full": it is not a faster option to pick, it is for a computer left alone). */
@@ -399,6 +439,7 @@ function createApp() {
       });
       try {
         Object.keys(localStorage).filter((k) => k.startsWith("cernod.ex.") || k === "cernod.lastInput").forEach((k) => localStorage.removeItem(k));
+        unblockMaia(localStorage);
       } catch {
         // Storage blocked: nothing to delete.
       }
